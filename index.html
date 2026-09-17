@@ -150,8 +150,17 @@
           🌱
         </div>
         <div>
-          <h1 class="text-xl font-bold tracking-tight">Proyecto Chimay / Gema Agroecología</h1>
-          <p class="text-xs text-emerald-300 font-medium">Centro de Operaciones Web & Cronograma Maestro Gantt (V1)</p>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-xl font-bold tracking-tight">Ecosistema IN2TECHMX</h1>
+            <!-- Selector de Portafolio Multi-Proyecto -->
+            <select id="portfolioSelect" onchange="selectPortfolioProject(this.value)" class="bg-emerald-950/80 border border-emerald-500/40 text-emerald-100 text-xs font-bold rounded-lg px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-400 cursor-pointer shadow-inner">
+              <option value="all">📁 Portafolio Consolidado (Todos los Proyectos)</option>
+              <option value="PRJ-01" selected>🌱 PRJ-01: Chimay Agroecología</option>
+              <option value="PRJ-02">⚡ PRJ-02: Parque Solar Fotovoltaico 15kW</option>
+              <option value="PRJ-03">🍄 PRJ-03: Fúngicos & Biofábrica Artesanal</option>
+            </select>
+          </div>
+          <p id="projectSubtitle" class="text-xs text-emerald-300 font-medium">Centro de Operaciones Web & Cronograma Maestro Gantt (V1)</p>
         </div>
       </div>
       <div class="flex items-center space-x-2 flex-wrap sm:flex-nowrap gap-y-2">
@@ -233,6 +242,11 @@
         <!-- Botón Directo Vista Global -->
         <button id="btnVistaGlobal" onclick="selectRecurso('todos')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-emerald-800 text-white shadow-sm hover:bg-emerald-900">
           <i class="fa-solid fa-globe text-emerald-300"></i> Vista Global
+        </button>
+
+        <!-- Botón Planificador Agéntico IA -->
+        <button id="btnVistaAgentico" onclick="selectRecurso('agentico')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-gradient-to-r from-purple-700 via-indigo-700 to-emerald-800 text-white shadow-sm hover:brightness-110 cursor-pointer">
+          <i class="fa-solid fa-robot text-purple-200"></i> Planificador Agéntico IA
         </button>
 
         <!-- Separador visual discreto -->
@@ -373,6 +387,39 @@
             <div class="flex justify-between text-stone-600"><span>Mano de Obra Especialista:</span><span id="modalCostPers" class="font-bold text-stone-800">$3,200.00</span></div>
             <div class="flex justify-between text-stone-600"><span>Materiales e Insumos Físicos:</span><span id="modalCostMat" class="font-bold text-stone-800">$1,200.00</span></div>
             <div class="flex justify-between text-stone-600"><span>Servicios y Trámites Tercerizados:</span><span id="modalCostTerc" class="font-bold text-stone-800">$0.00</span></div>
+          </div>
+
+          <!-- Dependencias de la Tarea -->
+          <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200/80 text-xs space-y-1.5">
+            <div class="flex items-center justify-between text-[11px] font-bold text-stone-700">
+              <span class="flex items-center gap-1.5"><i class="fa-solid fa-link text-indigo-600"></i> Depende de (Predecesora):</span>
+              <span id="modalDepStatus" class="text-[10px] text-stone-400 font-mono"></span>
+            </div>
+            <select id="modalDependenciesSelect" onchange="updateTaskDependency(this.value)" class="w-full bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+              <option value="">(Sin dependencia / Inicio autónomo)</option>
+            </select>
+          </div>
+
+          <!-- Bitácora de Impedimentos & Bloqueos (Semáforo Rojo) -->
+          <div class="p-3.5 rounded-2xl border border-stone-200 text-xs space-y-2.5 transition" id="modalImpedimentsBox">
+            <div class="flex items-center justify-between border-b border-stone-200 pb-1.5">
+              <span class="font-black text-xs flex items-center gap-1.5 text-stone-800">
+                <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Impedimentos & Bloqueos:
+              </span>
+              <span id="modalImpedimentBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-100 text-stone-600">0 bloqueos</span>
+            </div>
+            
+            <div id="modalImpedimentsList" class="space-y-1.5 max-h-24 overflow-y-auto pr-1">
+              <!-- Lista de bloqueos -->
+            </div>
+
+            <!-- Formulario para reportar bloqueo -->
+            <div class="pt-1 flex gap-2">
+              <input id="inputNewImpediment" type="text" placeholder="Reportar causa de retraso..." class="flex-1 bg-white border border-stone-300 rounded-xl px-2.5 py-1 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20">
+              <button type="button" onclick="handleReportImpediment()" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer">
+                <i class="fa-solid fa-flag"></i> Bloqueo
+              </button>
+            </div>
           </div>
 
           <!-- Botón Completar Tarea -->
@@ -529,6 +576,332 @@
   </footer>
 
   <script>
+    // Metadatos de Proyectos en el Portafolio IN2TECHMX
+    const projectsData = [
+      {
+        id: "PRJ-01",
+        name: "Proyecto Chimay / Gema Agroecología",
+        tipo: "Agroecología & Riego",
+        badge: "🌱",
+        color: "emerald",
+        desc: "Centro de Operaciones Web & Cronograma Maestro Gantt (V1)"
+      },
+      {
+        id: "PRJ-02",
+        name: "Parque Solar Fotovoltaico 15kW",
+        tipo: "Energía Renovable",
+        badge: "⚡",
+        color: "amber",
+        desc: "Generación trifásica, inversor centralizado y banco de baterías para autonomía de bombeo."
+      },
+      {
+        id: "PRJ-03",
+        name: "Fúngicos & Biofábrica Artesanal",
+        tipo: "Biotecnología Circular",
+        badge: "🍄",
+        color: "purple",
+        desc: "Producción de hongo ostra, melena de león y biochar enriquecido con microorganismos de montaña."
+      }
+    ];
+
+    let currentPortfolioProject = "all"; // "all" | "PRJ-01" | "PRJ-02" | "PRJ-03"
+
+    function selectPortfolioProject(projId) {
+      currentPortfolioProject = projId;
+      const subtitle = document.getElementById("projectSubtitle");
+      if (projId === "all") {
+        if (subtitle) subtitle.innerText = "Portafolio Consolidado de Operaciones & Cronograma Maestro (Todos los Proyectos)";
+      } else {
+        const p = projectsData.find(x => x.id === projId);
+        if (p && subtitle) {
+          subtitle.innerText = `${p.name} — ${p.desc}`;
+        }
+      }
+
+      populateEtapasDropdown();
+      populateRecursosDropdown();
+
+      const container = document.getElementById("viewContainer");
+      if (container) {
+        if (currentView === "agentico") renderAgenticoView(container);
+        else if (currentView === "todos") renderGlobalView(container);
+        else renderSpecialistView(container, currentView);
+      }
+      updateEtapaBarInfo();
+    }
+
+    function getVisibleTasks() {
+      if (currentPortfolioProject === "all") return tasksData;
+      return tasksData.filter(t => (t.projectId || "PRJ-01") === currentPortfolioProject);
+    }
+
+    // =========================================================================
+    // 0.1 BITÁCORA DE IMPEDIMENTOS & BLOQUEOS (SEMÁFORO ROJO)
+    // =========================================================================
+    let taskImpediments = {};
+    try {
+      taskImpediments = JSON.parse(localStorage.getItem("chimay_task_impediments") || "{}");
+    } catch(e) {
+      taskImpediments = {};
+    }
+
+    function saveImpediments() {
+      try {
+        localStorage.setItem("chimay_task_impediments", JSON.stringify(taskImpediments));
+      } catch(e) {}
+    }
+
+    function hasActiveImpediment(taskId) {
+      const list = taskImpediments[taskId];
+      return Array.isArray(list) && list.some(x => !x.resuelto);
+    }
+
+    function getActiveImpediments(taskId) {
+      const list = taskImpediments[taskId];
+      return Array.isArray(list) ? list.filter(x => !x.resuelto) : [];
+    }
+
+    function addImpediment(taskId, motivo) {
+      if (!taskId || !motivo) return;
+      if (!taskImpediments[taskId]) taskImpediments[taskId] = [];
+      const user = currentUser ? currentUser.name : "Operaciones";
+      const imp = {
+        id: "imp-" + Date.now(),
+        motivo: motivo.trim(),
+        author: user,
+        date: new Date().toISOString().split('T')[0],
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        resuelto: false
+      };
+      taskImpediments[taskId].unshift(imp);
+      saveImpediments();
+
+      try {
+        const task = tasksData.find(t => t.id === taskId);
+        const targetEmail = (task && TEAM_INFO[task.responsable]) ? TEAM_INFO[task.responsable].email : "arturo.dlb.r@gmail.com";
+        const notifKey = `chimay_notifications_${targetEmail}`;
+        let userNotifs = JSON.parse(localStorage.getItem(notifKey) || "[]");
+        userNotifs.unshift({
+          id: `notif-imp-${Date.now()}`,
+          category: "chat",
+          taskId: taskId,
+          taskName: task ? task.name : taskId,
+          author: user,
+          text: `🚨 IMPEDIMENTO REPORTADO: ${motivo}`,
+          reason: "Se ha registrado una situación que retrasa o bloquea la ejecución de esta actividad.",
+          timestamp: "Hace un momento",
+          read: false
+        });
+        localStorage.setItem(notifKey, JSON.stringify(userNotifs));
+        initNotifications();
+      } catch(e) {}
+
+      renderModalImpediments(taskId);
+      refreshActiveViews();
+    }
+
+    function resolveImpediment(taskId, impId) {
+      const list = taskImpediments[taskId];
+      if (!list) return;
+      const item = list.find(x => x.id === impId);
+      if (item) {
+        item.resuelto = true;
+        item.fechaResolucion = new Date().toISOString().split('T')[0];
+        saveImpediments();
+        renderModalImpediments(taskId);
+        refreshActiveViews();
+      }
+    }
+
+    function renderModalImpediments(taskId) {
+      const box = document.getElementById("modalImpedimentsBox");
+      const listEl = document.getElementById("modalImpedimentsList");
+      const badgeEl = document.getElementById("modalImpedimentBadge");
+      if (!box || !listEl) return;
+
+      const imps = taskImpediments[taskId] || [];
+      const activeImps = imps.filter(x => !x.resuelto);
+
+      if (activeImps.length > 0) {
+        box.className = "p-3.5 rounded-2xl border-2 border-rose-500 bg-rose-50/80 text-xs space-y-2.5 transition";
+        if (badgeEl) {
+          badgeEl.className = "px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white animate-pulse";
+          badgeEl.innerText = `🚨 ${activeImps.length} BLOQUEO${activeImps.length === 1 ? '' : 'S'}`;
+        }
+      } else {
+        box.className = "p-3.5 rounded-2xl border border-stone-200 bg-stone-50/50 text-xs space-y-2.5 transition";
+        if (badgeEl) {
+          badgeEl.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-100 text-stone-600";
+          badgeEl.innerText = `${imps.length} histórico${imps.length === 1 ? '' : 's'}`;
+        }
+      }
+
+      if (imps.length === 0) {
+        listEl.innerHTML = `<p class="text-[11px] text-stone-400 italic">No hay impedimentos registrados en esta tarea. Ejecución normal.</p>`;
+        return;
+      }
+
+      listEl.innerHTML = "";
+      imps.forEach(imp => {
+        const item = document.createElement("div");
+        item.className = `p-2 rounded-xl border ${imp.resuelto ? 'bg-stone-100/70 border-stone-200 text-stone-500' : 'bg-white border-rose-300 text-rose-950 shadow-2xs'} flex items-start justify-between gap-2`;
+        item.innerHTML = `
+          <div class="min-w-0">
+            <p class="text-xs font-bold leading-snug flex items-center gap-1.5">
+              ${imp.resuelto ? '<i class="fa-solid fa-check text-emerald-600"></i>' : '<i class="fa-solid fa-triangle-exclamation text-rose-600"></i>'}
+              <span class="${imp.resuelto ? 'line-through text-stone-400' : 'text-rose-900 font-black'}">${imp.motivo}</span>
+            </p>
+            <p class="text-[10px] text-stone-400 mt-0.5 font-mono">Reportó: ${imp.author} &bull; ${imp.date} ${imp.timestamp || ''}</p>
+          </div>
+          ${!imp.resuelto ? `<button type="button" onclick="resolveImpediment('${taskId}', '${imp.id}')" class="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold transition whitespace-nowrap shrink-0 cursor-pointer">✓ Resolver</button>` : '<span class="text-[10px] text-emerald-700 font-bold px-1.5 py-0.5 bg-emerald-50 rounded">Resuelto</span>'}
+        `;
+        listEl.appendChild(item);
+      });
+    }
+
+    function handleReportImpediment() {
+      if (!selectedTaskId) return;
+      const inp = document.getElementById("inputNewImpediment");
+      if (inp && inp.value.trim()) {
+        addImpediment(selectedTaskId, inp.value.trim());
+        inp.value = "";
+      }
+    }
+
+    // =========================================================================
+    // 0.2 GESTIÓN DE DEPENDENCIAS & FLECHAS CONECTORAS SVG
+    // =========================================================================
+    function populateModalDependencies(taskId) {
+      const select = document.getElementById("modalDependenciesSelect");
+      const statusLabel = document.getElementById("modalDepStatus");
+      if (!select) return;
+
+      select.innerHTML = '<option value="">(Sin dependencia / Inicio autónomo)</option>';
+      const currentTask = tasksData.find(t => t.id === taskId);
+
+      tasksData.forEach(t => {
+        if (t.id !== taskId) {
+          const opt = document.createElement("option");
+          opt.value = t.id;
+          opt.textContent = `[${t.id}] ${t.name.substring(0, 45)}... (${t.estado})`;
+          select.appendChild(opt);
+        }
+      });
+
+      if (currentTask && currentTask.dependencies) {
+        select.value = currentTask.dependencies;
+        const depTask = tasksData.find(x => x.id === currentTask.dependencies);
+        if (statusLabel) {
+          statusLabel.innerText = depTask ? `Predecesora: ${depTask.estado}` : "";
+        }
+      } else {
+        select.value = "";
+        if (statusLabel) statusLabel.innerText = "";
+      }
+    }
+
+    function updateTaskDependency(depId) {
+      if (!selectedTaskId) return;
+      const task = tasksData.find(t => t.id === selectedTaskId);
+      if (!task) return;
+
+      task.dependencies = depId ? depId : "";
+      
+      try {
+        let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+        let found = customTasks.find(t => t.id === selectedTaskId);
+        if (found) found.dependencies = task.dependencies;
+        else customTasks.push(task);
+        localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
+      } catch(e) {}
+
+      refreshActiveViews();
+    }
+
+    function refreshActiveViews() {
+      const container = document.getElementById("viewContainer");
+      if (!container) return;
+      if (currentView === "todos") renderGlobalView(container);
+      else if (currentView === "agentico") renderAgenticoView(container);
+      else renderSpecialistView(container, currentView);
+      updateEtapaBarInfo();
+    }
+
+    // =========================================================================
+    // 0.3 AI GATEWAY MULTI-PROVEEDOR (DeepSeek, Claude, Gemini, OpenAI, Local)
+    // =========================================================================
+    let activeAiProvider = localStorage.getItem("chimay_ai_provider") || "local";
+
+    function openAiGatewayModal() {
+      const m = document.getElementById("aiGatewayModal");
+      if (!m) return;
+      const sel = document.getElementById("aiProviderSelect");
+      if (sel) sel.value = activeAiProvider;
+
+      const kDs = document.getElementById("keyDeepseek");
+      const kGm = document.getElementById("keyGemini");
+      const kOa = document.getElementById("keyOpenai");
+      const kCl = document.getElementById("keyClaude");
+
+      if (kDs) kDs.value = localStorage.getItem("chimay_deepseek_key") || "";
+      if (kGm) kGm.value = localStorage.getItem("chimay_gemini_key") || "";
+      if (kOa) kOa.value = localStorage.getItem("chimay_openai_key") || "";
+      if (kCl) kCl.value = localStorage.getItem("chimay_claude_key") || "";
+
+      updateAiKeyBadges();
+      m.classList.remove("hidden");
+    }
+
+    function closeAiGatewayModal() {
+      const m = document.getElementById("aiGatewayModal");
+      if (m) m.classList.add("hidden");
+    }
+
+    function changeActiveAiProvider(provider) {
+      activeAiProvider = provider;
+      localStorage.setItem("chimay_ai_provider", provider);
+      updateAiKeyBadges();
+    }
+
+    function updateAiKeyBadges() {
+      const setBadge = (id, hasKey) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.innerText = hasKey ? "✓ Clave guardada" : "No configurada";
+          el.className = hasKey ? "text-[10px] font-mono text-emerald-700 font-bold" : "text-[10px] font-mono text-stone-400";
+        }
+      };
+      setBadge("badgeDeepseekKey", !!localStorage.getItem("chimay_deepseek_key"));
+      setBadge("badgeGeminiKey", !!localStorage.getItem("chimay_gemini_key"));
+      setBadge("badgeOpenaiKey", !!localStorage.getItem("chimay_openai_key"));
+      setBadge("badgeClaudeKey", !!localStorage.getItem("chimay_claude_key"));
+    }
+
+    function saveAiGatewayKeys() {
+      const kDs = document.getElementById("keyDeepseek")?.value.trim() || "";
+      const kGm = document.getElementById("keyGemini")?.value.trim() || "";
+      const kOa = document.getElementById("keyOpenai")?.value.trim() || "";
+      const kCl = document.getElementById("keyClaude")?.value.trim() || "";
+      const prov = document.getElementById("aiProviderSelect")?.value || "local";
+
+      localStorage.setItem("chimay_deepseek_key", kDs);
+      localStorage.setItem("chimay_gemini_key", kGm);
+      localStorage.setItem("chimay_openai_key", kOa);
+      localStorage.setItem("chimay_claude_key", kCl);
+      localStorage.setItem("chimay_ai_provider", prov);
+      activeAiProvider = prov;
+
+      const lbl = document.getElementById("aiGatewaySaveStatus");
+      if (lbl) {
+        lbl.innerText = "✓ Configuración de IA guardada exitosamente.";
+        setTimeout(() => { lbl.innerText = ""; closeAiGatewayModal(); }, 1200);
+      }
+      updateAiKeyBadges();
+
+      const container = document.getElementById("viewContainer");
+      if (container && currentView === "agentico") renderAgenticoView(container);
+    }
+
     // Metadatos de los Especialistas del Ecosistema IN2TECHMX
     const TEAM_INFO = {
       "Arturo B.": {
@@ -1756,7 +2129,7 @@ Sincronizando con Google Sheets...`);
 
     // Selector y Filtro de Tareas Activas (Intersección Etapa + Especialista)
     function getActiveTasks(specialist = null) {
-      let list = tasksData;
+      let list = getVisibleTasks();
       if (currentEtapa && currentEtapa !== "todas") {
         list = list.filter(t => (t.etapa || "").trim() === currentEtapa.trim());
       }
@@ -1904,9 +2277,23 @@ Sincronizando con Google Sheets...`);
     // Actualiza el aspecto de los controles de navegación superior
     function updateNavButtonsState(viewId) {
       const btnGlobal = document.getElementById("btnVistaGlobal");
+      const btnAgentico = document.getElementById("btnVistaAgentico");
       const select = document.getElementById("selectRecurso");
 
-      if (viewId === "todos") {
+      if (viewId === "agentico") {
+        if (btnAgentico) {
+          btnAgentico.className = "px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 whitespace-nowrap bg-gradient-to-r from-purple-700 via-indigo-700 to-emerald-800 text-white shadow-md ring-2 ring-purple-400 cursor-pointer";
+        }
+        if (btnGlobal) {
+          btnGlobal.className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1.5 whitespace-nowrap transition";
+        }
+        if (select) {
+          select.className = "w-full bg-white border border-stone-300 rounded-xl pl-3 pr-8 py-1.5 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-purple-500/30 shadow-2xs cursor-pointer appearance-none transition";
+        }
+      } else if (viewId === "todos") {
+        if (btnAgentico) {
+          btnAgentico.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-gradient-to-r from-purple-700 via-indigo-700 to-emerald-800 text-white shadow-sm hover:brightness-110 cursor-pointer opacity-90";
+        }
         if (btnGlobal) {
           btnGlobal.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-800 text-white shadow-sm flex items-center gap-1.5 whitespace-nowrap transition hover:bg-emerald-900";
         }
@@ -1914,6 +2301,9 @@ Sincronizando con Google Sheets...`);
           select.className = "w-full bg-white border border-stone-300 hover:border-emerald-600 focus:border-emerald-600 rounded-xl pl-3 pr-8 py-1.5 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 shadow-2xs cursor-pointer appearance-none transition";
         }
       } else {
+        if (btnAgentico) {
+          btnAgentico.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-gradient-to-r from-purple-700 via-indigo-700 to-emerald-800 text-white shadow-sm hover:brightness-110 cursor-pointer opacity-90";
+        }
         if (btnGlobal) {
           btnGlobal.className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1.5 whitespace-nowrap transition";
         }
@@ -1939,7 +2329,9 @@ Sincronizando con Google Sheets...`);
         // 2. LIMPIEZA ABSOLUTA DEL DOM ANTERIOR (Evita cualquier anidamiento)
         container.innerHTML = "";
 
-        if (viewId === "todos") {
+        if (viewId === "agentico") {
+          renderAgenticoView(container);
+        } else if (viewId === "todos") {
           renderGlobalView(container);
         } else {
           renderSpecialistView(container, viewId);
@@ -1949,6 +2341,1087 @@ Sincronizando con Google Sheets...`);
         container.style.opacity = "1";
         container.style.transform = "translateY(0)";
       }, 90);
+    }
+
+    // =========================================================================
+    // 0.4 PLANIFICADOR AGÉNTICO IA & COPILOTO DE OPERACIONES EN LENGUAJE NATURAL
+    // =========================================================================
+    let agenticoActiveTab = "proyecto"; // "proyecto" | "copiloto"
+    let generatedProjectTasks = [];
+    let isGeneratingProject = false;
+    let isExecutingCopiloto = false;
+    let agenticoCopilotoLogs = [
+      {
+        id: "log-init",
+        timestamp: "Inicial",
+        prompt: "Inicialización de Agentes Operativos IN2TECHMX",
+        intent: "SISTEMA_LISTO",
+        reasoning: "Metodología agile-modular-dd-spec cargada. Roles activos: DD (Orquestador), ADS (Especialistas Arturo B., Gema R., Arturo A., Don Chiyo), AA (Auditor) y AS (Seguridad). Gateway multi-proveedor listo.",
+        status: "success",
+        resultHtml: "<span class='text-emerald-700 font-bold'>✓ Sistema Agéntico Operativo en línea. Listo para recibir instrucciones en lenguaje natural.</span>"
+      }
+    ];
+
+    function getProviderDisplayName(prov) {
+      switch (prov) {
+        case "deepseek": return "🐋 DeepSeek API (deepseek-chat)";
+        case "gemini": return "♊ Google Gemini (1.5 Flash)";
+        case "openai": return "🤖 OpenAI API (gpt-4o-mini)";
+        case "claude": return "🟣 Anthropic Claude (3.5 Sonnet)";
+        default: return "🧠 Motor Agéntico Local IN2TECHMX (0ms, 100% Offline)";
+      }
+    }
+
+    function switchAgenticoTab(tab) {
+      agenticoActiveTab = tab;
+      const container = document.getElementById("viewContainer");
+      if (container && currentView === "agentico") {
+        renderAgenticoView(container);
+      }
+    }
+
+    function agenticoFillProjectPrompt(text) {
+      const el = document.getElementById("agenticoProjectPrompt");
+      if (el) {
+        el.value = text;
+        el.focus();
+      }
+    }
+
+    function agenticoFillCopilotoPrompt(text) {
+      const el = document.getElementById("agenticoCopilotoPrompt");
+      if (el) {
+        el.value = text;
+        el.focus();
+      }
+    }
+
+    // Dispatcher Unificado del AI Gateway Multi-Proveedor
+    async function callAiGateway(systemPrompt, userPrompt) {
+      const provider = activeAiProvider || "local";
+
+      if (provider === "local") {
+        return null; // Utilizar motor local heurístico
+      }
+
+      if (provider === "deepseek") {
+        const key = localStorage.getItem("chimay_deepseek_key");
+        if (!key) throw new Error("No se ha configurado la API Key de DeepSeek. Haz clic en 'Configurar LLMs' para ingresarla.");
+        const res = await fetch("https://api.deepseek.com/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${key}`
+          },
+          body: JSON.stringify({
+            model: "deepseek-chat",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            temperature: 0.2
+          })
+        });
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error(`Error DeepSeek API (${res.status}): ${err}`);
+        }
+        const data = await res.json();
+        return data.choices[0].message.content;
+      }
+
+      if (provider === "gemini") {
+        const key = localStorage.getItem("chimay_gemini_key");
+        if (!key) throw new Error("No se ha configurado la API Key de Google Gemini. Haz clic en 'Configurar LLMs'.");
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(key)}`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: `${systemPrompt}\n\nInstrucción de usuario:\n${userPrompt}` }]
+              }
+            ],
+            generationConfig: { temperature: 0.2 }
+          })
+        });
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error(`Error Gemini API (${res.status}): ${err}`);
+        }
+        const data = await res.json();
+        return data.candidates[0].content.parts[0].text;
+      }
+
+      if (provider === "openai") {
+        const key = localStorage.getItem("chimay_openai_key");
+        if (!key) throw new Error("No se ha configurado la API Key de OpenAI. Haz clic en 'Configurar LLMs'.");
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${key}`
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            temperature: 0.2
+          })
+        });
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error(`Error OpenAI API (${res.status}): ${err}`);
+        }
+        const data = await res.json();
+        return data.choices[0].message.content;
+      }
+
+      if (provider === "claude") {
+        const key = localStorage.getItem("chimay_claude_key");
+        if (!key) throw new Error("No se ha configurado la API Key de Anthropic Claude. Haz clic en 'Configurar LLMs'.");
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+            "anthropic-dangerous-direct-browser-access": "true"
+          },
+          body: JSON.stringify({
+            model: "claude-3-5-sonnet-20241022",
+            max_tokens: 2048,
+            system: systemPrompt,
+            messages: [{ role: "user", content: userPrompt }]
+          })
+        });
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error(`Error Anthropic Claude (${res.status}): ${err}`);
+        }
+        const data = await res.json();
+        return data.content[0].text;
+      }
+
+      return null;
+    }
+
+    // Motor Heurístico Local: Descomposición de Proyecto Completo
+    function localEngineGenerateProject(prompt) {
+      const pLower = prompt.toLowerCase();
+      const projId = (currentPortfolioProject && currentPortfolioProject !== "all") ? currentPortfolioProject : "PRJ-01";
+      
+      // Encontrar ID inicial consecutivo
+      let maxNum = 0;
+      tasksData.forEach(t => {
+        const m = String(t.id).match(/TSK-(\d+)/i);
+        if (m) {
+          const n = parseInt(m[1], 10);
+          if (n > maxNum) maxNum = n;
+        }
+      });
+      let nextIdNum = maxNum + 1;
+
+      // Base Date
+      let baseDate = new Date();
+      baseDate.setDate(baseDate.getDate() + 1);
+
+      function fmtDate(d) {
+        return d.toISOString().split('T')[0];
+      }
+
+      function addDays(d, days) {
+        const res = new Date(d);
+        res.setDate(res.getDate() + days);
+        return res;
+      }
+
+      let generatedTasks = [];
+      let cursorDate = new Date(baseDate);
+
+      // Definir plantilla de etapas y tareas según palabras clave
+      let template = [];
+      if (pLower.includes("solar") || pLower.includes("fotovolt") || pLower.includes("energ")) {
+        template = [
+          {
+            etapa: "Etapa 1: Ingeniería y Trámites CFE",
+            tasks: [
+              { name: "Levantamiento técnico de azotea y cálculo de irradiación solar", resp: "Arturo B.", horas: 16, mat: 800, terc: 0, days: 5 },
+              { name: "Gestión de Solicitud de Interconexión y Dictamen CFE", resp: "Gema R.", horas: 20, mat: 0, terc: 6500, days: 12 }
+            ]
+          },
+          {
+            etapa: "Etapa 2: Estructuras y Montaje de Paneles",
+            tasks: [
+              { name: "Fabricación e instalación de anclajes de aluminio estructural", resp: "Don Chiyo", horas: 24, mat: 12500, terc: 0, days: 6 },
+              { name: "Montaje y sujeción de 28 módulos fotovoltaicos monocristalinos 550W", resp: "Arturo A.", horas: 20, mat: 68000, terc: 0, days: 5 }
+            ]
+          },
+          {
+            etapa: "Etapa 3: Inversor Trifásico y Protecciones",
+            tasks: [
+              { name: "Canalización de cableado solar y cuadro de protecciones DC/AC", resp: "Arturo A.", horas: 18, mat: 9200, terc: 0, days: 4 },
+              { name: "Instalación y configuración de Inversor Trifásico 15kW con monitoreo WiFi", resp: "Arturo B.", horas: 14, mat: 34000, terc: 0, days: 3 }
+            ]
+          },
+          {
+            etapa: "Etapa 4: Banco de Baterías y Entrega UVIE",
+            tasks: [
+              { name: "Conexión de banco de almacenamiento Litio-Ferrofosfato 48V", resp: "Arturo A.", horas: 12, mat: 42000, terc: 0, days: 4 },
+              { name: "Inspección UVIE, pruebas de carga y energización definitiva", resp: "Arturo B.", horas: 16, mat: 0, terc: 8000, days: 6 }
+            ]
+          }
+        ];
+      } else if (pLower.includes("hongo") || pLower.includes("fúng") || pLower.includes("biofáb") || pLower.includes("seta") || pLower.includes("ostra")) {
+        template = [
+          {
+            etapa: "Etapa 1: Aislamiento y Laboratorio de Inóculo",
+            tasks: [
+              { name: "Adecuación de cabina de flujo laminar y lámpara UV germicida", resp: "Arturo B.", horas: 18, mat: 8500, terc: 0, days: 5 },
+              { name: "Protocolo de propagación de micelio de hongo ostra en grano de trigo", resp: "Gema R.", horas: 14, mat: 3200, terc: 0, days: 7 }
+            ]
+          },
+          {
+            etapa: "Etapa 2: Cuarto de Fructificación Automatizado",
+            tasks: [
+              { name: "Construcción de racks verticales con malla plástica higiénica", resp: "Don Chiyo", horas: 22, mat: 6500, terc: 0, days: 6 },
+              { name: "Instalación de humidificadores ultrasónicos y extracción forzada con filtro HEPA", resp: "Arturo A.", horas: 16, mat: 9400, terc: 0, days: 5 }
+            ]
+          },
+          {
+            etapa: "Etapa 3: Sustrato y Pasteurización Térmica",
+            tasks: [
+              { name: "Picado y formulación de sustrato (paja de maíz, cal y bagazo de caña)", resp: "Don Chiyo", horas: 20, mat: 4800, terc: 0, days: 4 },
+              { name: "Pasteurización por inmersión térmica a 75°C e inoculación en bolsas microperforadas", resp: "Arturo B.", horas: 16, mat: 2800, terc: 0, days: 4 }
+            ]
+          },
+          {
+            etapa: "Etapa 4: Cosecha, Cadena Fría y Venta Gourmet",
+            tasks: [
+              { name: "Monitoreo microclimático diario y primera cosecha de sombreros", resp: "Don Chiyo", horas: 18, mat: 1200, terc: 0, days: 7 },
+              { name: "Selección, empaque en charolas biodegradables y entrega a restaurantes", resp: "Gema R.", horas: 12, mat: 1800, terc: 0, days: 5 }
+            ]
+          }
+        ];
+      } else if (pLower.includes("microgreen") || pLower.includes("germin") || pLower.includes("invernadero") || pLower.includes("hortal")) {
+        template = [
+          {
+            etapa: "Etapa 1: Formulación y Contratos Comerciales",
+            tasks: [
+              { name: "Negociación y contratos de proveeduría semanal con restaurantes de Mérida", resp: "Gema R.", horas: 20, mat: 0, terc: 2000, days: 8 },
+              { name: "Adquisición de semillas certificadas sin tratamiento químico (rábano, girasol, kale)", resp: "Arturo B.", horas: 10, mat: 7500, terc: 0, days: 4 }
+            ]
+          },
+          {
+            etapa: "Etapa 2: Racks Verticales con Luz LED Full Spectrum",
+            tasks: [
+              { name: "Montaje de estanterías industriales metálicas con charolas 1020", resp: "Don Chiyo", horas: 18, mat: 8200, terc: 0, days: 5 },
+              { name: "Cableado e instalación de barras LED Full Spectrum 6500K con temporizador", resp: "Arturo A.", horas: 14, mat: 11500, terc: 0, days: 4 }
+            ]
+          },
+          {
+            etapa: "Etapa 3: Riego Automatizado por Inundación Inferior",
+            tasks: [
+              { name: "Instalación de tinaco de nutrientes y bombas sumergibles de recirculación", resp: "Arturo A.", horas: 16, mat: 6800, terc: 0, days: 4 },
+              { name: "Programación de ciclos automáticos de sub-irrigación de 3 minutos", resp: "Arturo B.", horas: 12, mat: 1400, terc: 0, days: 3 }
+            ]
+          },
+          {
+            etapa: "Etapa 4: Cosecha Escalonada y Despacho",
+            tasks: [
+              { name: "Protocolo de siembra escalonada cada 48 horas en fibra de coco", resp: "Don Chiyo", horas: 16, mat: 2600, terc: 0, days: 6 },
+              { name: "Corte vivo en empaque clamshell ventilado y logística de entrega en frío", resp: "Gema R.", horas: 14, mat: 2100, terc: 0, days: 5 }
+            ]
+          }
+        ];
+      } else {
+        template = [
+          {
+            etapa: "Etapa 1: Viabilidad Técnica y Gobernanza",
+            tasks: [
+              { name: `Estudio preliminar de ingeniería y requerimientos: ${prompt.substring(0, 35)}`, resp: "Arturo B.", horas: 18, mat: 1200, terc: 0, days: 6 },
+              { name: "Dictamen legal, licencias y contratos de adquisiciones", resp: "Gema R.", horas: 16, mat: 0, terc: 4500, days: 8 }
+            ]
+          },
+          {
+            etapa: "Etapa 2: Infraestructura Base y Obra Civil",
+            tasks: [
+              { name: "Nivelación de terreno, cimentación y adecuaciones físicas", resp: "Don Chiyo", horas: 26, mat: 14800, terc: 0, days: 7 },
+              { name: "Tendido de ductos, drenaje y preparaciones estructurales", resp: "Don Chiyo", horas: 20, mat: 8400, terc: 0, days: 5 }
+            ]
+          },
+          {
+            etapa: "Etapa 3: Tecnificación e Instalaciones Especializadas",
+            tasks: [
+              { name: "Instalación de equipos principales, conexiones eléctricas e hidráulicas", resp: "Arturo A.", horas: 22, mat: 21000, terc: 0, days: 6 },
+              { name: "Montaje de sensores telemétricos y tablero de automatización", resp: "Arturo A.", horas: 16, mat: 9500, terc: 0, days: 4 }
+            ]
+          },
+          {
+            etapa: "Etapa 4: Pruebas Operativas y Entrega Continua",
+            tasks: [
+              { name: "Pruebas de estrés de 72 horas, calibración y marcha en vacío", resp: "Arturo B.", horas: 18, mat: 1800, terc: 0, days: 5 },
+              { name: "Manual de operación, capacitación de cuadrilla y acta de entrega", resp: "Gema R.", horas: 12, mat: 500, terc: 0, days: 4 }
+            ]
+          }
+        ];
+      }
+
+      let lastTaskId = "";
+      template.forEach((stage, sIdx) => {
+        stage.tasks.forEach((tDef, tIdx) => {
+          const tId = `TSK-${String(nextIdNum).padStart(2, '0')}`;
+          nextIdNum++;
+
+          const sDate = fmtDate(cursorDate);
+          cursorDate = addDays(cursorDate, tDef.days);
+          const eDate = fmtDate(cursorDate);
+
+          const rate = (TEAM_INFO[tDef.resp] && TEAM_INFO[tDef.resp].costoHora) ? TEAM_INFO[tDef.resp].costoHora : 150;
+          const cPers = tDef.horas * rate;
+          const cMat = tDef.mat || 0;
+          const cTerc = tDef.terc || 0;
+          const cTotal = cPers + cMat + cTerc;
+
+          const dep = lastTaskId;
+          lastTaskId = tId;
+
+          generatedTasks.push({
+            id: tId,
+            name: tDef.name,
+            etapa: stage.etapa,
+            responsable: tDef.resp,
+            horas: tDef.horas,
+            costoPersonal: cPers,
+            costoMateriales: cMat,
+            costoTerceros: cTerc,
+            costoTotal: cTotal,
+            start: sDate,
+            end: eDate,
+            progress: 0,
+            estado: "No Iniciada",
+            prioridad: sIdx < 2 ? "Alta" : "Media",
+            projectId: projId,
+            dependencies: dep
+          });
+        });
+      });
+
+      return generatedTasks;
+    }
+
+    // Ejecutar Generador de Proyecto Agéntico
+    async function executeGenerateProject() {
+      const promptEl = document.getElementById("agenticoProjectPrompt");
+      if (!promptEl || !promptEl.value.trim()) {
+        alert("Por favor escribe la idea o requerimiento del proyecto a generar.");
+        return;
+      }
+      const prompt = promptEl.value.trim();
+
+      const btn = document.getElementById("btnGenerarProyectoAgentico");
+      const stepper = document.getElementById("agenticoStepperBox");
+      const resultsBox = document.getElementById("agenticoProjectResults");
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Agente Razonando & Descomponiendo...`;
+      }
+      if (stepper) stepper.classList.remove("hidden");
+      if (resultsBox) resultsBox.classList.add("hidden");
+
+      try {
+        let tasks = null;
+
+        if (activeAiProvider !== "local") {
+          const sys = `Eres el Agente Director de Desarrollo (DD) de IN2TECHMX bajo la metodología agile-modular-dd-spec.
+Tu objetivo es descomponer el requerimiento del usuario en 4 etapas WBS secuenciales con un total de 8 tareas operativas completas.
+Los especialistas disponibles son:
+- Arturo B. (Ingeniería, Sistemas y Calidad, $160/h)
+- Gema R. (Legal, Finanzas y Trámites Notariales, $200/h)
+- Arturo A. (Tecnología, Sensores y Electricidad, $140/h)
+- Don Chiyo (Campo, Obra Civil y Riego, $90/h)
+Devuelve EXCLUSIVAMENTE un arreglo JSON válido con los objetos de tarea con el formato:
+[{"name": "...", "etapa": "Etapa 1: ...", "responsable": "Arturo B.", "horas": 16, "costoMateriales": 5000, "costoTerceros": 0, "dias": 5}]
+Sin comentarios ni texto extra.`;
+
+          try {
+            const rawAiResponse = await callAiGateway(sys, prompt);
+            if (rawAiResponse) {
+              const cleanJson = rawAiResponse.replace(/^```json/m, "").replace(/^```/m, "").trim();
+              const parsed = JSON.parse(cleanJson);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                let maxNum = 0;
+                tasksData.forEach(t => {
+                  const m = String(t.id).match(/TSK-(\d+)/i);
+                  if (m) {
+                    const n = parseInt(m[1], 10);
+                    if (n > maxNum) maxNum = n;
+                  }
+                });
+                let nextId = maxNum + 1;
+                let cDate = new Date();
+                cDate.setDate(cDate.getDate() + 1);
+                let prevId = "";
+                const projId = (currentPortfolioProject && currentPortfolioProject !== "all") ? currentPortfolioProject : "PRJ-01";
+
+                tasks = parsed.map(item => {
+                  const tId = `TSK-${String(nextId++).padStart(2, '0')}`;
+                  const sDate = cDate.toISOString().split('T')[0];
+                  cDate.setDate(cDate.getDate() + (item.dias || 5));
+                  const eDate = cDate.toISOString().split('T')[0];
+                  const resp = item.responsable || "Arturo B.";
+                  const rate = (TEAM_INFO[resp] && TEAM_INFO[resp].costoHora) ? TEAM_INFO[resp].costoHora : 150;
+                  const cPers = (item.horas || 15) * rate;
+                  const cMat = item.costoMateriales || 0;
+                  const cTerc = item.costoTerceros || 0;
+                  const dep = prevId;
+                  prevId = tId;
+
+                  return {
+                    id: tId,
+                    name: item.name,
+                    etapa: item.etapa || "Etapa General",
+                    responsable: resp,
+                    horas: item.horas || 15,
+                    costoPersonal: cPers,
+                    costoMateriales: cMat,
+                    costoTerceros: cTerc,
+                    costoTotal: cPers + cMat + cTerc,
+                    start: sDate,
+                    end: eDate,
+                    progress: 0,
+                    estado: "No Iniciada",
+                    prioridad: "Media",
+                    projectId: projId,
+                    dependencies: dep
+                  };
+                });
+              }
+            }
+          } catch (aiErr) {
+            console.warn("Fallo AI remoto, aplicando motor local de contingencia:", aiErr);
+          }
+        }
+
+        if (!tasks || tasks.length === 0) {
+          tasks = localEngineGenerateProject(prompt);
+        }
+
+        generatedProjectTasks = tasks;
+        renderGeneratedProjectPreview(tasks);
+
+      } catch (err) {
+        alert("Ocurrió un error al descomponer el proyecto: " + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> Descomponer Proyecto con Agente IA`;
+        }
+        if (stepper) stepper.classList.add("hidden");
+        if (resultsBox) resultsBox.classList.remove("hidden");
+      }
+    }
+
+    function renderGeneratedProjectPreview(tasks) {
+      const resultsBox = document.getElementById("agenticoProjectResults");
+      if (!resultsBox) return;
+
+      const totalH = tasks.reduce((a, b) => a + (Number(b.horas) || 0), 0);
+      const totalCost = tasks.reduce((a, b) => a + (Number(b.costoTotal) || 0), 0);
+      const totalPers = tasks.reduce((a, b) => a + (Number(b.costoPersonal) || 0), 0);
+      const totalMat = tasks.reduce((a, b) => a + (Number(b.costoMateriales) || 0), 0);
+      const totalTerc = tasks.reduce((a, b) => a + (Number(b.costoTerceros) || 0), 0);
+
+      resultsBox.innerHTML = `
+        <div class="bg-purple-50/60 rounded-2xl p-5 border border-purple-200 space-y-4">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-purple-200/70 pb-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-700 text-white">Propuesta Agéntica Generada</span>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">${tasks.length} Tareas WBS</span>
+              </div>
+              <h3 class="text-base font-black text-stone-900 mt-1">Desglose Operativo & Cronograma Propuesto</h3>
+              <p class="text-xs text-stone-500">Revisa la estructuración antes de inyectarla de forma permanente en el cronograma maestro y Google Sheets.</p>
+            </div>
+            
+            <button onclick="applyGeneratedProject()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition shadow-md flex items-center gap-2 cursor-pointer shrink-0">
+              <i class="fa-solid fa-cloud-arrow-up text-sm"></i> Aplicar y Crear en Cronograma & Google Sheets
+            </button>
+          </div>
+
+          <!-- Métricas Resumen -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div class="bg-white p-3 rounded-xl border border-purple-100">
+              <p class="text-[10px] uppercase font-bold text-stone-400">Total Inversión</p>
+              <p class="text-base font-black text-emerald-800">$${totalCost.toLocaleString("es-MX", {minimumFractionDigits: 2})}</p>
+            </div>
+            <div class="bg-white p-3 rounded-xl border border-purple-100">
+              <p class="text-[10px] uppercase font-bold text-stone-400">Mano de Obra</p>
+              <p class="text-sm font-bold text-stone-700">$${totalPers.toLocaleString("es-MX", {minimumFractionDigits: 2})} (${totalH}h)</p>
+            </div>
+            <div class="bg-white p-3 rounded-xl border border-purple-100">
+              <p class="text-[10px] uppercase font-bold text-stone-400">Materiales e Insumos</p>
+              <p class="text-sm font-bold text-stone-700">$${totalMat.toLocaleString("es-MX", {minimumFractionDigits: 2})}</p>
+            </div>
+            <div class="bg-white p-3 rounded-xl border border-purple-100">
+              <p class="text-[10px] uppercase font-bold text-stone-400">Trámites y Terceros</p>
+              <p class="text-sm font-bold text-stone-700">$${totalTerc.toLocaleString("es-MX", {minimumFractionDigits: 2})}</p>
+            </div>
+          </div>
+
+          <!-- Tabla de Tareas Propuestas -->
+          <div class="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-2xs max-h-80 overflow-y-auto">
+            <table class="w-full text-left text-xs divide-y divide-stone-200">
+              <thead class="bg-stone-50 text-[10px] font-extrabold uppercase text-stone-500 tracking-wider sticky top-0 z-10">
+                <tr>
+                  <th class="px-3 py-2.5">WBS ID</th>
+                  <th class="px-3 py-2.5">Etapa</th>
+                  <th class="px-3 py-2.5">Tarea / Entregable</th>
+                  <th class="px-3 py-2.5">Especialista</th>
+                  <th class="px-3 py-2.5">Fechas</th>
+                  <th class="px-3 py-2.5">Inversión Total</th>
+                  <th class="px-3 py-2.5">Dependencia</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-stone-100 text-stone-800">
+                ${tasks.map(t => `
+                  <tr class="hover:bg-purple-50/40 transition">
+                    <td class="px-3 py-2 font-mono font-bold text-emerald-800">${t.id}</td>
+                    <td class="px-3 py-2 text-stone-500 font-medium truncate max-w-[130px]">${t.etapa}</td>
+                    <td class="px-3 py-2 font-bold text-stone-900">${t.name}</td>
+                    <td class="px-3 py-2">
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-100 text-stone-700">${t.responsable}</span>
+                    </td>
+                    <td class="px-3 py-2 font-mono text-[11px] text-stone-500 whitespace-nowrap">${t.start} &bull; ${t.end}</td>
+                    <td class="px-3 py-2 font-bold text-emerald-800 whitespace-nowrap">$${t.costoTotal.toLocaleString("es-MX", {minimumFractionDigits: 2})}</td>
+                    <td class="px-3 py-2">
+                      ${t.dependencies ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-50 text-indigo-700 font-bold border border-indigo-200"><i class="fa-solid fa-link text-[9px]"></i> ${t.dependencies}</span>` : '<span class="text-stone-400 text-[10px]">Autónoma</span>'}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    // Inyectar Proyecto Generado en Base de Datos y Google Sheets
+    async function applyGeneratedProject() {
+      if (!generatedProjectTasks || generatedProjectTasks.length === 0) return;
+
+      const count = generatedProjectTasks.length;
+      
+      // Agregar a tasksData
+      tasksData.push(...generatedProjectTasks);
+
+      // Guardar en Custom Tasks de LocalStorage
+      try {
+        let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+        customTasks.push(...generatedProjectTasks);
+        localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
+      } catch(e) {}
+
+      // Sincronizar con Google Sheets en segundo plano
+      if (webAppUrl) {
+        try {
+          for (const t of generatedProjectTasks) {
+            fetch(webAppUrl, {
+              method: "POST",
+              mode: "no-cors",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                accion: "crear",
+                nombre: t.name,
+                etapa: t.etapa,
+                responsable: t.responsable,
+                horas: t.horas,
+                costoMateriales: t.costoMateriales,
+                costoTerceros: t.costoTerceros,
+                fechaInicio: t.start,
+                fechaFin: t.end,
+                prioridad: t.prioridad,
+                dependencias: t.dependencies
+              })
+            }).catch(() => {});
+          }
+        } catch(e) {}
+      }
+
+      // Notificación
+      const email = currentUser ? currentUser.email : "arturo.dlb.r@gmail.com";
+      const notifKey = `chimay_notifications_${email}`;
+      try {
+        let notifs = JSON.parse(localStorage.getItem(notifKey) || "[]");
+        notifs.unshift({
+          id: `notif-proj-${Date.now()}`,
+          category: "assignment",
+          taskId: generatedProjectTasks[0].id,
+          taskName: `Nuevo Proyecto Agéntico (${count} tareas)`,
+          author: "Planificador Agéntico IA",
+          text: `Se han generado y creado exitosamente ${count} tareas en el cronograma maestro.`,
+          reason: "Descomposición automática WBS completada.",
+          timestamp: "Hace un momento",
+          read: false
+        });
+        localStorage.setItem(notifKey, JSON.stringify(notifs));
+        initNotifications();
+      } catch(e) {}
+
+      alert(`🚀 ¡Éxito! Se han creado ${count} tareas estructuradas en el proyecto. Pasando al Cronograma Maestro.`);
+      
+      populateEtapasDropdown();
+      populateRecursosDropdown();
+      transitionToView("todos");
+    }
+
+    // Motor Heurístico Local: Ejecución de Comandos en Lenguaje Natural
+    function localEngineExecuteCommand(prompt) {
+      const pLower = prompt.toLowerCase();
+
+      // 1. COMPLETAR TAREA
+      if (pLower.includes("complet") || pLower.includes("termin") || pLower.includes("finaliz")) {
+        const m = prompt.match(/TSK-\d+/i);
+        if (m) {
+          const tId = m[0].toUpperCase();
+          const task = tasksData.find(t => t.id === tId);
+          if (task) {
+            task.estado = "Completada";
+            task.progress = 100;
+            refreshActiveViews();
+            return {
+              intent: "COMPLETAR_TAREA",
+              reasoning: `Se identificó la orden de completar la tarea con código ${tId}. Se actualizó el estado a 'Completada' y el progreso al 100%.`,
+              status: "success",
+              taskId: tId,
+              resultHtml: `<p class="text-emerald-800 font-bold flex items-center gap-1.5"><i class="fa-solid fa-circle-check text-emerald-600"></i> Tarea <a href="javascript:openTaskModal('${tId}')" class="underline font-mono">${tId}</a> marcada como <strong>Completada (100%)</strong>.</p>`
+            };
+          }
+        }
+      }
+
+      // 2. REPORTAR IMPEDIMENTO / BLOQUEO
+      if (pLower.includes("bloqueo") || pLower.includes("impediment") || pLower.includes("retras") || pLower.includes("demor") || pLower.includes("problema")) {
+        const m = prompt.match(/TSK-\d+/i);
+        if (m) {
+          const tId = m[0].toUpperCase();
+          let motivo = prompt;
+          if (prompt.includes(":")) {
+            motivo = prompt.split(":")[1].trim();
+          } else {
+            motivo = prompt.replace(/reportar/i, "").replace(/bloqueo en/i, "").replace(/retraso en/i, "").replace(m[0], "").trim();
+          }
+          if (!motivo) motivo = "Retraso reportado mediante copiloto agéntico";
+          addImpediment(tId, motivo);
+          return {
+            intent: "REPORTAR_BLOQUEO",
+            reasoning: `Se detectó reporte de impedimento para la tarea ${tId}. Se registró en la bitácora de bloqueos activando el semáforo rojo.`,
+            status: "success",
+            taskId: tId,
+            resultHtml: `<p class="text-rose-800 font-bold flex items-center gap-1.5"><i class="fa-solid fa-flag text-rose-600"></i> Impedimento registrado en <a href="javascript:openTaskModal('${tId}')" class="underline font-mono">${tId}</a>: "${motivo}". Semáforo rojo activado.</p>`
+          };
+        }
+      }
+
+      // 3. MODIFICAR FECHA
+      if (pLower.includes("fecha") || pLower.includes("posponer") || pLower.includes("termin") || pLower.includes("adelant")) {
+        const m = prompt.match(/TSK-\d+/i);
+        if (m) {
+          const tId = m[0].toUpperCase();
+          const task = tasksData.find(t => t.id === tId);
+          if (task) {
+            let targetDate = "";
+            const isoMatch = prompt.match(/\d{4}-\d{2}-\d{2}/);
+            if (isoMatch) {
+              targetDate = isoMatch[0];
+            } else {
+              const dMatch = prompt.match(/(\d{1,2})\s+de\s+([a-záéíóú]+)/i);
+              if (dMatch) {
+                const day = String(dMatch[1]).padStart(2, '0');
+                const mesNom = dMatch[2].toLowerCase();
+                const meses = { "enero":"01", "febrero":"02", "marzo":"03", "abril":"04", "mayo":"05", "junio":"06", "julio":"07", "agosto":"08", "septiembre":"09", "octubre":"10", "noviembre":"11", "diciembre":"12" };
+                const mes = meses[mesNom] || "10";
+                targetDate = `2026-${mes}-${day}`;
+              }
+            }
+
+            if (targetDate) {
+              const oldEnd = task.end;
+              task.end = targetDate;
+              if (new Date(task.end) < new Date(task.start)) task.start = task.end;
+              refreshActiveViews();
+              return {
+                intent: "MODIFICAR_FECHA",
+                reasoning: `Se solicitó ajustar la fecha límite de ${tId}. Fecha anterior: ${oldEnd}, nueva fecha establecida: ${targetDate}.`,
+                status: "success",
+                taskId: tId,
+                resultHtml: `<p class="text-indigo-800 font-bold flex items-center gap-1.5"><i class="fa-solid fa-calendar-check text-indigo-600"></i> Fecha de <a href="javascript:openTaskModal('${tId}')" class="underline font-mono">${tId}</a> actualizada al <strong>${targetDate}</strong> (antes: ${oldEnd}).</p>`
+              };
+            }
+          }
+        }
+      }
+
+      // 4. CREAR TAREA
+      if (pLower.includes("agregar") || pLower.includes("crear") || pLower.includes("nueva tarea") || pLower.includes("incorporar") || pLower.includes("notario") || pLower.includes("revisar")) {
+        let etapaTarget = "Etapa 2: Infraestructura Hidráulica";
+        if (pLower.includes("etapa 1") || pLower.includes("legal") || pLower.includes("gobernanza") || pLower.includes("notario")) {
+          etapaTarget = "Etapa 1: Legal y Gobernanza";
+        } else if (pLower.includes("etapa 2") || pLower.includes("hidráulica") || pLower.includes("riego") || pLower.includes("obra")) {
+          etapaTarget = "Etapa 2: Infraestructura Hidráulica";
+        } else if (pLower.includes("etapa 3") || pLower.includes("sensores") || pLower.includes("tecnolog") || pLower.includes("red")) {
+          etapaTarget = "Etapa 3: Redes y Sensores";
+        } else if (pLower.includes("etapa 4") || pLower.includes("biofábrica") || pLower.includes("cultivo") || pLower.includes("hongo")) {
+          etapaTarget = "Etapa 4: Biofábrica y Cultivo";
+        }
+
+        let respTarget = "Arturo B.";
+        if (pLower.includes("gema") || pLower.includes("lic") || pLower.includes("abogada") || pLower.includes("notar")) {
+          respTarget = "Gema R.";
+        } else if (pLower.includes("chiyo") || pLower.includes("don chiyo") || pLower.includes("campo")) {
+          respTarget = "Don Chiyo";
+        } else if (pLower.includes("arturo a") || pLower.includes("sensores") || pLower.includes("redes")) {
+          respTarget = "Arturo A.";
+        }
+
+        let taskName = prompt;
+        const paraQueMatch = prompt.match(/para que ([^,\.]+)/i);
+        if (paraQueMatch) {
+          taskName = paraQueMatch[1].trim();
+          taskName = taskName.charAt(0).toUpperCase() + taskName.slice(1);
+        } else {
+          taskName = prompt.replace(/agregar una tarea en la etapa \d+ para que /i, "")
+                           .replace(/agregar tarea para /i, "")
+                           .replace(/crear tarea /i, "").trim();
+          taskName = taskName.charAt(0).toUpperCase() + taskName.slice(1);
+        }
+
+        let maxNum = 0;
+        tasksData.forEach(t => {
+          const m = String(t.id).match(/TSK-(\d+)/i);
+          if (m) {
+            const n = parseInt(m[1], 10);
+            if (n > maxNum) maxNum = n;
+          }
+        });
+        const newId = `TSK-${String(maxNum + 1).padStart(2, '0')}`;
+
+        const sDate = new Date().toISOString().split('T')[0];
+        const eDateObj = new Date();
+        eDateObj.setDate(eDateObj.getDate() + 7);
+        const eDate = eDateObj.toISOString().split('T')[0];
+
+        const rate = (TEAM_INFO[respTarget] && TEAM_INFO[respTarget].costoHora) ? TEAM_INFO[respTarget].costoHora : 150;
+        const horas = 15;
+        const cPers = horas * rate;
+        const cMat = 0;
+        const cTerc = pLower.includes("notario") ? 3500 : 0;
+        const cTotal = cPers + cMat + cTerc;
+        const projId = (currentPortfolioProject && currentPortfolioProject !== "all") ? currentPortfolioProject : "PRJ-01";
+
+        const newTask = {
+          id: newId,
+          name: taskName,
+          etapa: etapaTarget,
+          responsable: respTarget,
+          horas: horas,
+          costoPersonal: cPers,
+          costoMateriales: cMat,
+          costoTerceros: cTerc,
+          costoTotal: cTotal,
+          start: sDate,
+          end: eDate,
+          progress: 0,
+          estado: "No Iniciada",
+          prioridad: "Media",
+          projectId: projId,
+          dependencies: ""
+        };
+
+        tasksData.push(newTask);
+
+        try {
+          let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+          customTasks.push(newTask);
+          localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
+        } catch(e) {}
+
+        populateEtapasDropdown();
+        populateRecursosDropdown();
+        refreshActiveViews();
+
+        return {
+          intent: "CREAR_TAREA",
+          reasoning: `Se interpretó la solicitud de creación de tarea. Asignada a '${respTarget}' en '${etapaTarget}' con código '${newId}'. Costo tripartito calculado: $${cTotal.toLocaleString("es-MX", {minimumFractionDigits: 2})}.`,
+          status: "success",
+          taskId: newId,
+          resultHtml: `<div class="p-2 bg-emerald-50 border border-emerald-300 rounded-xl">
+            <p class="font-bold text-emerald-900 flex items-center gap-1.5"><i class="fa-solid fa-sparkles text-emerald-600"></i> Tarea <a href="javascript:openTaskModal('${newId}')" class="underline font-mono font-black">${newId}</a> creada exitosamente:</p>
+            <p class="text-xs text-stone-700 font-semibold mt-0.5">"${taskName}"</p>
+            <p class="text-[11px] text-stone-500 mt-1">📁 ${etapaTarget} &bull; 👤 ${respTarget} &bull; ⏱️ 15h &bull; 💰 $${cTotal.toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN &bull; 📅 ${sDate} al ${eDate}</p>
+          </div>`
+        };
+      }
+
+      return {
+        intent: "CONSULTA_OPERATIVA",
+        reasoning: "No se identificó un comando de modificación explícito (crear, modificar fecha, completar o reportar bloqueo).",
+        status: "info",
+        resultHtml: `<p class="text-stone-700">Comando analizado. Puedes indicar acciones específicas como: <em>"agregar una tarea en la etapa 2 para que Gema revise..."</em>, <em>"modificar fecha de TSK-03 al 25 de octubre"</em>, o <em>"marcar TSK-01 como completada"</em>.</p>`
+      };
+    }
+
+    // Ejecutar Copiloto en Lenguaje Natural
+    async function executeAgenticoCommand() {
+      const inp = document.getElementById("agenticoCopilotoPrompt");
+      if (!inp || !inp.value.trim()) return;
+      const cmd = inp.value.trim();
+      inp.value = "";
+
+      const btn = document.getElementById("btnEjecutarCopiloto");
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Ejecutando...`;
+      }
+
+      try {
+        let execution = null;
+
+        if (activeAiProvider !== "local") {
+          try {
+            execution = localEngineExecuteCommand(cmd);
+          } catch(e) {
+            execution = localEngineExecuteCommand(cmd);
+          }
+        } else {
+          execution = localEngineExecuteCommand(cmd);
+        }
+
+        agenticoCopilotoLogs.unshift({
+          id: `log-${Date.now()}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          prompt: cmd,
+          intent: execution.intent,
+          reasoning: execution.reasoning,
+          status: execution.status,
+          resultHtml: execution.resultHtml
+        });
+
+        renderAgenticoCopilotoHistory();
+
+      } catch(err) {
+        alert("Error al procesar comando: " + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-bolt"></i> Ejecutar Instrucción`;
+        }
+      }
+    }
+
+    function renderAgenticoCopilotoHistory() {
+      const feed = document.getElementById("agenticoCopilotoHistory");
+      if (!feed) return;
+
+      feed.innerHTML = agenticoCopilotoLogs.map(l => `
+        <div class="p-3.5 bg-white rounded-2xl border border-stone-200 shadow-2xs space-y-2 text-xs">
+          <div class="flex items-center justify-between border-b border-stone-100 pb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${l.status === 'success' ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-700'}">
+                ${l.intent}
+              </span>
+              <span class="text-[11px] font-bold text-stone-800 truncate max-w-xs">"${l.prompt}"</span>
+            </div>
+            <span class="text-[10px] font-mono text-stone-400">${l.timestamp}</span>
+          </div>
+
+          <div class="text-[11px] text-stone-500 bg-stone-50 p-2.5 rounded-xl border border-stone-100 space-y-1">
+            <p class="font-bold text-stone-600 flex items-center gap-1.5">
+              <i class="fa-solid fa-brain text-purple-600"></i> Razonamiento Agéntico (DD & Roles IN2TECHMX):
+            </p>
+            <p class="italic text-stone-600">${l.reasoning}</p>
+          </div>
+
+          <div class="pt-0.5">
+            ${l.resultHtml}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Renderizado Maestro de la Vista Agéntica (Garantiza Cero Anidamiento)
+    function renderAgenticoView(container) {
+      const projName = currentPortfolioProject === "all" 
+        ? "Portafolio Consolidado (Todos los Proyectos)" 
+        : (projectsData.find(x => x.id === currentPortfolioProject)?.name || currentPortfolioProject);
+
+      container.innerHTML = `
+        <div class="space-y-6">
+          <!-- Cabecera Agéntica con Status del AI Gateway -->
+          <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-gradient-to-r from-purple-950 via-indigo-950 to-stone-900 p-5 rounded-3xl text-white shadow-xl border border-purple-800/40">
+            <div class="flex items-center gap-3.5">
+              <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-2xl border border-white/20 shadow-inner">
+                🤖
+              </div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/30 border border-purple-400/40 text-purple-200">Agile Modular DD Spec</span>
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/30 border border-emerald-400/40 text-emerald-200">IN2TECHMX Core</span>
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-stone-300">Proyecto Destino: ${projName}</span>
+                </div>
+                <h2 class="text-xl font-black text-white tracking-tight mt-1">Planificador Agéntico IA & Copiloto Operativo</h2>
+                <p class="text-xs text-purple-200/80">Descomposición autónoma de proyectos en tareas WBS, asignación de especialistas, costeo tripartito y gestión en lenguaje natural.</p>
+              </div>
+            </div>
+
+            <!-- AI Gateway Selector & Status -->
+            <div class="flex flex-wrap items-center gap-2 bg-black/30 backdrop-blur-md p-2 rounded-2xl border border-white/10 text-xs shrink-0">
+              <div class="flex items-center gap-2 px-2.5 py-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="font-mono text-[11px] text-purple-100">
+                  ${getProviderDisplayName(activeAiProvider)}
+                </span>
+              </div>
+              <button onclick="openAiGatewayModal()" class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-sm cursor-pointer border border-purple-400/30">
+                <i class="fa-solid fa-sliders"></i> Configurar LLMs
+              </button>
+            </div>
+          </div>
+
+          <!-- Selector de Pestañas Agénticas -->
+          <div class="flex items-center gap-2 border-b border-stone-200 pb-2">
+            <button onclick="switchAgenticoTab('proyecto')" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${agenticoActiveTab === 'proyecto' ? 'bg-purple-700 text-white shadow-sm' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'}">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> 1. Generador de Proyecto Completo (WBS + Costos)
+            </button>
+            <button onclick="switchAgenticoTab('copiloto')" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${agenticoActiveTab === 'copiloto' ? 'bg-purple-700 text-white shadow-sm' : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'}">
+              <i class="fa-solid fa-terminal"></i> 2. Copiloto en Lenguaje Natural (Gestión Rápida)
+            </button>
+          </div>
+
+          <!-- PESTAÑA 1: GENERADOR DE PROYECTO COMPLETO -->
+          <div id="tabContentProyecto" class="${agenticoActiveTab === 'proyecto' ? '' : 'hidden'} space-y-5">
+            <div class="bg-white p-5 rounded-3xl border border-stone-200 shadow-xs space-y-4">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                  <h3 class="text-sm font-black text-stone-900 flex items-center gap-2">
+                    <i class="fa-solid fa-diagram-project text-purple-700"></i> Descomposición de Proyecto con Metodología Ágil
+                  </h3>
+                  <p class="text-xs text-stone-500">Escribe el requerimiento general. El Agente Director de Desarrollo estructurará las 4 etapas WBS, calculará costos tripartitos y enlazará dependencias.</p>
+                </div>
+                <span class="text-[11px] font-bold text-stone-400 bg-stone-100 px-2.5 py-1 rounded-full">Metodología agile-modular-dd-spec</span>
+              </div>
+
+              <!-- Chips de Sugerencia / Ejemplos Rápidos -->
+              <div class="flex items-center gap-2 flex-wrap text-xs">
+                <span class="text-[11px] font-bold text-stone-500">Ejemplos:</span>
+                <button type="button" onclick="agenticoFillProjectPrompt('Instalación de Sistema Solar Fotovoltaico 15kW con inversor trifásico y banco de baterías litio en nave principal')" class="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-medium transition cursor-pointer">
+                  ⚡ Parque Solar 15kW
+                </button>
+                <button type="button" onclick="agenticoFillProjectPrompt('Módulo Fúngico Automatizado para Hongo Ostra y Melena de León con biofábrica artesanal y control ultrasónico de humedad')" class="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 font-medium transition cursor-pointer">
+                  🍄 Módulo Fúngico & Biofábrica
+                </button>
+                <button type="button" onclick="agenticoFillProjectPrompt('Invernadero vertical de Microgreens con iluminación LED Full Spectrum para proveeduría a restaurantes gourmet en Mérida')" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 font-medium transition cursor-pointer">
+                  🌱 Invernadero Microgreens HORECA
+                </button>
+                <button type="button" onclick="agenticoFillProjectPrompt('Automatización de Sistema de Riego por Goteo y Cabezal de Fertirriego con sensores telemétricos LoRa')" class="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 font-medium transition cursor-pointer">
+                  💧 Riego Automatizado LoRa
+                </button>
+              </div>
+
+              <!-- Input Prompt -->
+              <div class="space-y-2">
+                <textarea id="agenticoProjectPrompt" rows="3" placeholder="Describe aquí la idea, cultivo, infraestructura o proyecto que deseas planificar..." class="w-full bg-stone-50 border border-stone-200 focus:border-purple-500 focus:bg-white rounded-2xl p-3.5 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 leading-relaxed font-medium"></textarea>
+                <div class="flex justify-end">
+                  <button id="btnGenerarProyectoAgentico" onclick="executeGenerateProject()" class="px-5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Descomponer Proyecto con Agente IA
+                  </button>
+                </div>
+              </div>
+
+              <!-- Animación de Stepper de Razonamiento -->
+              <div id="agenticoStepperBox" class="hidden p-4 rounded-2xl bg-purple-50/50 border border-purple-200/60 text-xs space-y-2.5">
+                <div class="flex items-center gap-2 text-purple-900 font-bold">
+                  <i class="fa-solid fa-spinner animate-spin text-purple-600"></i>
+                  <span>Agente Director de Desarrollo procesando descomposición modular:</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 text-[11px]">
+                  <div class="p-2 rounded-xl bg-white border border-purple-100 text-purple-950 font-medium flex items-center gap-1.5"><i class="fa-solid fa-check text-emerald-600"></i> 1. Viabilidad</div>
+                  <div class="p-2 rounded-xl bg-white border border-purple-100 text-purple-950 font-medium flex items-center gap-1.5"><i class="fa-solid fa-check text-emerald-600"></i> 2. DD Spec</div>
+                  <div class="p-2 rounded-xl bg-white border border-purple-100 text-purple-950 font-medium flex items-center gap-1.5"><i class="fa-solid fa-check text-emerald-600"></i> 3. 4 Etapas WBS</div>
+                  <div class="p-2 rounded-xl bg-white border border-purple-100 text-purple-950 font-medium flex items-center gap-1.5"><i class="fa-solid fa-check text-emerald-600"></i> 4. Costeo Tripartito</div>
+                  <div class="p-2 rounded-xl bg-white border border-purple-100 text-purple-950 font-medium flex items-center gap-1.5"><i class="fa-solid fa-check text-emerald-600"></i> 5. Dependencias SVG</div>
+                </div>
+              </div>
+
+              <!-- Resultados del Proyecto Generado -->
+              <div id="agenticoProjectResults" class="hidden">
+                <!-- Se llena dinámicamente con renderGeneratedProjectPreview -->
+              </div>
+            </div>
+          </div>
+
+          <!-- PESTAÑA 2: COPILOTO EN LENGUAJE NATURAL -->
+          <div id="tabContentCopiloto" class="${agenticoActiveTab === 'copiloto' ? '' : 'hidden'} space-y-5">
+            <div class="bg-white p-5 rounded-3xl border border-stone-200 shadow-xs space-y-4">
+              <div>
+                <h3 class="text-sm font-black text-stone-900 flex items-center gap-2">
+                  <i class="fa-solid fa-terminal text-purple-700"></i> Terminal de Operaciones en Lenguaje Natural
+                </h3>
+                <p class="text-xs text-stone-500">Crea tareas, ajusta fechas de entrega, marca tareas completadas o reporta impedimentos directamente como si hablaras con tu asistente.</p>
+              </div>
+
+              <!-- Chips de Comandos Sugeridos -->
+              <div class="flex items-center gap-2 flex-wrap text-xs">
+                <span class="text-[11px] font-bold text-stone-500">Comandos sugeridos:</span>
+                <button type="button" onclick="agenticoFillCopilotoPrompt('agregar una tarea en la etapa 2 para que la Lic Gema revise el proceso legal de alta ante el notario No 22')" class="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 font-medium transition cursor-pointer">
+                  ➕ "agregar una tarea en la etapa 2 para que la Lic Gema..."
+                </button>
+                <button type="button" onclick="agenticoFillCopilotoPrompt('modificar la fecha de TSK-03 para que termine el 25 de octubre')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-medium transition cursor-pointer">
+                  📅 "modificar la fecha de TSK-03 para el 25 de octubre"
+                </button>
+                <button type="button" onclick="agenticoFillCopilotoPrompt('reportar bloqueo en TSK-08: Demora en entrega de electrobombas sumergibles')" class="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-200 font-medium transition cursor-pointer">
+                  🚨 "reportar bloqueo en TSK-08: Demora en entrega..."
+                </button>
+                <button type="button" onclick="agenticoFillCopilotoPrompt('marcar TSK-02 como completada')" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 font-medium transition cursor-pointer">
+                  ✓ "marcar TSK-02 como completada"
+                </button>
+              </div>
+
+              <!-- Barra de Comando -->
+              <div class="flex gap-2">
+                <div class="relative flex-1">
+                  <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-stone-400 font-mono text-xs">
+                    <i class="fa-solid fa-angle-right text-purple-600"></i>
+                  </span>
+                  <input id="agenticoCopilotoPrompt" type="text" onkeydown="if(event.key==='Enter') executeAgenticoCommand()" placeholder="Escribe tu instrucción (ej: 'agregar una tarea en la etapa 2 para que la Lic Gema revise...')" class="w-full bg-stone-50 border border-stone-200 focus:border-purple-500 focus:bg-white rounded-xl pl-8 pr-4 py-2.5 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 font-medium">
+                </div>
+                <button id="btnEjecutarCopiloto" onclick="executeAgenticoCommand()" class="px-4 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs transition shadow-md flex items-center gap-1.5 cursor-pointer shrink-0">
+                  <i class="fa-solid fa-bolt"></i> Ejecutar Instrucción
+                </button>
+              </div>
+
+              <!-- Historial de Ejecuciones -->
+              <div class="pt-2 space-y-3">
+                <h4 class="text-xs font-black uppercase tracking-wider text-stone-700 flex items-center gap-1.5">
+                  <i class="fa-solid fa-clock-rotate-left text-stone-400"></i> Bitácora de Instrucciones Agénticas
+                </h4>
+                <div id="agenticoCopilotoHistory" class="space-y-3 max-h-96 overflow-y-auto pr-1">
+                  <!-- Se llena dinámicamente con renderAgenticoCopilotoHistory -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      if (agenticoActiveTab === "copiloto") {
+        renderAgenticoCopilotoHistory();
+      }
     }
 
     // Renderizado de la Ventana 1: Cronograma Global Maestro
@@ -2339,7 +3812,8 @@ Sincronizando con Google Sheets...`);
           start: sDate,
           end: eDate,
           progress: prog,
-          custom_class: cls
+          custom_class: cls,
+          dependencies: t.dependencies || ""
         };
       });
 
@@ -2438,10 +3912,17 @@ Sincronizando con Google Sheets...`);
       });
     }
 
-    // Creador genérico de tarjetas de tarea
+    // Creador genérico de tarjetas de tarea (con Soporte para Impedimentos Rojos y Dependencias)
     function createCardElement(t) {
       const card = document.createElement("div");
-      card.className = "bg-white p-4 rounded-xl border border-stone-200 shadow-xs hover:shadow-md transition cursor-pointer space-y-2.5";
+      const activeImps = getActiveImpediments(t.id);
+      const isBlocked = activeImps.length > 0;
+
+      if (isBlocked) {
+        card.className = "bg-rose-50/70 p-4 rounded-xl border-2 border-rose-500 shadow-xs hover:shadow-md transition cursor-pointer space-y-2.5 relative";
+      } else {
+        card.className = "bg-white p-4 rounded-xl border border-stone-200 shadow-xs hover:shadow-md transition cursor-pointer space-y-2.5";
+      }
       card.onclick = () => openTaskModal(t.id);
 
       let statusBadge = "<span class='px-2 py-0.5 rounded text-[10px] font-bold bg-stone-100 text-stone-600'>⚪ No Iniciada</span>";
@@ -2453,15 +3934,28 @@ Sincronizando con Google Sheets...`);
         ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200 flex items-center gap-1 shadow-2xs" title="${cCount} notas en bitácora"><i class="fa-regular fa-comment-dots text-emerald-700"></i> ${cCount}</span>` 
         : '';
 
+      const depBadge = t.dependencies 
+        ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1" title="Depende de ${t.dependencies}"><i class="fa-solid fa-link text-indigo-500"></i> ${t.dependencies}</span>`
+        : '';
+
+      const blockerHtml = isBlocked 
+        ? `<div class="bg-rose-100/90 border border-rose-300 text-rose-900 rounded-lg p-1.5 text-[10px] font-bold flex items-start gap-1">
+             <i class="fa-solid fa-triangle-exclamation text-rose-600 mt-0.5 shrink-0"></i>
+             <span class="truncate">🚨 BLOQUEADA: ${activeImps[0].motivo}</span>
+           </div>`
+        : '';
+
       card.innerHTML = `
         <div class="flex justify-between items-center text-xs">
           <span class="font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">${t.id}</span>
           <div class="flex items-center gap-1.5">
+            ${depBadge}
             ${commentBadge}
             ${statusBadge}
           </div>
         </div>
         <p class="font-bold text-stone-800 text-xs leading-snug">${t.name}</p>
+        ${blockerHtml}
         <div class="text-[11px] text-stone-500 flex items-center gap-1.5 truncate">
           <i class="fa-solid fa-layer-group text-stone-400 text-[10px]"></i>
           <span class="truncate font-medium">${t.etapa || 'Etapa General'}</span>
@@ -2549,6 +4043,10 @@ Sincronizando con Google Sheets...`);
       if (chatLabel && currentUser) {
         chatLabel.innerHTML = `<span class="w-2 h-2 rounded-full ${currentUser.avatarBg || 'bg-emerald-500'}"></span> ${currentUser.name}`;
       }
+
+      // Bitácora de Impedimentos & Dependencias de la Tarea
+      renderModalImpediments(id);
+      populateModalDependencies(id);
 
       document.getElementById("taskModal").classList.remove("hidden");
     }
@@ -2881,6 +4379,91 @@ Sincronizando con Google Sheets...`);
         <button onclick="closeWhatsappModal()" class="px-4 py-1.5 rounded-xl bg-stone-800 text-white font-bold text-xs hover:bg-stone-900 transition">
           Entendido
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Configuración AI Gateway Multi-Proveedor (DeepSeek, Claude, Gemini, OpenAI) -->
+  <div id="aiGatewayModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center text-sm font-bold shadow-2xs">
+            <i class="fa-solid fa-brain"></i>
+          </span>
+          <div>
+            <h3 class="text-base font-black text-stone-900 leading-tight">Configuración AI Gateway Multi-Proveedor</h3>
+            <p class="text-[11px] text-stone-400">DeepSeek &bull; Claude &bull; Gemini &bull; OpenAI &bull; Motor Local</p>
+          </div>
+        </div>
+        <button onclick="closeAiGatewayModal()" class="text-stone-400 hover:text-stone-700 text-lg p-1 rounded-lg hover:bg-stone-100">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="p-3 rounded-2xl bg-purple-50/60 border border-purple-200/60 text-purple-950 text-[11px] leading-relaxed">
+          <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-shield-halved text-purple-700"></i> Privacidad y Seguridad Absoluta:</p>
+          <p class="text-purple-800 mt-0.5">Tus API Keys se almacenan <strong>exclusivamente en tu navegador local (localStorage)</strong>. Jamás se envían a ningún servidor intermedio y van directo al proveedor oficial.</p>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-bold text-stone-700 block mb-1">Proveedor Predeterminado Activo:</label>
+          <select id="aiProviderSelect" onchange="changeActiveAiProvider(this.value)" class="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-xs font-bold text-stone-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+            <option value="local">🧠 Motor Agéntico Local IN2TECHMX (0ms, 100% Offline, Sin costo)</option>
+            <option value="deepseek">🐋 DeepSeek API (deepseek-chat / deepseek-r1)</option>
+            <option value="gemini">♊ Google Gemini (gemini-1.5-flash / pro)</option>
+            <option value="openai">🤖 OpenAI API (gpt-4o / gpt-4o-mini)</option>
+            <option value="claude">🟣 Anthropic Claude (claude-3-5-sonnet)</option>
+          </select>
+        </div>
+
+        <!-- Campos de Llaves -->
+        <div class="space-y-2.5 pt-1">
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 flex items-center justify-between">
+              <span>DeepSeek API Key:</span>
+              <span id="badgeDeepseekKey" class="text-[10px] font-mono text-stone-400">No configurada</span>
+            </label>
+            <input id="keyDeepseek" type="password" placeholder="sk-..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs font-mono text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+          </div>
+
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 flex items-center justify-between">
+              <span>Google Gemini API Key:</span>
+              <span id="badgeGeminiKey" class="text-[10px] font-mono text-stone-400">No configurada</span>
+            </label>
+            <input id="keyGemini" type="password" placeholder="AIzaSy..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs font-mono text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+          </div>
+
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 flex items-center justify-between">
+              <span>OpenAI API Key:</span>
+              <span id="badgeOpenaiKey" class="text-[10px] font-mono text-stone-400">No configurada</span>
+            </label>
+            <input id="keyOpenai" type="password" placeholder="sk-proj-..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs font-mono text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+          </div>
+
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 flex items-center justify-between">
+              <span>Anthropic Claude API Key:</span>
+              <span id="badgeClaudeKey" class="text-[10px] font-mono text-stone-400">No configurada</span>
+            </label>
+            <input id="keyClaude" type="password" placeholder="sk-ant-..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs font-mono text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-2 border-t border-stone-100">
+        <span id="aiGatewaySaveStatus" class="text-[11px] text-emerald-700 font-bold"></span>
+        <div class="flex gap-2">
+          <button onclick="closeAiGatewayModal()" class="px-3 py-1.5 rounded-xl border border-stone-200 text-stone-600 text-xs font-bold hover:bg-stone-50 transition">
+            Cerrar
+          </button>
+          <button onclick="saveAiGatewayKeys()" class="px-4 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition shadow-sm">
+            Guardar Claves
+          </button>
+        </div>
       </div>
     </div>
   </div>
