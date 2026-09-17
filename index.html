@@ -124,6 +124,19 @@
       overflow-x: auto !important;
       border-radius: 12px;
     }
+
+    /* Estilos Microsoft Project Split Pane */
+    .wbs-row {
+      height: 60px !important;
+      min-height: 60px !important;
+      max-height: 60px !important;
+      box-sizing: border-box !important;
+    }
+    .bar-highlight .bar {
+      stroke: #047857 !important;
+      stroke-width: 2.5px !important;
+      filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.6)) !important;
+    }
   </style>
 </head>
 <body class="bg-stone-50 text-stone-900 font-sans min-h-screen flex flex-col">
@@ -578,19 +591,45 @@
           </div>
         </div>
 
-        <!-- Vista Gantt Global -->
+        <!-- Vista Gantt Global (Estilo Microsoft Project: Panel WBS + Timeline) -->
         <div id="globalGanttSection" class="${currentSubView === 'gantt' ? '' : 'hidden'} bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div>
               <h3 class="text-sm font-bold text-stone-800 flex items-center gap-2">
-                <i class="fa-solid fa-timeline text-emerald-600"></i> Cronograma de Operaciones (${total} Tareas)
+                <i class="fa-solid fa-timeline text-emerald-600"></i> Cronograma de Operaciones — Estilo Microsoft Project (${total} Tareas)
               </h3>
-              <p class="text-xs text-stone-400">Desplázate horizontalmente para ver el horizonte temporal o verticalmente para recorrer tareas.</p>
+              <p class="text-xs text-stone-400">Panel WBS a la izquierda sincronizado 1:1 con la línea de tiempo temporal a la derecha.</p>
             </div>
-            <span class="text-xs text-stone-400 italic hidden md:inline">Haz clic en cualquier barra para ver detalles, etapa o costos</span>
+            <div class="flex items-center gap-3 text-xs text-stone-400 italic hidden md:flex">
+              <span><i class="fa-solid fa-arrows-left-right text-stone-300"></i> Scroll horizontal para fechas</span>
+              <span>&bull;</span>
+              <span><i class="fa-solid fa-hand-pointer text-stone-300"></i> Clic en fila o barra para ver detalle</span>
+            </div>
           </div>
-          <div class="w-full overflow-x-auto overflow-y-auto max-h-[620px] rounded-xl border border-stone-100 p-1 bg-stone-50/40">
-            ${total > 0 ? `<svg id="globalGanttSvg"></svg>` : `
+          <div class="w-full overflow-x-auto overflow-y-auto max-h-[640px] rounded-xl border border-stone-200 bg-white relative shadow-2xs">
+            ${total > 0 ? `
+              <div class="flex min-w-fit relative">
+                <!-- Panel Izquierdo: Lista WBS Congelada (Estilo MS Project) -->
+                <div class="sticky left-0 z-20 bg-white border-r border-stone-200 shadow-[4px_0_12px_rgba(0,0,0,0.05)] w-[360px] sm:w-[440px] flex-shrink-0 flex flex-col">
+                  <div class="h-[52px] min-h-[52px] max-h-[52px] bg-stone-50 border-b border-stone-200 px-3 flex items-center justify-between text-[11px] font-extrabold text-stone-600 uppercase tracking-wider select-none">
+                    <div class="flex items-center gap-2">
+                      <span class="w-14 text-center">WBS</span>
+                      <span>Tarea / Entregable</span>
+                    </div>
+                    <div class="flex items-center gap-4 text-stone-500 font-bold pr-1">
+                      <span class="hidden sm:inline">Etapa</span>
+                      <span>Resp.</span>
+                    </div>
+                  </div>
+                  <div id="globalWbsRows" class="flex flex-col divide-y divide-stone-100"></div>
+                </div>
+
+                <!-- Panel Derecho: Cronograma Gantt Temporal Limpio -->
+                <div class="flex-1 bg-stone-50/20 overflow-visible">
+                  <svg id="globalGanttSvg"></svg>
+                </div>
+              </div>
+            ` : `
               <div class="flex flex-col items-center justify-center py-16 text-stone-400">
                 <i class="fa-solid fa-folder-open text-4xl mb-3 text-stone-300"></i>
                 <p class="text-sm font-semibold text-stone-600">No hay tareas asociadas a esta etapa.</p>
@@ -635,7 +674,10 @@
           document.getElementById("globalCardsSection").classList.add("hidden");
           btnG.className = "px-3 py-1 rounded-md text-xs font-bold bg-white shadow-xs text-emerald-900 flex items-center gap-1.5 transition";
           btnC.className = "px-3 py-1 rounded-md text-xs font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1.5 transition";
-          if (activeTasks.length > 0) mountGantt("#globalGanttSvg", activeTasks);
+          if (activeTasks.length > 0) {
+            renderWbsRows("globalWbsRows", activeTasks);
+            mountGantt("#globalGanttSvg", activeTasks);
+          }
         };
         btnC.onclick = () => {
           currentSubView = "cards";
@@ -648,7 +690,10 @@
       }
 
       if (currentSubView === "gantt") {
-        if (activeTasks.length > 0) mountGantt("#globalGanttSvg", activeTasks);
+        if (activeTasks.length > 0) {
+          renderWbsRows("globalWbsRows", activeTasks);
+          mountGantt("#globalGanttSvg", activeTasks);
+        }
       } else {
         renderKanbanColumns(activeTasks);
       }
@@ -721,16 +766,39 @@
           </div>
         </div>
 
-        <!-- Cronograma Gantt del Especialista (Aislado) -->
+        <!-- Cronograma Gantt del Especialista (Estilo MS Project: Panel WBS + Timeline) -->
         <div class="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-          <div class="flex justify-between items-center">
-            <h3 class="text-sm font-bold text-stone-800 flex items-center gap-2">
-              <i class="fa-solid fa-chart-gantt text-emerald-600"></i> Cronograma Exclusivo de ${info.name}
-            </h3>
-            <span class="text-xs text-stone-400 italic">Haz clic en la barra para ver el desglose o completarla</span>
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <h3 class="text-sm font-bold text-stone-800 flex items-center gap-2">
+                <i class="fa-solid fa-chart-gantt text-emerald-600"></i> Cronograma Exclusivo de ${info.name} — Estilo Microsoft Project
+              </h3>
+              <p class="text-xs text-stone-400">Panel WBS a la izquierda alineado 1:1 con las barras temporales.</p>
+            </div>
+            <span class="text-xs text-stone-400 italic hidden md:inline">Haz clic en la fila o barra para ver desglose</span>
           </div>
-          <div class="w-full overflow-x-auto overflow-y-auto max-h-[500px] rounded-xl border border-stone-100 p-1 bg-stone-50/40">
-            <svg id="specialistGanttSvg"></svg>
+          <div class="w-full overflow-x-auto overflow-y-auto max-h-[520px] rounded-xl border border-stone-200 bg-white relative shadow-2xs">
+            <div class="flex min-w-fit relative">
+              <!-- Panel Izquierdo: Lista WBS Congelada -->
+              <div class="sticky left-0 z-20 bg-white border-r border-stone-200 shadow-[4px_0_12px_rgba(0,0,0,0.05)] w-[360px] sm:w-[440px] flex-shrink-0 flex flex-col">
+                <div class="h-[52px] min-h-[52px] max-h-[52px] bg-stone-50 border-b border-stone-200 px-3 flex items-center justify-between text-[11px] font-extrabold text-stone-600 uppercase tracking-wider select-none">
+                  <div class="flex items-center gap-2">
+                    <span class="w-14 text-center">WBS</span>
+                    <span>Tarea / Entregable</span>
+                  </div>
+                  <div class="flex items-center gap-4 text-stone-500 font-bold pr-1">
+                    <span class="hidden sm:inline">Etapa</span>
+                    <span>Estado</span>
+                  </div>
+                </div>
+                <div id="specialistWbsRows" class="flex flex-col divide-y divide-stone-100"></div>
+              </div>
+
+              <!-- Panel Derecho: Cronograma Gantt Temporal Limpio -->
+              <div class="flex-1 bg-stone-50/20 overflow-visible">
+                <svg id="specialistGanttSvg"></svg>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -744,6 +812,7 @@
       `;
 
       if (userTasks.length > 0) {
+        renderWbsRows("specialistWbsRows", userTasks);
         mountGantt("#specialistGanttSvg", userTasks);
         renderUserCards("#specialistCardsList", userTasks);
       } else {
@@ -760,7 +829,77 @@
       }
     }
 
-    // Motor de Montaje de Frappe Gantt (Instancia limpia, soporte de scroll y colores)
+    // Renderizado del Panel Izquierdo WBS (Estilo Microsoft Project)
+    function renderWbsRows(containerId, tasks) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = "";
+
+      tasks.forEach((t) => {
+        const row = document.createElement("div");
+        row.className = "wbs-row h-[60px] min-h-[60px] max-h-[60px] px-3 flex items-center justify-between gap-2.5 hover:bg-emerald-50/80 transition cursor-pointer border-b border-stone-100 group select-none";
+        row.setAttribute("data-task-id", t.id);
+
+        let avatarBg = "bg-emerald-700";
+        let initials = "EM";
+        if (t.responsable) {
+          if (t.responsable.includes("Arturo B.")) { avatarBg = "bg-blue-600"; initials = "AB"; }
+          else if (t.responsable.includes("Gema R.")) { avatarBg = "bg-emerald-600"; initials = "GR"; }
+          else if (t.responsable.includes("Arturo A.")) { avatarBg = "bg-purple-600"; initials = "AA"; }
+          else if (t.responsable.includes("Don Chiyo")) { avatarBg = "bg-amber-600"; initials = "DC"; }
+        }
+
+        let statusDot = `<span class="w-2.5 h-2.5 rounded-full bg-stone-300 ring-2 ring-stone-100 shrink-0" title="No Iniciada"></span>`;
+        if (t.estado === "Completada") {
+          statusDot = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100 shrink-0" title="Completada"></span>`;
+        } else if (t.estado === "En Progreso") {
+          statusDot = `<span class="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-100 animate-pulse shrink-0" title="En Progreso"></span>`;
+        }
+
+        row.innerHTML = `
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <span class="w-14 shrink-0 font-mono font-black text-xs text-emerald-900 bg-emerald-100/80 px-1.5 py-0.5 rounded text-center border border-emerald-300/60 shadow-2xs group-hover:bg-emerald-200">
+              ${t.id}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="text-xs font-bold text-stone-800 truncate group-hover:text-emerald-900 transition" title="${t.name}">
+                ${t.name}
+              </p>
+              <div class="flex items-center gap-2 text-[10px] text-stone-400 mt-0.5">
+                <span class="text-stone-600 font-semibold truncate max-w-[130px] flex items-center gap-1">
+                  <i class="fa-regular fa-folder text-stone-400 text-[9px]"></i> ${t.etapa || 'General'}
+                </span>
+                <span>&bull;</span>
+                <span class="font-black text-emerald-800">$${Number(t.costoTotal).toLocaleString('es-MX', {minimumFractionDigits: 0})}</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0 pl-1">
+            <span class="w-6 h-6 rounded-lg ${avatarBg} text-white font-extrabold text-[10px] flex items-center justify-center shadow-2xs" title="${t.responsable}">
+              ${initials}
+            </span>
+            ${statusDot}
+          </div>
+        `;
+
+        row.onclick = () => openTaskModal(t.id);
+
+        row.onmouseenter = () => {
+          row.classList.add("bg-emerald-100/60");
+          const barWrapper = document.querySelector(`.bar-wrapper[data-task-id="${t.id}"]`);
+          if (barWrapper) barWrapper.classList.add("bar-highlight");
+        };
+        row.onmouseleave = () => {
+          row.classList.remove("bg-emerald-100/60");
+          const barWrapper = document.querySelector(`.bar-wrapper[data-task-id="${t.id}"]`);
+          if (barWrapper) barWrapper.classList.remove("bar-highlight");
+        };
+
+        container.appendChild(row);
+      });
+    }
+
+    // Motor de Montaje de Frappe Gantt (Instancia limpia con ID de WBS y sincronización)
     function mountGantt(svgSelector, tasks) {
       const svgEl = document.querySelector(svgSelector);
       if (!svgEl) return;
@@ -778,7 +917,7 @@
 
         return {
           id: String(t.id),
-          name: `[${t.id}] ${t.name}`,
+          name: `${t.id}`, // Estilo Microsoft Project: Barra identificada limpiamente por su código WBS
           start: sDate,
           end: eDate,
           progress: prog,
@@ -803,17 +942,35 @@
           }
         });
 
-        // Auto-scroll horizontal inteligente: enfoca la primera tarea en progreso o activa de hoy
+        // Vincular atributos data-task-id a cada barra y hover bidireccional
+        svgEl.querySelectorAll(".bar-wrapper").forEach((bw, idx) => {
+          const t = tasks[idx];
+          if (!t) return;
+          bw.setAttribute("data-task-id", t.id);
+
+          bw.addEventListener("mouseenter", () => {
+            document.querySelectorAll(`.wbs-row[data-task-id="${t.id}"]`).forEach(r => {
+              r.classList.add("bg-emerald-100/80");
+            });
+          });
+          bw.addEventListener("mouseleave", () => {
+            document.querySelectorAll(`.wbs-row[data-task-id="${t.id}"]`).forEach(r => {
+              r.classList.remove("bg-emerald-100/80");
+            });
+          });
+        });
+
+        // Auto-scroll horizontal inteligente: enfoca la primera tarea en progreso o activa
         setTimeout(() => {
-          const container = svgEl.parentElement;
+          const container = svgEl.closest(".overflow-x-auto") || svgEl.parentElement;
           if (container && frappeTasks.length > 0) {
-            const targetBar = container.querySelector(".gantt-progreso") || container.querySelector(".bar-wrapper");
+            const targetBar = svgEl.querySelector(".gantt-progreso") || svgEl.querySelector(".bar-wrapper");
             if (targetBar) {
               const rect = targetBar.querySelector(".bar");
               if (rect) {
                 const barX = parseFloat(rect.getAttribute("x") || "0");
-                if (barX > 140) {
-                  container.scrollTo({ left: Math.max(0, barX - 120), behavior: 'smooth' });
+                if (barX > 320) {
+                  container.scrollTo({ left: Math.max(0, barX - 200), behavior: 'smooth' });
                 } else {
                   container.scrollTo({ left: 0, behavior: 'smooth' });
                 }
