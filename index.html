@@ -278,13 +278,61 @@
       }
     };
 
-    // Datos locales iniciales de respaldo (se actualizan automáticamente al sincronizar con Sheets)
+    // Base de datos maestra de tareas operativas (42 tareas de la Triada Productiva)
     let tasksData = [
-      { id: "TSK-PIL-01", name: "Delimitación en campo de Zona Piloto (1000 a 5000 m2)", responsable: "Arturo B.", horas: 16, costoPersonal: 3200, costoMateriales: 1200, costoTerceros: 0, costoTotal: 4400, start: "2026-09-20", end: "2026-09-25", progress: 50, estado: "En Progreso", prioridad: "Alta" },
-      { id: "TSK-PIL-02", name: "Gestión de Título de Concesión Pozo N° 1 CONAGUA", responsable: "Gema R.", horas: 25, costoPersonal: 5000, costoMateriales: 0, costoTerceros: 4500, costoTotal: 9500, start: "2026-09-18", end: "2026-10-15", progress: 50, estado: "En Progreso", prioridad: "Crítica" },
-      { id: "TSK-PIL-03", name: "Adecuación Hidráulica de Pozo N° 1 y Microaspersión", responsable: "Arturo B.", horas: 20, costoPersonal: 4000, costoMateriales: 14500, costoTerceros: 8400, costoTotal: 26900, start: "2026-09-25", end: "2026-10-10", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-PIL-04", name: "Estructura Malla Sombra 70% e Instalación Estanterías", responsable: "Don Chiyo", horas: 40, costoPersonal: 5600, costoMateriales: 48000, costoTerceros: 0, costoTotal: 53600, start: "2026-10-01", end: "2026-10-20", progress: 0, estado: "No Iniciada", prioridad: "Media" },
-      { id: "TSK-PIL-05", name: "Siembra Primer Lote de Brotes (800 charolas sin suelo)", responsable: "Arturo A.", horas: 30, costoPersonal: 6000, costoMateriales: 18200, costoTerceros: 0, costoTotal: 24200, start: "2026-10-15", end: "2026-10-28", progress: 0, estado: "No Iniciada", prioridad: "Alta" }
+      // FASE 1: Legal, Gobernanza & Financiamiento
+      { id: "TSK-01", name: "Formalización de Sociedad S.P.R. de R.L. ante Notario", responsable: "Gema R.", horas: 20, costoPersonal: 4000, costoMateriales: 0, costoTerceros: 8500, costoTotal: 12500, start: "2026-09-01", end: "2026-09-15", progress: 100, estado: "Completada", prioridad: "Alta" },
+      { id: "TSK-02", name: "Alta Patronal IMSS Subdelegación Mérida Sur", responsable: "Gema R.", horas: 15, costoPersonal: 3000, costoMateriales: 0, costoTerceros: 0, costoTotal: 3000, start: "2026-09-10", end: "2026-09-20", progress: 100, estado: "Completada", prioridad: "Alta" },
+      { id: "TSK-03", name: "Gestión de Título de Concesión Pozo N° 1 CONAGUA", responsable: "Gema R.", horas: 25, costoPersonal: 5000, costoMateriales: 0, costoTerceros: 4500, costoTotal: 9500, start: "2026-09-15", end: "2026-10-15", progress: 50, estado: "En Progreso", prioridad: "Crítica" },
+      { id: "TSK-04", name: "Estudio Fisicoquímico y Bacteriológico de Agua de Pozo", responsable: "Arturo B.", horas: 10, costoPersonal: 2000, costoMateriales: 800, costoTerceros: 2000, costoTotal: 4800, start: "2026-09-12", end: "2026-09-22", progress: 100, estado: "Completada", prioridad: "Media" },
+      { id: "TSK-05", name: "Levantamiento Topográfico y Curvas de Nivel (5 HA)", responsable: "Arturo B.", horas: 16, costoPersonal: 3200, costoMateriales: 1000, costoTerceros: 3000, costoTotal: 7200, start: "2026-09-18", end: "2026-09-26", progress: 50, estado: "En Progreso", prioridad: "Alta" },
+      { id: "TSK-06", name: "Solicitud Subsidio CFE Tarifa 09 Agrícola Bombeo", responsable: "Arturo A.", horas: 12, costoPersonal: 2400, costoMateriales: 0, costoTerceros: 0, costoTotal: 2400, start: "2026-09-20", end: "2026-10-05", progress: 20, estado: "En Progreso", prioridad: "Alta" },
+      { id: "TSK-07", name: "Postulación Programa SEDER 'Peso a Peso' 50% Maquinaria", responsable: "Arturo A.", horas: 18, costoPersonal: 3600, costoMateriales: 0, costoTerceros: 0, costoTotal: 3600, start: "2026-09-22", end: "2026-10-10", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-08", name: "Apertura de Cuenta Bancaria Productiva Mancomunada", responsable: "Arturo A.", horas: 8, costoPersonal: 1600, costoMateriales: 0, costoTerceros: 0, costoTotal: 1600, start: "2026-09-25", end: "2026-09-30", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+
+      // FASE 2: Infraestructura Hidráulica, Riego & Pozo N° 1
+      { id: "TSK-09", name: "Desazolve y Limpieza Mecánica de Pozo N° 1 (18m)", responsable: "Don Chiyo", horas: 30, costoPersonal: 4200, costoMateriales: 1500, costoTerceros: 2500, costoTotal: 8200, start: "2026-09-22", end: "2026-10-02", progress: 40, estado: "En Progreso", prioridad: "Alta" },
+      { id: "TSK-10", name: "Instalación de Bomba Sumergible Solar 5 HP", responsable: "Arturo B.", horas: 24, costoPersonal: 4800, costoMateriales: 28500, costoTerceros: 5200, costoTotal: 38500, start: "2026-10-01", end: "2026-10-12", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-11", name: "Montaje Tinacos Nodriza 10,000L de Almacenamiento Primario", responsable: "Don Chiyo", horas: 25, costoPersonal: 3500, costoMateriales: 19000, costoTerceros: 0, costoTotal: 22500, start: "2026-10-05", end: "2026-10-15", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-12", name: "Tendido de Red Principal PVC Hidráulico 3 pulgadas", responsable: "Arturo B.", horas: 35, costoPersonal: 7000, costoMateriales: 16500, costoTerceros: 2500, costoTotal: 26000, start: "2026-10-10", end: "2026-10-25", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-13", name: "Instalación de Cabezal Filtrado Automático Grava/Malla", responsable: "Arturo B.", horas: 18, costoPersonal: 3600, costoMateriales: 11200, costoTerceros: 1600, costoTotal: 16400, start: "2026-10-15", end: "2026-10-25", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-14", name: "Red de Sub-conducción y Válvulas por Sectores", responsable: "Don Chiyo", horas: 40, costoPersonal: 5600, costoMateriales: 9000, costoTerceros: 0, costoTotal: 14600, start: "2026-10-20", end: "2026-11-05", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-15", name: "Pruebas de Presión Dinámica y Coeficiente de Uniformidad", responsable: "Arturo B.", horas: 14, costoPersonal: 2800, costoMateriales: 1000, costoTerceros: 0, costoTotal: 3800, start: "2026-11-02", end: "2026-11-08", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+
+      // FASE 3: Módulo Piloto de Microgreens / Brotes sin Suelo
+      { id: "TSK-16", name: "Nivelación y Cama de Grava Filtrante Invernadero", responsable: "Don Chiyo", horas: 35, costoPersonal: 4900, costoMateriales: 8000, costoTerceros: 0, costoTotal: 12900, start: "2026-09-28", end: "2026-10-08", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-17", name: "Estructura Malla Sombra 70% Bicolor Térmica con Estanterías", responsable: "Don Chiyo", horas: 45, costoPersonal: 6300, costoMateriales: 48000, costoTerceros: 0, costoTotal: 54300, start: "2026-10-05", end: "2026-10-22", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-18", name: "Ensamblado Racks Metálicos Galvanizados (4 niveles)", responsable: "Arturo B.", horas: 28, costoPersonal: 5600, costoMateriales: 19200, costoTerceros: 0, costoTotal: 24800, start: "2026-10-15", end: "2026-10-28", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-19", name: "Montaje Sistema Nebulización Automatizado Foggers 4 bar", responsable: "Arturo B.", horas: 20, costoPersonal: 4000, costoMateriales: 14200, costoTerceros: 0, costoTotal: 18200, start: "2026-10-22", end: "2026-11-02", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-20", name: "Adquisición y Sanitización de 1,200 Charolas 1020", responsable: "Arturo A.", horas: 15, costoPersonal: 3000, costoMateriales: 11200, costoTerceros: 0, costoTotal: 14200, start: "2026-10-18", end: "2026-10-28", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-21", name: "Calibración Nutrición Orgánica y Sensores CE/pH", responsable: "Gema R.", horas: 16, costoPersonal: 3200, costoMateriales: 2600, costoTerceros: 0, costoTotal: 5800, start: "2026-10-25", end: "2026-11-04", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-22", name: "Siembra Primer Lote (Rábano Sango, Girasol y Guisante)", responsable: "Arturo A.", horas: 25, costoPersonal: 5000, costoMateriales: 6500, costoTerceros: 0, costoTotal: 11500, start: "2026-11-01", end: "2026-11-12", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-23", name: "Monitoreo Germinación en Cámara Oscura (Ciclo 72h)", responsable: "Don Chiyo", horas: 20, costoPersonal: 2800, costoMateriales: 0, costoTerceros: 0, costoTotal: 2800, start: "2026-11-04", end: "2026-11-10", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-24", name: "Cosecha Sanitaria, Sanitizado Ácido Peracético y Empaque", responsable: "Gema R.", horas: 22, costoPersonal: 4400, costoMateriales: 2000, costoTerceros: 0, costoTotal: 6400, start: "2026-11-10", end: "2026-11-16", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-25", name: "Pruebas de Vida de Anaquel en Frío (4°C) a 14 Días", responsable: "Gema R.", horas: 15, costoPersonal: 3000, costoMateriales: 0, costoTerceros: 0, costoTotal: 3000, start: "2026-11-15", end: "2026-11-30", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+
+      // FASE 4: Tecnificación de Lote Chile Habanero 3.8 HA
+      { id: "TSK-26", name: "Rastreo y Barbecho Profundo Suelo Luvisol/Kankab", responsable: "Don Chiyo", horas: 48, costoPersonal: 6720, costoMateriales: 7000, costoTerceros: 5000, costoTotal: 18720, start: "2026-10-15", end: "2026-10-30", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-27", name: "Incorporación Composta Madura (15 ton/HA) y Microorganismos", responsable: "Don Chiyo", horas: 40, costoPersonal: 5600, costoMateriales: 24000, costoTerceros: 0, costoTotal: 29600, start: "2026-10-28", end: "2026-11-12", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-28", name: "Acolchado Plástico Bicolor Plata/Negro y Cinta Goteo 1.0 L/h", responsable: "Arturo B.", horas: 32, costoPersonal: 6400, costoMateriales: 32000, costoTerceros: 0, costoTotal: 38400, start: "2026-11-05", end: "2026-11-20", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-29", name: "Contratación 2 Becarios Programa Jóvenes Construyendo el Futuro", responsable: "Gema R.", horas: 18, costoPersonal: 3600, costoMateriales: 0, costoTerceros: 0, costoTotal: 3600, start: "2026-11-01", end: "2026-11-18", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-30", name: "Adquisición Plántula Certificada Habanero Jaguar (INIFAP)", responsable: "Arturo A.", horas: 20, costoPersonal: 4000, costoMateriales: 24000, costoTerceros: 0, costoTotal: 28000, start: "2026-11-10", end: "2026-11-22", progress: 0, estado: "No Iniciada", prioridad: "Crítica" },
+      { id: "TSK-31", name: "Trasplante Manual a Campo Definitivo (22,000 plantas/HA)", responsable: "Don Chiyo", horas: 50, costoPersonal: 7000, costoMateriales: 7000, costoTerceros: 0, costoTotal: 14000, start: "2026-11-20", end: "2026-12-05", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-32", name: "Plan Fertirriego Bioestimulante y Ácidos Húmicos", responsable: "Arturo B.", horas: 25, costoPersonal: 5000, costoMateriales: 11500, costoTerceros: 0, costoTotal: 16500, start: "2026-11-25", end: "2026-12-15", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-33", name: "Monitoreo Fitosanitario y Control Biológico Mosca Blanca", responsable: "Gema R.", horas: 24, costoPersonal: 4800, costoMateriales: 3000, costoTerceros: 0, costoTotal: 7800, start: "2026-12-01", end: "2026-12-28", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-34", name: "Instalación Cortinas Rompevientos Pasto Napier y Neem", responsable: "Don Chiyo", horas: 36, costoPersonal: 5040, costoMateriales: 4000, costoTerceros: 0, costoTotal: 9040, start: "2026-11-15", end: "2026-11-30", progress: 0, estado: "No Iniciada", prioridad: "Baja" },
+
+      // FASE 5: Deshidratador Solar AISI 304 & Energía Renovable
+      { id: "TSK-35", name: "Cimentación Base de Concreto para Deshidratador Solar", responsable: "Don Chiyo", horas: 30, costoPersonal: 4200, costoMateriales: 7000, costoTerceros: 0, costoTotal: 11200, start: "2026-12-01", end: "2026-12-14", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-36", name: "Ensamble Cámara Deshidratación Acero Inox AISI 304", responsable: "Arturo B.", horas: 35, costoPersonal: 7000, costoMateriales: 31000, costoTerceros: 4000, costoTotal: 42000, start: "2026-12-10", end: "2026-12-28", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-37", name: "Instalación Colectores Solares Aire Térmico y Extractores 12V", responsable: "Arturo B.", horas: 25, costoPersonal: 5000, costoMateriales: 16000, costoTerceros: 0, costoTotal: 21000, start: "2026-12-20", end: "2027-01-10", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-38", name: "Lote Piloto Deshidratación Habanero Entero y Escamas", responsable: "Gema R.", horas: 20, costoPersonal: 4000, costoMateriales: 2200, costoTerceros: 0, costoTotal: 6200, start: "2027-01-05", end: "2027-01-20", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+
+      // FASE 6: Comercialización, Certificación y Alianzas B2B
+      { id: "TSK-39", name: "Degustación y Muestreo con Chefs Ejecutivos (Kuuk, Chablé)", responsable: "Arturo A.", horas: 22, costoPersonal: 4400, costoMateriales: 2500, costoTerceros: 0, costoTotal: 6900, start: "2026-11-18", end: "2026-12-05", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-40", name: "Stand y Arranque de Venta en Mercado Slow Food Mérida", responsable: "Gema R.", horas: 20, costoPersonal: 4000, costoMateriales: 1500, costoTerceros: 0, costoTotal: 5500, start: "2026-11-25", end: "2026-12-10", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-41", name: "Auditoría Preliminar SENASICA Buenas Prácticas Agrícolas", responsable: "Gema R.", horas: 18, costoPersonal: 3600, costoMateriales: 0, costoTerceros: 5000, costoTotal: 8600, start: "2026-12-15", end: "2027-01-15", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-42", name: "Registro de Marca 'Rancho Chimay / Gema' ante el IMPI", responsable: "Arturo A.", horas: 16, costoPersonal: 3200, costoMateriales: 0, costoTerceros: 3600, costoTotal: 6800, start: "2026-12-01", end: "2027-01-10", progress: 0, estado: "No Iniciada", prioridad: "Media" }
     ];
 
     // Estados de la Aplicación
@@ -382,13 +430,16 @@
 
         <!-- Vista Gantt Global -->
         <div id="globalGanttSection" class="${currentSubView === 'gantt' ? '' : 'hidden'} bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-          <div class="flex justify-between items-center">
-            <h3 class="text-sm font-bold text-stone-800 flex items-center gap-2">
-              <i class="fa-solid fa-timeline text-emerald-600"></i> Línea Temporal General de Operaciones
-            </h3>
-            <span class="text-xs text-stone-400 italic">Haz clic en cualquier barra para ver detalles o marcarla completada</span>
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <h3 class="text-sm font-bold text-stone-800 flex items-center gap-2">
+                <i class="fa-solid fa-timeline text-emerald-600"></i> Cronograma Maestro de Operaciones (${total} Tareas)
+              </h3>
+              <p class="text-xs text-stone-400">Desplázate horizontalmente para ver los meses o verticalmente para recorrer las fases.</p>
+            </div>
+            <span class="text-xs text-stone-400 italic hidden md:inline">Haz clic en cualquier barra para ver detalles o costos</span>
           </div>
-          <div class="w-full overflow-x-auto min-h-[300px]">
+          <div class="w-full overflow-x-auto overflow-y-auto max-h-[620px] rounded-xl border border-stone-100 p-1 bg-stone-50/40">
             <svg id="globalGanttSvg"></svg>
           </div>
         </div>
@@ -521,7 +572,7 @@
             </h3>
             <span class="text-xs text-stone-400 italic">Haz clic en la barra para ver el desglose o completarla</span>
           </div>
-          <div class="w-full overflow-x-auto min-h-[220px]">
+          <div class="w-full overflow-x-auto overflow-y-auto max-h-[500px] rounded-xl border border-stone-100 p-1 bg-stone-50/40">
             <svg id="specialistGanttSvg"></svg>
           </div>
         </div>
@@ -591,24 +642,24 @@
           }
         });
 
-        // Auto-scroll al inicio de las tareas para que la barra nunca quede oculta a la derecha
+        // Auto-scroll horizontal inteligente: enfoca la primera tarea en progreso o activa de hoy
         setTimeout(() => {
           const container = svgEl.parentElement;
           if (container && frappeTasks.length > 0) {
-            const firstBar = container.querySelector(".bar-wrapper");
-            if (firstBar) {
-              const rect = firstBar.querySelector(".bar");
+            const targetBar = container.querySelector(".gantt-progreso") || container.querySelector(".bar-wrapper");
+            if (targetBar) {
+              const rect = targetBar.querySelector(".bar");
               if (rect) {
                 const barX = parseFloat(rect.getAttribute("x") || "0");
-                if (barX > 180) {
-                  container.scrollTo({ left: Math.max(0, barX - 100), behavior: 'smooth' });
+                if (barX > 140) {
+                  container.scrollTo({ left: Math.max(0, barX - 120), behavior: 'smooth' });
                 } else {
                   container.scrollTo({ left: 0, behavior: 'smooth' });
                 }
               }
             }
           }
-        }, 100);
+        }, 120);
 
       } catch(err) {
         console.error("Error al inicializar Frappe Gantt:", err);
