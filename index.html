@@ -153,15 +153,48 @@
           <p class="text-xs text-emerald-300 font-medium">Centro de Operaciones Web & Cronograma Maestro Gantt (V1)</p>
         </div>
       </div>
-      <div class="flex items-center space-x-2">
-        <span id="lastSyncLabel" class="text-[11px] text-emerald-300 font-mono hidden sm:inline-block"></span>
+      <div class="flex items-center space-x-2 flex-wrap sm:flex-nowrap gap-y-2">
+        <span id="lastSyncLabel" class="text-[11px] text-emerald-300 font-mono hidden lg:inline-block"></span>
         <div class="px-3 py-1.5 rounded-lg bg-emerald-800/80 text-emerald-200 text-xs font-medium flex items-center gap-1.5 border border-emerald-600/40 shadow-sm select-none">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           <span class="hidden sm:inline">API</span> Conectada
         </div>
-        <button id="btnRefresh" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm">
-          <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i> Actualizar
+        <button id="btnRefresh" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm" title="Actualizar datos desde Google Sheets">
+          <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i> <span class="hidden sm:inline">Actualizar</span>
         </button>
+
+        <!-- Campana de Notificaciones de Tareas (Jira style) -->
+        <div class="relative" id="notifBellWrapper">
+          <button id="btnNotifBell" onclick="toggleNotifTray()" class="relative p-2 rounded-xl bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 transition border border-emerald-600/40 shadow-sm flex items-center justify-center" title="Centro de Notificaciones">
+            <i class="fa-solid fa-bell text-sm"></i>
+            <span id="notifBadge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-emerald-900 shadow-sm animate-pulse">0</span>
+          </button>
+
+          <!-- Bandeja Desplegable de Notificaciones -->
+          <div id="notifTray" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-stone-200 z-50 overflow-hidden text-stone-800">
+            <div class="px-4 py-3 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-bell text-emerald-700 text-xs"></i>
+                <span class="text-xs font-bold text-stone-900">Notificaciones de Tareas</span>
+                <span id="notifUnreadPill" class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 hidden">0</span>
+              </div>
+              <button onclick="markAllNotifsRead()" class="text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline">
+                Marcar todas leídas
+              </button>
+            </div>
+            <div id="notifList" class="max-h-[340px] overflow-y-auto divide-y divide-stone-100">
+              <!-- Renderizado dinámico de notificaciones -->
+            </div>
+            <div class="px-4 py-2 bg-stone-50/80 border-t border-stone-100 text-center text-[10px] text-stone-400 font-medium">
+              Alertas para tareas donde eres responsable o participaste en el chat
+            </div>
+          </div>
+        </div>
+
+        <!-- Perfil de Usuario / Botón de Login con Google -->
+        <div class="relative" id="userAuthContainer">
+          <!-- Renderizado dinámicamente con renderUserAuth() -->
+        </div>
       </div>
     </div>
   </header>
@@ -243,57 +276,185 @@
     </div>
   </main>
 
-  <!-- Modal Detalle Tarea -->
-  <div id="taskModal" class="fixed inset-0 bg-stone-900/50 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-5">
-      <div class="flex justify-between items-start border-b border-stone-100 pb-3">
-        <div>
-          <span id="modalBadgeId" class="px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-emerald-100 text-emerald-800">TSK-01</span>
-          <h3 id="modalTitle" class="text-lg font-bold text-stone-900 mt-1">Título de la Tarea</h3>
+  <!-- Modal Detalle Tarea (Jira-Style Split Modal: Datos Técnicos + Bitácora / Chat en Vivo) -->
+  <div id="taskModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-5xl w-full p-5 sm:p-7 shadow-2xl border border-stone-200 flex flex-col max-h-[92vh] overflow-hidden my-auto animate-in fade-in zoom-in duration-150">
+      
+      <!-- Cabecera del Modal -->
+      <div class="flex justify-between items-start border-b border-stone-100 pb-4 shrink-0">
+        <div class="flex items-center gap-3">
+          <span id="modalBadgeId" class="px-3 py-1 rounded-lg text-xs font-mono font-black bg-emerald-100 text-emerald-900 border border-emerald-300/60 shadow-2xs">TSK-01</span>
+          <div>
+            <h3 id="modalTitle" class="text-lg sm:text-xl font-black text-stone-900 leading-snug">Título de la Tarea</h3>
+            <p id="modalSubtitle" class="text-xs text-stone-400 font-medium mt-0.5">Espacio de Trabajo Operativo &bull; Bitácora Jira</p>
+          </div>
         </div>
-        <button id="closeModal" class="text-stone-400 hover:text-stone-600 text-lg p-1">
+        <button id="closeModal" class="text-stone-400 hover:text-stone-700 text-xl p-1.5 rounded-xl hover:bg-stone-100 transition">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
-      <div class="grid grid-cols-2 gap-3 text-xs">
-        <div class="bg-stone-50 p-3 rounded-lg border border-stone-100 col-span-2 flex items-center justify-between">
-          <div>
-            <span class="text-stone-400 block font-medium">Etapa / Fase del Proyecto:</span>
-            <span id="modalEtapa" class="font-bold text-stone-800 text-sm">Etapa 1: Legal y Gobernanza</span>
+      <!-- Cuerpo del Modal Dividido en 2 Columnas -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-5 flex-1 overflow-y-auto pr-1">
+        
+        <!-- COLUMNA IZQUIERDA: Especificaciones y Finanzas (6 Cols) -->
+        <div class="lg:col-span-6 space-y-4">
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="bg-stone-50 p-3.5 rounded-2xl border border-stone-200/80 col-span-2 flex items-center justify-between">
+              <div>
+                <span class="text-stone-400 block font-semibold text-[11px]">Etapa / Fase del Proyecto:</span>
+                <span id="modalEtapa" class="font-bold text-stone-800 text-sm">Etapa 1: Legal y Gobernanza</span>
+              </div>
+              <span class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-base shadow-2xs">
+                <i class="fa-solid fa-layer-group"></i>
+              </span>
+            </div>
+
+            <div class="bg-stone-50 p-3.5 rounded-2xl border border-stone-200/80">
+              <span class="text-stone-400 block font-semibold text-[11px]">Responsable Asignado:</span>
+              <div class="flex items-center gap-2 mt-1">
+                <span id="modalRespAvatar" class="w-6 h-6 rounded-lg bg-blue-600 text-white font-black text-[10px] flex items-center justify-center shadow-2xs">AB</span>
+                <span id="modalResp" class="font-bold text-stone-800 text-xs truncate">Arturo B.</span>
+              </div>
+            </div>
+
+            <div class="bg-stone-50 p-3.5 rounded-2xl border border-stone-200/80">
+              <span class="text-stone-400 block font-semibold text-[11px]">Prioridad y Estado:</span>
+              <div class="flex items-center gap-1.5 mt-1">
+                <span id="modalStatusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                <span id="modalStatus" class="font-bold text-stone-800 text-xs">Alta / En Progreso</span>
+              </div>
+            </div>
+
+            <div class="bg-stone-50 p-3.5 rounded-2xl border border-stone-200/80">
+              <span class="text-stone-400 block font-semibold text-[11px]">Periodo de Ejecución:</span>
+              <span id="modalDates" class="font-bold text-stone-800 text-xs block mt-1">2026-09-20 al 2026-09-25</span>
+            </div>
+
+            <div class="bg-stone-50 p-3.5 rounded-2xl border border-stone-200/80">
+              <span class="text-stone-400 block font-semibold text-[11px]">Presupuesto Total:</span>
+              <span id="modalCost" class="font-black text-emerald-800 text-sm block mt-0.5">$4,400.00 MXN</span>
+            </div>
           </div>
-          <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-sm">
-            <i class="fa-solid fa-layer-group"></i>
-          </span>
+
+          <!-- Desglose de Costos -->
+          <div class="bg-emerald-50/50 p-3.5 rounded-2xl border border-emerald-100 text-xs space-y-2">
+            <div class="flex items-center justify-between text-stone-500 font-semibold border-b border-emerald-200/40 pb-1.5">
+              <span>Desglose de Partidas</span>
+              <span class="text-[10px] text-emerald-800 uppercase font-black tracking-wider">Moneda MXN</span>
+            </div>
+            <div class="flex justify-between text-stone-600"><span>Mano de Obra Especialista:</span><span id="modalCostPers" class="font-bold text-stone-800">$3,200.00</span></div>
+            <div class="flex justify-between text-stone-600"><span>Materiales e Insumos Físicos:</span><span id="modalCostMat" class="font-bold text-stone-800">$1,200.00</span></div>
+            <div class="flex justify-between text-stone-600"><span>Servicios y Trámites Tercerizados:</span><span id="modalCostTerc" class="font-bold text-stone-800">$0.00</span></div>
+          </div>
+
+          <!-- Botón Completar Tarea -->
+          <div class="pt-1">
+            <button id="btnCompletarModal" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition">
+              <i class="fa-solid fa-check"></i> Marcar como Completada (Sincronizar)
+            </button>
+          </div>
         </div>
-        <div class="bg-stone-50 p-3 rounded-lg border border-stone-100">
-          <span class="text-stone-400 block font-medium">Responsable:</span>
-          <span id="modalResp" class="font-bold text-stone-800 text-sm">Arturo B.</span>
+
+        <!-- COLUMNA DERECHA: Chat / Bitácora Jira en Vivo (6 Cols) -->
+        <div class="lg:col-span-6 flex flex-col bg-stone-50/90 rounded-2xl p-4 border border-stone-200/80 space-y-3 min-h-[380px]">
+          <div class="flex items-center justify-between border-b border-stone-200 pb-2.5 shrink-0">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-comments text-emerald-700 text-sm"></i>
+              <h4 class="text-xs font-black uppercase tracking-wider text-stone-800">Bitácora & Chat de la Tarea</h4>
+            </div>
+            <span id="chatCountBadge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+              0 notas
+            </span>
+          </div>
+
+          <!-- Feed de Mensajes / Comentarios con Scroll -->
+          <div id="taskChatList" class="flex-1 max-h-[290px] overflow-y-auto space-y-3 pr-1 text-xs">
+            <!-- Inyectado dinámicamente con renderTaskChat() -->
+          </div>
+
+          <!-- Caja de Redacción de Comentario (Tipo Jira) -->
+          <div class="shrink-0 bg-white p-3 rounded-xl border border-stone-200 shadow-2xs space-y-2">
+            <div class="flex items-center justify-between text-[11px]">
+              <span class="text-stone-400 font-medium flex items-center gap-1.5">
+                <span>Comentando como:</span>
+                <span id="chatActiveUserLabel" class="font-bold text-stone-800 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Arturo B.
+                </span>
+              </span>
+              <button onclick="openGoogleAuthModal()" class="text-emerald-700 hover:text-emerald-800 font-semibold hover:underline text-[10px]">
+                Cambiar cuenta
+              </button>
+            </div>
+
+            <div class="relative">
+              <textarea id="chatInputText" rows="2" placeholder="Escribe un comentario, acuerdo o nota de avance (Presiona Enter)..." class="w-full bg-stone-50 border border-stone-200 hover:border-emerald-500 focus:border-emerald-600 rounded-xl p-2.5 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none transition"></textarea>
+            </div>
+
+            <div class="flex items-center justify-between gap-2 pt-0.5">
+              <div class="flex items-center gap-1">
+                <button type="button" onclick="insertChatTag('@Arturo B.')" class="px-2 py-1 rounded-md bg-stone-100 hover:bg-stone-200 text-[10px] font-semibold text-stone-600 transition">@Arturo</button>
+                <button type="button" onclick="insertChatTag('@Gema R.')" class="px-2 py-1 rounded-md bg-stone-100 hover:bg-stone-200 text-[10px] font-semibold text-stone-600 transition">@Gema</button>
+                <button type="button" onclick="insertChatTag('✓ Avance:')" class="px-2 py-1 rounded-md bg-stone-100 hover:bg-stone-200 text-[10px] font-semibold text-stone-600 transition">✓ Avance</button>
+              </div>
+              <button id="btnSendChat" onclick="sendTaskComment()" class="px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-sm">
+                <i class="fa-solid fa-paper-plane text-[10px]"></i> Publicar
+              </button>
+            </div>
+          </div>
+
         </div>
-        <div class="bg-stone-50 p-3 rounded-lg border border-stone-100">
-          <span class="text-stone-400 block font-medium">Prioridad / Estado:</span>
-          <span id="modalStatus" class="font-bold text-stone-800 text-sm">Alta / En Progreso</span>
-        </div>
-        <div class="bg-stone-50 p-3 rounded-lg border border-stone-100">
-          <span class="text-stone-400 block font-medium">Periodo de Ejecución:</span>
-          <span id="modalDates" class="font-bold text-stone-800 text-sm">2026-09-20 al 2026-09-25</span>
-        </div>
-        <div class="bg-stone-50 p-3 rounded-lg border border-stone-100">
-          <span class="text-stone-400 block font-medium">Costo Total Presupuestado:</span>
-          <span id="modalCost" class="font-black text-emerald-800 text-sm">$4,400.00 MXN</span>
-        </div>
+
       </div>
 
-      <div class="bg-emerald-50/50 p-3 rounded-lg border border-emerald-100 text-xs space-y-1">
-        <div class="flex justify-between text-stone-600"><span>Mano de Obra Personal:</span><span id="modalCostPers" class="font-semibold">$3,200.00</span></div>
-        <div class="flex justify-between text-stone-600"><span>Materiales e Insumos:</span><span id="modalCostMat" class="font-semibold">$1,200.00</span></div>
-        <div class="flex justify-between text-stone-600"><span>Servicios Tercerizados:</span><span id="modalCostTerc" class="font-semibold">$0.00</span></div>
-      </div>
+    </div>
+  </div>
 
-      <div class="pt-2 flex justify-end gap-2">
-        <button id="btnCompletarModal" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition">
-          <i class="fa-solid fa-check"></i> Marcar como Completada (Sincronizar)
+  <!-- Modal Selector de Cuenta Google -->
+  <div id="googleAuthModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-in fade-in zoom-in duration-150">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <svg class="w-6 h-6 shrink-0" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <div>
+            <h3 class="text-base font-black text-stone-900 leading-tight">Acceder con Google</h3>
+            <p class="text-[11px] text-stone-400">Google Identity Services &bull; Proyecto Chimay</p>
+          </div>
+        </div>
+        <button onclick="closeGoogleAuthModal()" class="text-stone-400 hover:text-stone-700 text-lg p-1 rounded-lg hover:bg-stone-100">
+          <i class="fa-solid fa-xmark"></i>
         </button>
+      </div>
+
+      <p class="text-xs text-stone-600 font-medium">
+        Selecciona tu cuenta de Google registrada para sincronizar tus alertas de responsable y firmar tus intervenciones en el chat:
+      </p>
+
+      <div class="space-y-2.5" id="googleAccountsList">
+        <!-- Renderizado dinámico de cuentas de Google vinculadas -->
+      </div>
+
+      <!-- Opción de ingresar otra cuenta -->
+      <div class="pt-2 border-t border-stone-100">
+        <form onsubmit="handleCustomGoogleLogin(event)" class="space-y-2">
+          <label class="text-[11px] font-bold text-stone-500 uppercase tracking-wider block">O ingresa con otra cuenta de Google:</label>
+          <div class="flex gap-2">
+            <input id="customGoogleEmail" type="email" required placeholder="tu.nombre@gmail.com" class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+            <button type="submit" class="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-900 text-white font-bold text-xs transition">
+              Entrar
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="pt-2 flex justify-between items-center text-[10px] text-stone-400">
+        <span>Conexión segura SSL &bull; IN2TECHMX</span>
+        <button onclick="closeGoogleAuthModal()" class="text-stone-500 hover:underline font-semibold">Cerrar</button>
       </div>
     </div>
   </div>
@@ -402,7 +563,589 @@
     let currentMode = "Week";        // 'Day' | 'Week' | 'Month'
     let currentSubView = "gantt";     // 'gantt' | 'cards'
     let selectedTaskId = null;
-    
+    let currentUser = null;          // Usuario activo autenticado con Google
+    let taskComments = {};           // Bitácora / Chat de cada tarea { taskId: [comments] }
+
+    // Comentarios pre-sembrados con trazabilidad y realismo para el Proyecto Chimay
+    const DEFAULT_TASK_COMMENTS = {
+      "TSK-01": [
+        {
+          id: "cmt-1",
+          author: "Arturo B.",
+          email: "arturo.dlb.r@gmail.com",
+          rol: "Operaciones",
+          avatarBg: "bg-blue-600",
+          initials: "AB",
+          timestamp: "2026-09-05 10:30",
+          text: "Se entregó proyecto de estatutos al Notario 42 en Mérida. Se incluyó cláusula para comercialización en mercados orgánicos."
+        },
+        {
+          id: "cmt-2",
+          author: "Gema R.",
+          email: "gemaromerom22@gmail.com",
+          rol: "Dirección",
+          avatarBg: "bg-emerald-600",
+          initials: "GR",
+          timestamp: "2026-09-08 14:15",
+          text: "Revisé y aprobé el objeto social. Ya quedó firmado por todos los socios fundadores."
+        }
+      ],
+      "TSK-03": [
+        {
+          id: "cmt-3",
+          author: "Arturo A.",
+          email: "in2techmx@gmail.com",
+          rol: "Infraestructura",
+          avatarBg: "bg-purple-600",
+          initials: "AA",
+          timestamp: "2026-09-16 11:20",
+          text: "Se recopilaron las coordenadas UTM del pozo y la memoria de gasto proyectado (1.5 lps)."
+        },
+        {
+          id: "cmt-4",
+          author: "Gema R.",
+          email: "gemaromerom22@gmail.com",
+          rol: "Dirección",
+          avatarBg: "bg-emerald-600",
+          initials: "GR",
+          timestamp: "2026-09-17 09:40",
+          text: "Ingresado en ventanilla única de CONAGUA Mérida con número de folio 2026-MER-089."
+        }
+      ],
+      "TSK-09": [
+        {
+          id: "cmt-5",
+          author: "Don Chiyo",
+          email: "chiyo.rancho@in2tech.mx",
+          rol: "Encargado de Rancho",
+          avatarBg: "bg-amber-600",
+          initials: "DC",
+          timestamp: "2026-09-23 08:00",
+          text: "Iniciamos desazolve con la cuadrilla. El pozo tiene 18m y agua limpia a los 12m."
+        }
+      ]
+    };
+
+    // ==========================================
+    // 1. SISTEMA DE AUTENTICACIÓN GOOGLE IDENTITY
+    // ==========================================
+    function initGoogleAuth() {
+      try {
+        const saved = localStorage.getItem("chimay_active_user");
+        if (saved) {
+          currentUser = JSON.parse(saved);
+        } else {
+          // Usuario por defecto inicial
+          currentUser = {
+            name: "Arturo B.",
+            email: "arturo.dlb.r@gmail.com",
+            rol: "Operaciones, Zonificación y Ejecución de Terreno",
+            avatarBg: "bg-blue-600",
+            initials: "AB",
+            isGoogle: true
+          };
+          localStorage.setItem("chimay_active_user", JSON.stringify(currentUser));
+        }
+      } catch (e) {
+        currentUser = { name: "Arturo B.", email: "arturo.dlb.r@gmail.com", rol: "Operaciones", avatarBg: "bg-blue-600", initials: "AB", isGoogle: true };
+      }
+      renderUserAuth();
+      renderGoogleAccountsList();
+    }
+
+    function renderUserAuth() {
+      const container = document.getElementById("userAuthContainer");
+      if (!container) return;
+
+      if (currentUser) {
+        container.innerHTML = `
+          <div class="relative flex items-center">
+            <button onclick="toggleUserDropdown()" class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-emerald-800/90 hover:bg-emerald-700 text-white text-xs font-semibold border border-emerald-600/40 shadow-sm transition">
+              <span class="w-6 h-6 rounded-lg ${currentUser.avatarBg || 'bg-emerald-600'} text-white font-black text-[10px] flex items-center justify-center shadow-2xs">
+                ${currentUser.initials || 'US'}
+              </span>
+              <div class="text-left hidden md:block">
+                <p class="text-xs font-bold leading-none">${currentUser.name}</p>
+                <p class="text-[10px] text-emerald-300 font-normal leading-tight">${currentUser.email.split('@')[0]}</p>
+              </div>
+              <i class="fa-solid fa-chevron-down text-[9px] text-emerald-300 ml-0.5"></i>
+            </button>
+
+            <!-- Menú Desplegable de Usuario -->
+            <div id="userDropdown" class="hidden absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-stone-200 z-50 p-2.5 text-stone-800 animate-in fade-in zoom-in duration-100">
+              <div class="px-3 py-2 border-b border-stone-100">
+                <div class="flex items-center gap-2">
+                  <span class="w-7 h-7 rounded-lg ${currentUser.avatarBg || 'bg-emerald-600'} text-white font-black text-xs flex items-center justify-center shadow-2xs">
+                    ${currentUser.initials}
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-xs font-black text-stone-900 truncate">${currentUser.name}</p>
+                    <p class="text-[11px] text-stone-500 truncate">${currentUser.email}</p>
+                  </div>
+                </div>
+                <span class="inline-block mt-2 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">${currentUser.rol || 'Especialista'}</span>
+              </div>
+              <div class="py-1.5 space-y-1">
+                <button onclick="openGoogleAuthModal(); toggleUserDropdown();" class="w-full text-left px-3 py-2 text-xs font-bold text-stone-700 hover:bg-emerald-50 hover:text-emerald-950 rounded-xl transition flex items-center gap-2">
+                  <i class="fa-brands fa-google text-emerald-700"></i> Cambiar de Cuenta Google
+                </button>
+                <button onclick="logoutGoogleUser()" class="w-full text-left px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition flex items-center gap-2">
+                  <i class="fa-solid fa-arrow-right-from-bracket"></i> Cerrar Sesión
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <button onclick="openGoogleAuthModal()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 text-stone-800 text-xs font-bold flex items-center gap-2 transition shadow-sm">
+            <svg class="w-4 h-4" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            <span class="font-bold">Acceder</span>
+          </button>
+        `;
+      }
+
+      // Sincronizar label de comentando como en el modal
+      const chatLabel = document.getElementById("chatActiveUserLabel");
+      if (chatLabel && currentUser) {
+        chatLabel.innerHTML = `<span class="w-2 h-2 rounded-full ${currentUser.avatarBg || 'bg-emerald-500'}"></span> ${currentUser.name}`;
+      }
+    }
+
+    function toggleUserDropdown() {
+      const drop = document.getElementById("userDropdown");
+      if (drop) drop.classList.toggle("hidden");
+    }
+
+    function openGoogleAuthModal() {
+      renderGoogleAccountsList();
+      const m = document.getElementById("googleAuthModal");
+      if (m) m.classList.remove("hidden");
+    }
+
+    function closeGoogleAuthModal() {
+      const m = document.getElementById("googleAuthModal");
+      if (m) m.classList.add("hidden");
+    }
+
+    function renderGoogleAccountsList() {
+      const list = document.getElementById("googleAccountsList");
+      if (!list) return;
+
+      const teamArray = Object.values(TEAM_INFO);
+      list.innerHTML = "";
+
+      teamArray.forEach(spec => {
+        const isCurrent = currentUser && currentUser.email === spec.email;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.onclick = () => switchGoogleUser(spec.email);
+        btn.className = `w-full p-3 rounded-2xl border ${isCurrent ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20' : 'border-stone-200 bg-white hover:bg-stone-50'} flex items-center justify-between gap-3 text-left transition group`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="w-9 h-9 rounded-xl ${spec.avatarBg} text-white font-black text-xs flex items-center justify-center shadow-2xs shrink-0">
+              ${spec.initials}
+            </span>
+            <div class="min-w-0">
+              <p class="text-xs font-black text-stone-900 leading-tight">${spec.name}</p>
+              <p class="text-[11px] text-stone-500 truncate">${spec.email}</p>
+              <p class="text-[10px] text-emerald-800 font-semibold truncate">${spec.rol.split(',')[0]}</p>
+            </div>
+          </div>
+          ${isCurrent ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-900 shrink-0">Activo</span>' : '<span class="text-stone-300 group-hover:text-emerald-700 text-xs"><i class="fa-solid fa-arrow-right"></i></span>'}
+        `;
+        list.appendChild(btn);
+      });
+    }
+
+    function switchGoogleUser(email) {
+      const spec = Object.values(TEAM_INFO).find(x => x.email === email);
+      if (spec) {
+        currentUser = {
+          name: spec.name,
+          email: spec.email,
+          rol: spec.rol,
+          avatarBg: spec.avatarBg,
+          initials: spec.initials,
+          isGoogle: true
+        };
+      } else {
+        currentUser = {
+          name: email.split('@')[0],
+          email: email,
+          rol: "Colaborador de Proyecto",
+          avatarBg: "bg-emerald-700",
+          initials: email.substring(0, 2).toUpperCase(),
+          isGoogle: true
+        };
+      }
+      localStorage.setItem("chimay_active_user", JSON.stringify(currentUser));
+      closeGoogleAuthModal();
+      renderUserAuth();
+      initNotifications();
+
+      const container = document.getElementById("viewContainer");
+      if (container) {
+        if (currentView === "todos") renderGlobalView(container);
+        else renderSpecialistView(container, currentView);
+      }
+    }
+
+    function handleCustomGoogleLogin(e) {
+      e.preventDefault();
+      const inp = document.getElementById("customGoogleEmail");
+      if (inp && inp.value) {
+        switchGoogleUser(inp.value.trim());
+      }
+    }
+
+    function logoutGoogleUser() {
+      currentUser = null;
+      localStorage.removeItem("chimay_active_user");
+      renderUserAuth();
+      renderNotifications();
+      const drop = document.getElementById("userDropdown");
+      if (drop) drop.classList.add("hidden");
+    }
+
+    // ==========================================
+    // 2. SISTEMA DE BITÁCORA / CHAT ESTILO JIRA
+    // ==========================================
+    function initCommentsData() {
+      try {
+        const saved = localStorage.getItem("chimay_task_comments");
+        if (saved) {
+          taskComments = JSON.parse(saved);
+        } else {
+          taskComments = JSON.parse(JSON.stringify(DEFAULT_TASK_COMMENTS));
+          localStorage.setItem("chimay_task_comments", JSON.stringify(taskComments));
+        }
+      } catch (e) {
+        taskComments = JSON.parse(JSON.stringify(DEFAULT_TASK_COMMENTS));
+      }
+    }
+
+    function getTaskComments(taskId) {
+      return taskComments[taskId] || [];
+    }
+
+    function saveTaskComments() {
+      try {
+        localStorage.setItem("chimay_task_comments", JSON.stringify(taskComments));
+      } catch (e) {
+        console.error("Error al guardar comentarios:", e);
+      }
+    }
+
+    function renderTaskChat(taskId) {
+      const listEl = document.getElementById("taskChatList");
+      const badgeEl = document.getElementById("chatCountBadge");
+      if (!listEl) return;
+
+      const comments = getTaskComments(taskId);
+      if (badgeEl) {
+        badgeEl.textContent = `${comments.length} nota${comments.length === 1 ? '' : 's'}`;
+      }
+
+      if (comments.length === 0) {
+        listEl.innerHTML = `
+          <div class="p-8 text-center text-stone-400 space-y-2">
+            <i class="fa-regular fa-comments text-3xl text-stone-300"></i>
+            <p class="text-xs font-bold text-stone-600">No hay notas en la bitácora aún.</p>
+            <p class="text-[11px] text-stone-400">Documenta avances, acuerdos de campo o menciones de equipo.</p>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = "";
+      comments.forEach(c => {
+        const bubble = document.createElement("div");
+        bubble.className = "flex items-start gap-2.5";
+        bubble.innerHTML = `
+          <span class="w-7 h-7 rounded-lg ${c.avatarBg || 'bg-stone-700'} text-white font-black text-[10px] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+            ${c.initials || 'US'}
+          </span>
+          <div class="flex-1 bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs space-y-1">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="font-black text-stone-900 text-xs">${c.author}</span>
+                <span class="text-[10px] text-stone-400">&bull;</span>
+                <span class="text-[10px] text-emerald-800 font-bold">${c.rol || 'Especialista'}</span>
+              </div>
+              <span class="text-[10px] text-stone-400 font-mono shrink-0">${c.timestamp || ''}</span>
+            </div>
+            <p class="text-xs text-stone-700 leading-relaxed break-words whitespace-pre-wrap">${formatCommentText(c.text)}</p>
+          </div>
+        `;
+        listEl.appendChild(bubble);
+      });
+
+      // Auto-scroll al final del chat
+      setTimeout(() => {
+        listEl.scrollTop = listEl.scrollHeight;
+      }, 40);
+    }
+
+    function formatCommentText(text) {
+      if (!text) return "";
+      return text
+        .replace(/(@[a-zA-Z0-9_.\s]+)/g, '<span class="font-bold text-emerald-900 bg-emerald-100 px-1.5 py-0.5 rounded">$1</span>')
+        .replace(/(✓[a-zA-Z0-9_.\s:]+)/g, '<span class="font-bold text-emerald-700">$1</span>');
+    }
+
+    function insertChatTag(tag) {
+      const input = document.getElementById("chatInputText");
+      if (!input) return;
+      input.value = (input.value ? input.value + " " : "") + tag + " ";
+      input.focus();
+    }
+
+    function sendTaskComment() {
+      if (!selectedTaskId) return;
+      const input = document.getElementById("chatInputText");
+      if (!input || !input.value.trim()) return;
+
+      const text = input.value.trim();
+      const task = tasksData.find(x => x.id === selectedTaskId);
+      if (!task) return;
+
+      const author = currentUser || {
+        name: "Arturo B.",
+        email: "arturo.dlb.r@gmail.com",
+        rol: "Operaciones",
+        avatarBg: "bg-blue-600",
+        initials: "AB"
+      };
+
+      const now = new Date();
+      const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+      if (!taskComments[selectedTaskId]) {
+        taskComments[selectedTaskId] = [];
+      }
+
+      const newComment = {
+        id: "cmt-" + Date.now(),
+        author: author.name,
+        email: author.email,
+        rol: author.rol,
+        avatarBg: author.avatarBg,
+        initials: author.initials,
+        timestamp: timeStr,
+        text: text
+      };
+
+      taskComments[selectedTaskId].push(newComment);
+      saveTaskComments();
+
+      input.value = "";
+      renderTaskChat(selectedTaskId);
+
+      // Generar Notificaciones automáticas para responsables y participantes
+      triggerTaskNotifications(task, newComment);
+
+      // Actualizar tarjetas y filas con el nuevo badge de comentarios
+      const container = document.getElementById("viewContainer");
+      if (container) {
+        if (currentView === "todos") renderGlobalView(container);
+        else renderSpecialistView(container, currentView);
+      }
+    }
+
+    // ==========================================
+    // 3. MOTOR DE NOTIFICACIONES DE TAREAS (🔔)
+    // ==========================================
+    function triggerTaskNotifications(task, comment) {
+      const recipients = new Map();
+
+      // 1. Responsable asignado a la tarea
+      if (task.responsable) {
+        const respSpec = Object.values(TEAM_INFO).find(s => s.name === task.responsable || task.responsable.includes(s.name));
+        if (respSpec && respSpec.email !== comment.email) {
+          recipients.set(respSpec.email, "Eres el responsable asignado a esta tarea");
+        }
+      }
+
+      // 2. Participantes previos en el chat de esta tarea
+      const history = taskComments[task.id] || [];
+      history.forEach(c => {
+        if (c.email && c.email !== comment.email && !recipients.has(c.email)) {
+          recipients.set(c.email, "Participas en la conversación de esta tarea");
+        }
+      });
+
+      // Crear y persistir la notificación para cada destinatario
+      recipients.forEach((reason, recipientEmail) => {
+        addNotification(recipientEmail, {
+          id: "notif-" + Date.now() + "-" + Math.random().toString(36).substr(2, 4),
+          taskId: task.id,
+          taskName: task.name,
+          authorName: comment.author,
+          authorAvatarBg: comment.avatarBg,
+          authorInitials: comment.initials,
+          snippet: comment.text.substring(0, 75) + (comment.text.length > 75 ? "..." : ""),
+          timestamp: "Justo ahora",
+          reason: reason,
+          read: false
+        });
+      });
+
+      renderNotifications();
+    }
+
+    function getNotificationsForUser(email) {
+      try {
+        const raw = localStorage.getItem(`chimay_notifs_${email}`);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function addNotification(email, notif) {
+      try {
+        const list = getNotificationsForUser(email);
+        list.unshift(notif);
+        if (list.length > 30) list.pop(); // Mantener últimas 30
+        localStorage.setItem(`chimay_notifs_${email}`, JSON.stringify(list));
+      } catch (e) {
+        console.error("Error al guardar notificación:", e);
+      }
+    }
+
+    function initNotifications() {
+      const email = currentUser ? currentUser.email : "arturo.dlb.r@gmail.com";
+      const existing = getNotificationsForUser(email);
+      if (!existing || existing.length === 0) {
+        // Notificación de bienvenida / demostración para mostrar el funcionamiento
+        if (email === "arturo.dlb.r@gmail.com") {
+          addNotification(email, {
+            id: "notif-seed-1",
+            taskId: "TSK-01",
+            taskName: "Formalización de Sociedad S.P.R. de R.L. ante Notario",
+            authorName: "Gema R.",
+            authorAvatarBg: "bg-emerald-600",
+            authorInitials: "GR",
+            snippet: "Revisé y aprobé el objeto social. Ya quedó firmado...",
+            timestamp: "Hace 25 min",
+            reason: "Participas en la conversación de esta tarea",
+            read: false
+          });
+        } else if (email === "gemaromerom22@gmail.com") {
+          addNotification(email, {
+            id: "notif-seed-2",
+            taskId: "TSK-03",
+            taskName: "Gestión de Título de Concesión Pozo N° 1 CONAGUA",
+            authorName: "Arturo A.",
+            authorAvatarBg: "bg-purple-600",
+            authorInitials: "AA",
+            snippet: "Se recopilaron las coordenadas UTM del pozo y la memoria...",
+            timestamp: "Hoy 09:30",
+            reason: "Eres la responsable asignada a esta tarea",
+            read: false
+          });
+        }
+      }
+      renderNotifications();
+    }
+
+    function renderNotifications() {
+      const badge = document.getElementById("notifBadge");
+      const unreadPill = document.getElementById("notifUnreadPill");
+      const listEl = document.getElementById("notifList");
+      if (!badge || !listEl) return;
+
+      const email = currentUser ? currentUser.email : "arturo.dlb.r@gmail.com";
+      const notifs = getNotificationsForUser(email);
+      const unreadCount = notifs.filter(n => !n.read).length;
+
+      if (unreadCount > 0) {
+        badge.innerText = unreadCount > 9 ? "9+" : unreadCount;
+        badge.classList.remove("hidden");
+        if (unreadPill) {
+          unreadPill.innerText = `${unreadCount} nuevas`;
+          unreadPill.classList.remove("hidden");
+        }
+      } else {
+        badge.classList.add("hidden");
+        if (unreadPill) unreadPill.classList.add("hidden");
+      }
+
+      if (notifs.length === 0) {
+        listEl.innerHTML = `
+          <div class="p-8 text-center text-stone-400 space-y-2">
+            <i class="fa-regular fa-bell-slash text-2xl text-stone-300"></i>
+            <p class="text-xs font-bold text-stone-600">Buzón de alertas al día</p>
+            <p class="text-[11px] text-stone-400">Recibirás avisos cuando otros miembros comenten en tus tareas.</p>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = "";
+      notifs.forEach(n => {
+        const item = document.createElement("div");
+        item.className = `p-3.5 hover:bg-emerald-50/70 transition cursor-pointer flex items-start gap-3 ${n.read ? 'opacity-70 bg-white' : 'bg-emerald-50/40 border-l-4 border-emerald-600'}`;
+        item.onclick = () => openTaskFromNotification(n.taskId, n.id);
+
+        item.innerHTML = `
+          <span class="w-8 h-8 rounded-xl ${n.authorAvatarBg || 'bg-emerald-600'} text-white font-black text-[11px] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+            ${n.authorInitials || 'US'}
+          </span>
+          <div class="flex-1 min-w-0 space-y-1">
+            <div class="flex items-center justify-between gap-1">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="font-mono font-black text-[10px] bg-stone-100 text-stone-800 px-1.5 py-0.2 rounded border border-stone-200 shrink-0">${n.taskId}</span>
+                <p class="text-xs font-black text-stone-900 truncate">${n.taskName}</p>
+              </div>
+              ${!n.read ? '<span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>' : ''}
+            </div>
+            <p class="text-xs text-stone-700 leading-snug">
+              <strong class="text-stone-900 font-bold">${n.authorName}:</strong> "${n.snippet}"
+            </p>
+            <div class="flex items-center justify-between text-[10px] text-stone-400 pt-0.5">
+              <span class="text-emerald-800 font-bold">${n.reason}</span>
+              <span>${n.timestamp}</span>
+            </div>
+          </div>
+        `;
+        listEl.appendChild(item);
+      });
+    }
+
+    function toggleNotifTray() {
+      const tray = document.getElementById("notifTray");
+      if (tray) tray.classList.toggle("hidden");
+    }
+
+    function markAllNotifsRead() {
+      const email = currentUser ? currentUser.email : "arturo.dlb.r@gmail.com";
+      const notifs = getNotificationsForUser(email);
+      notifs.forEach(n => n.read = true);
+      localStorage.setItem(`chimay_notifs_${email}`, JSON.stringify(notifs));
+      renderNotifications();
+    }
+
+    function openTaskFromNotification(taskId, notifId) {
+      const email = currentUser ? currentUser.email : "arturo.dlb.r@gmail.com";
+      const notifs = getNotificationsForUser(email);
+      const target = notifs.find(x => x.id === notifId);
+      if (target) {
+        target.read = true;
+        localStorage.setItem(`chimay_notifs_${email}`, JSON.stringify(notifs));
+        renderNotifications();
+      }
+      const tray = document.getElementById("notifTray");
+      if (tray) tray.classList.add("hidden");
+      openTaskModal(taskId);
+    }
+
     // Endpoint Maestro Google Apps Script (Hardcoded permanente para sincronización en vivo)
     const webAppUrl = "https://script.google.com/macros/s/AKfycbzELfx7e7LBojMnRPLLq6CSCyUH7TawfkJsEjBwhRciy5RVF0StL37LTAVq4t6lKUuq/exec";
 
@@ -944,6 +1687,7 @@
             </div>
           </div>
           <div class="flex items-center gap-2 shrink-0 pl-1">
+            ${(taskComments[t.id] && taskComments[t.id].length > 0) ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300/60 flex items-center gap-1 shadow-2xs" title="${taskComments[t.id].length} notas en bitácora"><i class="fa-regular fa-comment-dots text-emerald-700"></i> ${taskComments[t.id].length}</span>` : ''}
             <span class="w-6 h-6 rounded-lg ${avatarBg} text-white font-extrabold text-[10px] flex items-center justify-center shadow-2xs" title="${t.responsable}">
               ${initials}
             </span>
@@ -1099,10 +1843,18 @@
       if (t.estado === "Completada") statusBadge = "<span class='px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800'>🟢 Completada</span>";
       else if (t.estado === "En Progreso") statusBadge = "<span class='px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800'>🟡 En Progreso</span>";
 
+      const cCount = (taskComments[t.id] || []).length;
+      const commentBadge = cCount > 0 
+        ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200 flex items-center gap-1 shadow-2xs" title="${cCount} notas en bitácora"><i class="fa-regular fa-comment-dots text-emerald-700"></i> ${cCount}</span>` 
+        : '';
+
       card.innerHTML = `
         <div class="flex justify-between items-center text-xs">
           <span class="font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">${t.id}</span>
-          ${statusBadge}
+          <div class="flex items-center gap-1.5">
+            ${commentBadge}
+            ${statusBadge}
+          </div>
         </div>
         <p class="font-bold text-stone-800 text-xs leading-snug">${t.name}</p>
         <div class="text-[11px] text-stone-500 flex items-center gap-1.5 truncate">
@@ -1144,6 +1896,28 @@
       document.getElementById("modalTitle").innerText = t.name;
       document.getElementById("modalEtapa").innerText = t.etapa || "Etapa General";
       document.getElementById("modalResp").innerText = t.responsable;
+
+      const respAvatar = document.getElementById("modalRespAvatar");
+      if (respAvatar) {
+        let avBg = "bg-stone-600";
+        let inits = "US";
+        if (t.responsable) {
+          if (t.responsable.includes("Arturo B.")) { avBg = "bg-blue-600"; inits = "AB"; }
+          else if (t.responsable.includes("Gema R.")) { avBg = "bg-emerald-600"; inits = "GR"; }
+          else if (t.responsable.includes("Arturo A.")) { avBg = "bg-purple-600"; inits = "AA"; }
+          else if (t.responsable.includes("Don Chiyo")) { avBg = "bg-amber-600"; inits = "DC"; }
+        }
+        respAvatar.className = `w-6 h-6 rounded-lg ${avBg} text-white font-black text-[10px] flex items-center justify-center shadow-2xs`;
+        respAvatar.innerText = inits;
+      }
+
+      const statusDot = document.getElementById("modalStatusDot");
+      if (statusDot) {
+        if (t.estado === "Completada") statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0";
+        else if (t.estado === "En Progreso") statusDot.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0";
+        else statusDot.className = "w-2.5 h-2.5 rounded-full bg-stone-300 shrink-0";
+      }
+
       document.getElementById("modalStatus").innerText = `${t.prioridad || 'Media'} • ${t.estado}`;
       document.getElementById("modalDates").innerText = `${t.start} al ${t.end}`;
       document.getElementById("modalCost").innerText = "$" + Number(t.costoTotal).toLocaleString("es-MX", {minimumFractionDigits:2}) + " MXN";
@@ -1154,12 +1928,21 @@
       const btn = document.getElementById("btnCompletarModal");
       if (t.estado === "Completada") {
         btn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Tarea Ya Completada`;
-        btn.className = "w-full py-2.5 rounded-xl bg-stone-300 text-stone-600 font-bold text-sm flex items-center justify-center gap-2 cursor-not-allowed";
+        btn.className = "w-full py-2.5 rounded-xl bg-stone-300 text-stone-600 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-not-allowed";
         btn.disabled = true;
       } else {
         btn.innerHTML = `<i class="fa-solid fa-check"></i> Marcar como Completada (Sincronizar)`;
-        btn.className = "w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition";
+        btn.className = "w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition";
         btn.disabled = false;
+      }
+
+      // Renderizar el chat Jira en vivo
+      renderTaskChat(id);
+
+      // Sincronizar label de comentando como
+      const chatLabel = document.getElementById("chatActiveUserLabel");
+      if (chatLabel && currentUser) {
+        chatLabel.innerHTML = `<span class="w-2 h-2 rounded-full ${currentUser.avatarBg || 'bg-emerald-500'}"></span> ${currentUser.name}`;
       }
 
       document.getElementById("taskModal").classList.remove("hidden");
@@ -1244,10 +2027,36 @@
     };
 
     // Inicialización al cargar la página
+    initGoogleAuth();
+    initCommentsData();
+    initNotifications();
     populateEtapasDropdown();
     populateRecursosDropdown();
     selectRecurso('todos');
     fetchTasksFromSheets();
+
+    // Listener para cerrar dropdowns y bandejas al hacer clic fuera
+    document.addEventListener("click", (e) => {
+      const notifWrapper = document.getElementById("notifBellWrapper");
+      const notifTray = document.getElementById("notifTray");
+      if (notifWrapper && notifTray && !notifWrapper.contains(e.target)) {
+        notifTray.classList.add("hidden");
+      }
+      const userAuth = document.getElementById("userAuthContainer");
+      const userDrop = document.getElementById("userDropdown");
+      if (userAuth && userDrop && !userAuth.contains(e.target)) {
+        userDrop.classList.add("hidden");
+      }
+    });
+
+    // Atajo de teclado Enter para enviar comentarios en el chat
+    document.addEventListener("keydown", (e) => {
+      const textarea = document.getElementById("chatInputText");
+      if (e.target === textarea && e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendTaskComment();
+      }
+    });
 
     // Auto-sincronización periódica cada 30 segundos
     setInterval(() => {
