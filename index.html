@@ -9,10 +9,81 @@
   <script src="https://cdn.jsdelivr.net/npm/frappe-gantt/dist/frappe-gantt.umd.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    .gantt .bar { fill: #10b981; }
-    .gantt .bar-progress { fill: #047857; }
-    .gantt .bar-label { font-size: 11px; font-weight: 600; fill: #1f2937; }
-    .gantt-container { overflow-x: auto; min-height: 420px; }
+    :root {
+      --g-bar-color: #e2e8f0 !important;
+      --g-bar-border: #94a3b8 !important;
+      --g-progress-color: #10b981 !important;
+      --g-handle-color: #047857 !important;
+      --g-header-background: #f8fafc !important;
+      --g-row-color: #ffffff !important;
+      --g-row-border-color: #f1f5f9 !important;
+      --g-text-dark: #1e293b !important;
+      --g-today-highlight: #10b981 !important;
+    }
+
+    /* Estructura base de la barra */
+    .gantt .bar {
+      fill: #e2e8f0 !important;
+      stroke: #94a3b8 !important;
+      stroke-width: 1.5px !important;
+      rx: 6px !important;
+      ry: 6px !important;
+    }
+    .gantt .bar-progress {
+      fill: #10b981 !important;
+      rx: 6px !important;
+      ry: 6px !important;
+    }
+    .gantt .bar-label {
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      fill: #1e293b !important;
+    }
+
+    /* 1. Tarea Completada (Verde Esmeralda) */
+    .gantt .bar-wrapper.gantt-completada .bar {
+      fill: #d1fae5 !important;
+      stroke: #059669 !important;
+      stroke-width: 1.5px !important;
+    }
+    .gantt .bar-wrapper.gantt-completada .bar-progress {
+      fill: #059669 !important;
+    }
+    .gantt .bar-wrapper.gantt-completada .bar-label {
+      fill: #064e3b !important;
+      font-weight: 700 !important;
+    }
+
+    /* 2. Tarea En Progreso (Ámbar / Naranja Dinámico) */
+    .gantt .bar-wrapper.gantt-progreso .bar {
+      fill: #fef3c7 !important;
+      stroke: #d97706 !important;
+      stroke-width: 1.5px !important;
+    }
+    .gantt .bar-wrapper.gantt-progreso .bar-progress {
+      fill: #d97706 !important;
+    }
+    .gantt .bar-wrapper.gantt-progreso .bar-label {
+      fill: #78350f !important;
+      font-weight: 700 !important;
+    }
+
+    /* 3. Tarea No Iniciada (Gris Suave Visible con Borde Definido - NUNCA BLANCO) */
+    .gantt .bar-wrapper.gantt-noiniciada .bar {
+      fill: #f1f5f9 !important;
+      stroke: #64748b !important;
+      stroke-width: 1.5px !important;
+      stroke-dasharray: 4 2;
+    }
+    .gantt .bar-wrapper.gantt-noiniciada .bar-label {
+      fill: #334155 !important;
+      font-weight: 600 !important;
+    }
+
+    .gantt-container {
+      overflow-x: auto !important;
+      border-radius: 12px;
+    }
   </style>
 </head>
 <body class="bg-stone-50 text-stone-900 font-sans min-h-screen flex flex-col">
@@ -123,8 +194,10 @@
         </h2>
         <span class="text-xs text-stone-400 italic">Haz clic en cualquier barra para ver el detalle y completarla</span>
       </div>
-      <div class="gantt-container">
-        <svg id="ganttChart"></svg>
+      <div id="ganttWrapper" class="relative w-full overflow-x-auto min-h-[360px]">
+        <div id="ganttChartMount">
+          <svg id="ganttChart"></svg>
+        </div>
       </div>
     </div>
 
@@ -270,36 +343,88 @@
       }
     }
 
+    let currentMode = "Week";
+
     function renderGantt() {
-      const filtered = tasksData.filter(t => currentFilter === "todos" || t.responsable.includes(currentFilter));
-      
-      const frappeTasks = filtered.map(t => ({
-        id: t.id,
-        name: `[${t.id}] ${t.name} (${t.responsable})`,
-        start: t.start || "2026-09-20",
-        end: t.end || "2026-09-25",
-        progress: t.progress,
-        custom_class: t.estado === "Completada" ? "gantt-completed" : (t.estado === "En Progreso" ? "gantt-progress" : "")
-      }));
+      const mount = document.getElementById("ganttChartMount");
+      if (!mount) return;
 
-      const svg = document.getElementById("ganttChart");
-      svg.innerHTML = "";
+      const filtered = tasksData.filter(t => currentFilter === "todos" || (t.responsable && t.responsable.includes(currentFilter)));
 
-      ganttChart = new Gantt("#ganttChart", frappeTasks, {
-        header_height: 50,
-        column_width: 30,
-        step: 24,
-        view_modes: ['Day', 'Week', 'Month'],
-        bar_height: 28,
-        bar_corner_radius: 6,
-        arrow_curve: 5,
-        padding: 18,
-        view_mode: 'Week',
-        date_format: 'YYYY-MM-DD',
-        on_click: function(task) {
-          openTaskModal(task.id);
-        }
+      if (filtered.length === 0) {
+        mount.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-16 text-stone-400">
+            <i class="fa-solid fa-user-slash text-3xl mb-2 text-stone-300"></i>
+            <p class="font-bold text-sm text-stone-600">No hay tareas asignadas a este responsable</p>
+            <p class="text-xs text-stone-400 mt-1">Selecciona "Todos" para ver el cronograma completo.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Reinicialización limpia del DOM eliminando contenedores anidados previos y headers viejos
+      mount.innerHTML = '<svg id="ganttChart"></svg>';
+
+      const frappeTasks = filtered.map(t => {
+        const sDate = (t.start && String(t.start).length >= 10) ? String(t.start).substring(0, 10) : "2026-09-20";
+        let eDate = (t.end && String(t.end).length >= 10) ? String(t.end).substring(0, 10) : sDate;
+        if (new Date(eDate) < new Date(sDate)) eDate = sDate;
+
+        let cls = "gantt-noiniciada";
+        if (t.estado === "Completada") cls = "gantt-completada";
+        else if (t.estado === "En Progreso") cls = "gantt-progreso";
+
+        const prog = Number(t.progress) || (t.estado === "Completada" ? 100 : (t.estado === "En Progreso" ? 50 : 0));
+
+        return {
+          id: String(t.id),
+          name: `[${t.id}] ${t.name} (${t.responsable})`,
+          start: sDate,
+          end: eDate,
+          progress: prog,
+          custom_class: cls
+        };
       });
+
+      try {
+        ganttChart = new Gantt("#ganttChart", frappeTasks, {
+          header_height: 50,
+          column_width: currentMode === "Day" ? 38 : (currentMode === "Month" ? 70 : 36),
+          step: 24,
+          view_modes: ['Day', 'Week', 'Month'],
+          bar_height: 32,
+          bar_corner_radius: 6,
+          arrow_curve: 5,
+          padding: 18,
+          view_mode: currentMode,
+          date_format: 'YYYY-MM-DD',
+          on_click: function(task) {
+            openTaskModal(task.id);
+          }
+        });
+
+        // Auto-scroll para enfocar la barra en pantalla y que no quede fuera de vista a la derecha
+        setTimeout(() => {
+          const container = mount.querySelector(".gantt-container");
+          if (container && frappeTasks.length > 0) {
+            const firstBar = container.querySelector(".bar-wrapper");
+            if (firstBar) {
+              const rect = firstBar.querySelector(".bar");
+              if (rect) {
+                const barX = parseFloat(rect.getAttribute("x") || "0");
+                if (barX > 200) {
+                  container.scrollTo({ left: Math.max(0, barX - 120), behavior: 'smooth' });
+                } else {
+                  container.scrollTo({ left: 0, behavior: 'smooth' });
+                }
+              }
+            }
+          }
+        }, 120);
+
+      } catch (err) {
+        console.error("Error al renderizar Frappe Gantt:", err);
+      }
     }
 
     function renderCards() {
@@ -428,8 +553,8 @@
           b.className = "mode-btn px-2.5 py-1 rounded text-stone-600 hover:text-emerald-800";
         });
         btn.className = "mode-btn px-2.5 py-1 rounded bg-white shadow-xs text-emerald-900 font-bold";
-        const mode = btn.getAttribute("data-mode");
-        if (ganttChart) ganttChart.change_view_mode(mode);
+        currentMode = btn.getAttribute("data-mode");
+        renderGantt();
       };
     });
 
