@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt/dist/frappe-gantt.css">
   <script src="https://cdn.jsdelivr.net/npm/frappe-gantt/dist/frappe-gantt.umd.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
@@ -159,6 +160,12 @@
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           <span class="hidden sm:inline">API</span> Conectada
         </div>
+        <button id="btnCrearTarea" onclick="openCreateTaskModal()" class="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Crear nueva tarea en el cronograma">
+          <i class="fa-solid fa-plus-circle text-sm"></i> <span class="hidden sm:inline">Nueva Tarea</span>
+        </button>
+        <button id="btnWhatsappInfo" onclick="openWhatsappModal()" class="px-2.5 py-1.5 rounded-xl bg-emerald-800/80 hover:bg-emerald-700 text-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition border border-emerald-600/40 shadow-sm cursor-pointer" title="Comandos y Guía de WhatsApp Bot">
+          <i class="fa-brands fa-whatsapp text-green-400 text-sm"></i> <span class="hidden md:inline">WhatsApp Bot</span>
+        </button>
         <button id="btnRefresh" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm" title="Actualizar datos desde Google Sheets">
           <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i> <span class="hidden sm:inline">Actualizar</span>
         </button>
@@ -430,9 +437,9 @@
     </div>
   </div>
 
-  <!-- Modal Selector de Cuenta Google -->
+  <!-- Modal Selector de Cuenta Google & Google Identity Services (GIS) -->
   <div id="googleAuthModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-in fade-in zoom-in duration-150">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-stone-100 pb-3">
         <div class="flex items-center gap-2.5">
           <svg class="w-6 h-6 shrink-0" viewBox="0 0 24 24">
@@ -442,8 +449,8 @@
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
           </svg>
           <div>
-            <h3 class="text-base font-black text-stone-900 leading-tight">Acceder con Google</h3>
-            <p class="text-[11px] text-stone-400">Google Identity Services &bull; Proyecto Chimay</p>
+            <h3 class="text-base font-black text-stone-900 leading-tight">Acceso Oficial con Google</h3>
+            <p class="text-[11px] text-stone-400">Google Identity Services (GIS) &bull; Proyecto Chimay</p>
           </div>
         </div>
         <button onclick="closeGoogleAuthModal()" class="text-stone-400 hover:text-stone-700 text-lg p-1 rounded-lg hover:bg-stone-100">
@@ -451,29 +458,67 @@
         </button>
       </div>
 
-      <p class="text-xs text-stone-600 font-medium">
-        Selecciona tu cuenta de Google registrada para sincronizar tus alertas de responsable y firmar tus intervenciones en el chat:
-      </p>
-
-      <div class="space-y-2.5" id="googleAccountsList">
-        <!-- Renderizado dinámico de cuentas de Google vinculadas -->
+      <!-- Contenedor Oficial del Botón de Google Identity -->
+      <div class="p-4 rounded-2xl bg-gradient-to-br from-blue-50/60 to-emerald-50/40 border border-blue-100 space-y-2.5 text-center">
+        <p class="text-xs font-bold text-stone-800">Inicia sesión con tu cuenta personal o institucional de Google:</p>
+        <div id="gsiButtonContainer" class="flex justify-center my-1 min-h-[44px]">
+          <!-- Renderizado dinámico por google.accounts.id.renderButton -->
+          <div class="text-xs text-stone-400 flex items-center gap-2 py-2">
+            <span class="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></span>
+            Cargando Google Identity Services...
+          </div>
+        </div>
+        <p class="text-[10px] text-stone-500">Autentica tu foto de perfil, correo verificado y firma de trazabilidad.</p>
       </div>
 
-      <!-- Opción de ingresar otra cuenta -->
+      <!-- Configuración Desplegable de Google OAuth Client ID -->
+      <div class="border border-stone-200 rounded-2xl p-3 bg-stone-50 space-y-2">
+        <div class="flex items-center justify-between cursor-pointer" onclick="toggleClientIdConfig()">
+          <span class="text-xs font-bold text-stone-700 flex items-center gap-1.5">
+            <i class="fa-solid fa-gear text-emerald-700"></i> Configurar Google Client ID (Consola Google)
+          </span>
+          <i id="iconToggleClientId" class="fa-solid fa-chevron-down text-xs text-stone-400 transition"></i>
+        </div>
+        <div id="clientIdConfigPanel" class="hidden pt-2 space-y-2 border-t border-stone-200/60">
+          <p class="text-[11px] text-stone-500 leading-relaxed">
+            Ingresa tu Client ID de OAuth 2.0 generado en <strong>Google Cloud Console</strong> con JavaScript origin <code>https://in2techmx.github.io</code>:
+          </p>
+          <div class="flex gap-2">
+            <input id="inputGoogleClientId" type="text" placeholder="ej: 123456789-abc.apps.googleusercontent.com" class="flex-1 bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-xs text-stone-800 font-mono">
+            <button onclick="saveGoogleClientId()" class="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition">
+              Guardar
+            </button>
+          </div>
+          <p id="clientIdStatusLabel" class="text-[10px] text-emerald-700 font-semibold"></p>
+        </div>
+      </div>
+
+      <!-- Acceso Rápido con Cuentas del Equipo Chimay (Fallback) -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold text-stone-600 uppercase tracking-wider">Perfiles del Equipo de Operaciones:</span>
+          <span class="text-[10px] text-stone-400">1-clic demo</span>
+        </div>
+        <div class="space-y-2" id="googleAccountsList">
+          <!-- Renderizado dinámico de cuentas vinculadas -->
+        </div>
+      </div>
+
+      <!-- Ingreso manual de otra cuenta -->
       <div class="pt-2 border-t border-stone-100">
         <form onsubmit="handleCustomGoogleLogin(event)" class="space-y-2">
-          <label class="text-[11px] font-bold text-stone-500 uppercase tracking-wider block">O ingresa con otra cuenta de Google:</label>
+          <label class="text-[11px] font-bold text-stone-500 uppercase tracking-wider block">O ingresar con otro correo:</label>
           <div class="flex gap-2">
             <input id="customGoogleEmail" type="email" required placeholder="tu.nombre@gmail.com" class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
             <button type="submit" class="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-900 text-white font-bold text-xs transition">
-              Entrar
+              Acceder
             </button>
           </div>
         </form>
       </div>
 
       <div class="pt-2 flex justify-between items-center text-[10px] text-stone-400">
-        <span>Conexión segura SSL &bull; IN2TECHMX</span>
+        <span>Conexión segura SSL &bull; Google OAuth 2.0</span>
         <button onclick="closeGoogleAuthModal()" class="text-stone-500 hover:underline font-semibold">Cerrar</button>
       </div>
     </div>
@@ -673,19 +718,25 @@
       renderGoogleAccountsList();
     }
 
-    function renderUserAuth() {
+        function renderUserAuth() {
       const container = document.getElementById("userAuthContainer");
       if (!container) return;
 
       if (currentUser) {
+        const avatarHtml = currentUser.picture 
+          ? `<img src="${currentUser.picture}" class="w-6 h-6 rounded-lg object-cover border border-emerald-400 shadow-2xs" alt="${currentUser.name}">`
+          : `<span class="w-6 h-6 rounded-lg ${currentUser.avatarBg || 'bg-emerald-600'} text-white font-black text-[10px] flex items-center justify-center shadow-2xs">${currentUser.initials || 'US'}</span>`;
+
+        const dropAvatarHtml = currentUser.picture
+          ? `<img src="${currentUser.picture}" class="w-8 h-8 rounded-xl object-cover border border-emerald-400 shadow-2xs" alt="${currentUser.name}">`
+          : `<span class="w-8 h-8 rounded-xl ${currentUser.avatarBg || 'bg-emerald-600'} text-white font-black text-xs flex items-center justify-center shadow-2xs">${currentUser.initials}</span>`;
+
         container.innerHTML = `
           <div class="relative flex items-center">
-            <button onclick="toggleUserDropdown()" class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-emerald-800/90 hover:bg-emerald-700 text-white text-xs font-semibold border border-emerald-600/40 shadow-sm transition">
-              <span class="w-6 h-6 rounded-lg ${currentUser.avatarBg || 'bg-emerald-600'} text-white font-black text-[10px] flex items-center justify-center shadow-2xs">
-                ${currentUser.initials || 'US'}
-              </span>
+            <button onclick="toggleUserDropdown()" class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-emerald-800/90 hover:bg-emerald-700 text-white text-xs font-semibold border border-emerald-600/40 shadow-sm transition cursor-pointer">
+              ${avatarHtml}
               <div class="text-left hidden md:block">
-                <p class="text-xs font-bold leading-none">${currentUser.name}</p>
+                <p class="text-xs font-bold leading-none flex items-center gap-1">${currentUser.name} ${currentUser.picture ? '<i class="fa-brands fa-google text-[10px] text-emerald-300"></i>' : ''}</p>
                 <p class="text-[10px] text-emerald-300 font-normal leading-tight">${currentUser.email.split('@')[0]}</p>
               </div>
               <i class="fa-solid fa-chevron-down text-[9px] text-emerald-300 ml-0.5"></i>
@@ -694,12 +745,10 @@
             <!-- Menú Desplegable de Usuario -->
             <div id="userDropdown" class="hidden absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-stone-200 z-50 p-2.5 text-stone-800 animate-in fade-in zoom-in duration-100">
               <div class="px-3 py-2 border-b border-stone-100">
-                <div class="flex items-center gap-2">
-                  <span class="w-7 h-7 rounded-lg ${currentUser.avatarBg || 'bg-emerald-600'} text-white font-black text-xs flex items-center justify-center shadow-2xs">
-                    ${currentUser.initials}
-                  </span>
+                <div class="flex items-center gap-2.5">
+                  ${dropAvatarHtml}
                   <div class="min-w-0 flex-1">
-                    <p class="text-xs font-black text-stone-900 truncate">${currentUser.name}</p>
+                    <p class="text-xs font-black text-stone-900 truncate flex items-center gap-1">${currentUser.name} ${currentUser.picture ? '<i class="fa-brands fa-google text-[10px] text-blue-500"></i>' : ''}</p>
                     <p class="text-[11px] text-stone-500 truncate">${currentUser.email}</p>
                   </div>
                 </div>
@@ -718,14 +767,14 @@
         `;
       } else {
         container.innerHTML = `
-          <button onclick="openGoogleAuthModal()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 text-stone-800 text-xs font-bold flex items-center gap-2 transition shadow-sm">
+          <button onclick="openGoogleAuthModal()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 text-stone-800 text-xs font-bold flex items-center gap-2 transition shadow-sm cursor-pointer">
             <svg class="w-4 h-4" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
-            <span class="font-bold">Acceder</span>
+            <span class="font-bold">Acceder con Google</span>
           </button>
         `;
       }
@@ -834,6 +883,359 @@
     }
 
     // ==========================================
+    // 1.1 GOOGLE IDENTITY SERVICES (GIS) & REAL OAUTH 2.0
+    // ==========================================
+    function parseJwt(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+      } catch (e) {
+        console.error("Error al decodificar Google JWT:", e);
+        return null;
+      }
+    }
+
+    function handleGoogleCredentialResponse(response) {
+      if (!response || !response.credential) return;
+      const payload = parseJwt(response.credential);
+      if (payload) {
+        // Asociar rol con el directorio oficial si coincide el correo
+        const emailLower = (payload.email || "").toLowerCase();
+        const matched = Object.values(TEAM_INFO).find(x => x.email.toLowerCase() === emailLower);
+
+        currentUser = {
+          name: payload.name || payload.given_name || (payload.email ? payload.email.split('@')[0] : "Usuario Google"),
+          email: payload.email || "",
+          picture: payload.picture || "",
+          rol: matched ? matched.rol : "Especialista Autorizado Google",
+          avatarBg: matched ? matched.avatarBg : "bg-emerald-700",
+          initials: (payload.given_name ? payload.given_name[0] : "") + (payload.family_name ? payload.family_name[0] : "") || "G",
+          isGoogleReal: true
+        };
+
+        localStorage.setItem("chimay_active_user", JSON.stringify(currentUser));
+        renderUserAuth();
+        initNotifications();
+        closeGoogleAuthModal();
+
+        alert(`👋 ¡Bienvenido ${currentUser.name}! Has iniciado sesión exitosamente con tu cuenta oficial de Google.`);
+      }
+    }
+
+    function initGoogleIdentity() {
+      const container = document.getElementById("gsiButtonContainer");
+      if (!container) return;
+
+      const storedClientId = localStorage.getItem("chimay_google_client_id") || "252501165-chimay.apps.googleusercontent.com";
+      const inp = document.getElementById("inputGoogleClientId");
+      if (inp) inp.value = storedClientId;
+
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+        try {
+          google.accounts.id.initialize({
+            client_id: storedClientId,
+            callback: handleGoogleCredentialResponse,
+            auto_select: false
+          });
+          container.innerHTML = "";
+          google.accounts.id.renderButton(container, {
+            theme: "outline",
+            size: "large",
+            text: "continue_with",
+            shape: "pill",
+            width: 320
+          });
+        } catch (err) {
+          console.warn("Google Identity init notice:", err);
+          renderFallbackGsiButton();
+        }
+      } else {
+        renderFallbackGsiButton();
+      }
+    }
+
+    function renderFallbackGsiButton() {
+      const container = document.getElementById("gsiButtonContainer");
+      if (!container) return;
+      container.innerHTML = `
+        <button type="button" onclick="promptGoogleSignInDirect()" class="w-full max-w-xs mx-auto py-2.5 px-4 rounded-full border border-stone-300 bg-white hover:bg-stone-50 text-stone-800 text-xs font-bold flex items-center justify-center gap-3 transition shadow-xs">
+          <svg class="w-4 h-4" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>Continuar con Google Identity</span>
+        </button>
+      `;
+    }
+
+    function promptGoogleSignInDirect() {
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+        try {
+          google.accounts.id.prompt();
+          return;
+        } catch(e) {}
+      }
+      const email = prompt("Ingresa tu correo oficial de Google:", "arturo.dlb.r@gmail.com");
+      if (email && email.includes('@')) {
+        switchGoogleUser(email.trim());
+      }
+    }
+
+    function toggleClientIdConfig() {
+      const panel = document.getElementById("clientIdConfigPanel");
+      const icon = document.getElementById("iconToggleClientId");
+      if (panel) {
+        panel.classList.toggle("hidden");
+        if (icon) icon.classList.toggle("rotate-180");
+      }
+    }
+
+    function saveGoogleClientId() {
+      const inp = document.getElementById("inputGoogleClientId");
+      const lbl = document.getElementById("clientIdStatusLabel");
+      if (inp && inp.value) {
+        const val = inp.value.trim();
+        localStorage.setItem("chimay_google_client_id", val);
+        if (lbl) lbl.textContent = "✓ Client ID guardado en tu navegador.";
+        initGoogleIdentity();
+      }
+    }
+
+    // ==========================================
+    // 1.2 CREACIÓN DE TAREAS DESDE LA WEB (➕ NUEVA TAREA)
+    // ==========================================
+    function openCreateTaskModal() {
+      const modal = document.getElementById("createTaskModal");
+      if (!modal) return;
+
+      // Calcular próximo WBS ID disponible
+      let maxNum = 0;
+      tasksData.forEach(t => {
+        const match = String(t.id).match(/TSK-(\d+)/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      });
+      const nextId = `TSK-${String(maxNum + 1).padStart(2, '0')}`;
+      const inpId = document.getElementById("newTaskWbsId");
+      if (inpId) inpId.value = nextId;
+
+      // Poblar Etapas activas
+      const selectEtapa = document.getElementById("newTaskEtapa");
+      if (selectEtapa) {
+        const etapas = getAllEtapas();
+        selectEtapa.innerHTML = "";
+        etapas.forEach(et => {
+          const opt = document.createElement("option");
+          opt.value = et;
+          opt.textContent = et;
+          selectEtapa.appendChild(opt);
+        });
+      }
+
+      // Fechas por defecto: hoy e inicio + 7 días
+      const hoy = new Date();
+      const en7Dias = new Date(hoy.getTime() + 7 * 86400000);
+      const strHoy = hoy.toISOString().split('T')[0];
+      const str7Dias = en7Dias.toISOString().split('T')[0];
+
+      const inpStart = document.getElementById("newTaskStart");
+      const inpEnd = document.getElementById("newTaskEnd");
+      if (inpStart) inpStart.value = strHoy;
+      if (inpEnd) inpEnd.value = str7Dias;
+
+      // Resetear inputs de texto
+      const inpName = document.getElementById("newTaskName");
+      const inpNota = document.getElementById("newTaskNota");
+      if (inpName) inpName.value = "";
+      if (inpNota) inpNota.value = "";
+
+      updateNewTaskCostPreview();
+      modal.classList.remove("hidden");
+    }
+
+    function closeCreateTaskModal() {
+      const modal = document.getElementById("createTaskModal");
+      if (modal) modal.classList.add("hidden");
+    }
+
+    function updateNewTaskCostPreview() {
+      const selectResp = document.getElementById("newTaskResp");
+      const inpHoras = document.getElementById("newTaskHoras");
+      const inpMat = document.getElementById("newTaskMat");
+      const inpTerc = document.getElementById("newTaskTerc");
+      const lblPers = document.getElementById("lblPreviewCostoPers");
+      const lblTot = document.getElementById("lblPreviewCostoTot");
+
+      const resp = selectResp ? selectResp.value : "Arturo B.";
+      const tarifa = (resp.includes("Chiyo")) ? 140 : 200;
+      const horas = Number(inpHoras ? inpHoras.value : 10) || 0;
+      const mat = Number(inpMat ? inpMat.value : 0) || 0;
+      const terc = Number(inpTerc ? inpTerc.value : 0) || 0;
+
+      const costoPers = horas * tarifa;
+      const costoTot = costoPers + mat + terc;
+
+      if (lblPers) lblPers.textContent = `$${costoPers.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+      if (lblTot) lblTot.textContent = `$${costoTot.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`;
+    }
+
+    async function handleSaveNewTask(e) {
+      e.preventDefault();
+      const id = document.getElementById("newTaskWbsId").value.trim().toUpperCase();
+      const name = document.getElementById("newTaskName").value.trim();
+      const etapa = document.getElementById("newTaskEtapa").value;
+      const resp = document.getElementById("newTaskResp").value;
+      const start = document.getElementById("newTaskStart").value;
+      const end = document.getElementById("newTaskEnd").value;
+      const estado = document.getElementById("newTaskEstado").value;
+      const prioridad = document.getElementById("newTaskPrioridad").value;
+      const horas = Number(document.getElementById("newTaskHoras").value) || 0;
+      const mat = Number(document.getElementById("newTaskMat").value) || 0;
+      const terc = Number(document.getElementById("newTaskTerc").value) || 0;
+      const nota = document.getElementById("newTaskNota").value.trim();
+
+      const tarifa = resp.includes("Chiyo") ? 140 : 200;
+      const costoPers = horas * tarifa;
+      const costoTot = costoPers + mat + terc;
+      let progress = 0;
+      if (estado === "Completada") progress = 100;
+      else if (estado === "En Progreso") progress = 50;
+
+      const newTask = {
+        id: id,
+        name: name,
+        etapa: etapa,
+        responsable: resp,
+        horas: horas,
+        costoPersonal: costoPers,
+        costoMateriales: mat,
+        costoTerceros: terc,
+        costoTotal: costoTot,
+        start: start,
+        end: end,
+        progress: progress,
+        estado: estado,
+        prioridad: prioridad
+      };
+
+      // Agregar a tasksData en memoria
+      tasksData.push(newTask);
+
+      // Persistir tareas personalizadas en localStorage
+      try {
+        let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+        customTasks = customTasks.filter(t => t.id !== id);
+        customTasks.push(newTask);
+        localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
+      } catch (err) {}
+
+      // Si incluye nota inicial, guardarla en bitácora de chat
+      if (nota) {
+        if (!taskComments[id]) taskComments[id] = [];
+        const author = currentUser || { name: "Arturo B.", email: "arturo.dlb.r@gmail.com", rol: "Operaciones", avatarBg: "bg-blue-600", initials: "AB" };
+        taskComments[id].push({
+          id: `cmt-${Date.now()}`,
+          author: author.name,
+          email: author.email,
+          rol: author.rol,
+          avatarBg: author.avatarBg,
+          initials: author.initials,
+          timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+          text: `✓ Nota inicial: ${nota}`,
+          canal: "Web"
+        });
+        localStorage.setItem("chimay_task_comments", JSON.stringify(taskComments));
+      }
+
+      // Generar alerta de nueva tarea asignada
+      try {
+        const specObj = TEAM_INFO[resp];
+        const targetEmail = specObj ? specObj.email : "arturo.dlb.r@gmail.com";
+        const notifKey = `chimay_notifications_${targetEmail}`;
+        let userNotifs = JSON.parse(localStorage.getItem(notifKey) || "[]");
+        userNotifs.unshift({
+          id: `notif-asig-${Date.now()}`,
+          category: "asignacion",
+          taskId: id,
+          taskName: name,
+          author: currentUser ? currentUser.name : "Sistema Central",
+          text: `Nueva tarea asignada en ${etapa}. Límite: ${end}`,
+          reason: "Has sido asignado como especialista responsable de esta actividad.",
+          timestamp: "Hace un momento",
+          read: false
+        });
+        localStorage.setItem(notifKey, JSON.stringify(userNotifs));
+        initNotifications();
+      } catch (err) {}
+
+      // Re-renderizar vistas activas
+      populateEtapasDropdown();
+      populateRecursosDropdown();
+      const container = document.getElementById("viewContainer");
+      if (container) {
+        if (currentView === "todos") renderGlobalView(container);
+        else renderSpecialistView(container, currentView);
+      }
+      updateEtapaBarInfo();
+      closeCreateTaskModal();
+
+      alert(`✅ Tarea ${id} creada exitosamente en el cronograma.
+Sincronizando con Google Sheets...`);
+
+      // Enviar asíncronamente a Google Sheets vía POST
+      if (webAppUrl) {
+        try {
+          fetch(webAppUrl, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              accion: "crear",
+              id: newTask.id,
+              nombre: newTask.name,
+              etapa: newTask.etapa,
+              responsable: newTask.responsable,
+              horas: newTask.horas,
+              costoPersonal: newTask.costoPersonal,
+              costoMateriales: newTask.costoMateriales,
+              costoTerceros: newTask.costoTerceros,
+              costoTotal: newTask.costoTotal,
+              fechaInicio: newTask.start,
+              fechaLimite: newTask.end,
+              estado: newTask.estado,
+              prioridad: newTask.prioridad,
+              notaInicial: nota
+            })
+          });
+        } catch (err) {
+          console.warn("POST a Google Sheets en background:", err);
+        }
+      }
+    }
+
+    // ==========================================
+    // 1.3 MODAL Y AYUDA DE WHATSAPP BOT
+    // ==========================================
+    function openWhatsappModal() {
+      const m = document.getElementById("whatsappModal");
+      if (m) m.classList.remove("hidden");
+    }
+
+    function closeWhatsappModal() {
+      const m = document.getElementById("whatsappModal");
+      if (m) m.classList.add("hidden");
+    }
+
+
+    // ==========================================
     // 2. SISTEMA DE BITÁCORA / CHAT ESTILO JIRA
     // ==========================================
     function initCommentsData() {
@@ -887,6 +1289,11 @@
       comments.forEach(c => {
         const bubble = document.createElement("div");
         bubble.className = "flex items-start gap-2.5";
+        const isWhatsapp = c.canal === 'WhatsApp' || (c.text && c.text.includes('(vía WhatsApp)'));
+        const channelBadge = isWhatsapp
+          ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 text-green-800 border border-green-200 flex items-center gap-1"><i class="fa-brands fa-whatsapp text-green-600"></i> WhatsApp</span>`
+          : `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-800 border border-blue-100">Web</span>`;
+
         bubble.innerHTML = `
           <span class="w-7 h-7 rounded-lg ${c.avatarBg || 'bg-stone-700'} text-white font-black text-[10px] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
             ${c.initials || 'US'}
@@ -897,6 +1304,7 @@
                 <span class="font-black text-stone-900 text-xs">${c.author}</span>
                 <span class="text-[10px] text-stone-400">&bull;</span>
                 <span class="text-[10px] text-emerald-800 font-bold">${c.rol || 'Especialista'}</span>
+                ${channelBadge}
               </div>
               <span class="text-[10px] text-stone-400 font-mono shrink-0">${c.timestamp || ''}</span>
             </div>
@@ -2175,7 +2583,7 @@
       }
     }
 
-    // Sincronización desde Google Sheets (Apps Script)
+    // Sincronización robusta y bidireccional desde Google Sheets (Apps Script)
     async function fetchTasksFromSheets() {
       if (!webAppUrl) return;
       const icon = document.getElementById("refreshIcon");
@@ -2183,8 +2591,31 @@
       try {
         const res = await fetch(webAppUrl);
         const json = await res.json();
+
+        // 1. Si entrega tareas estructuradas en JSON
         if (json && json.success && json.tareas && Array.isArray(json.tareas) && json.tareas.length > 0) {
           tasksData = json.tareas;
+
+          // Combinar tareas creadas localmente que aún no estén en Sheets
+          try {
+            const customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+            customTasks.forEach(ct => {
+              if (!tasksData.some(t => t.id === ct.id)) {
+                tasksData.push(ct);
+              }
+            });
+          } catch(e) {}
+
+          // Si incluye comentarios de bitácora
+          if (json.comentarios && Array.isArray(json.comentarios)) {
+            json.comentarios.forEach(c => {
+              if (!taskComments[c.taskId]) taskComments[c.taskId] = [];
+              if (!taskComments[c.taskId].some(x => x.id === c.id)) {
+                taskComments[c.taskId].push(c);
+              }
+            });
+          }
+
           populateEtapasDropdown();
           populateRecursosDropdown();
           const container = document.getElementById("viewContainer");
@@ -2198,13 +2629,23 @@
             lbl.innerText = `Sincronizado: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
           }
         } else if (json && json.status === "online") {
+          // Si entrega status online, también cargar las tareas creadas localmente
+          try {
+            const customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+            customTasks.forEach(ct => {
+              if (!tasksData.some(t => t.id === ct.id)) {
+                tasksData.push(ct);
+              }
+            });
+          } catch(e) {}
+
           const lbl = document.getElementById("lastSyncLabel");
           if (lbl) {
             lbl.innerText = `Sheets Conectado (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`;
           }
         }
       } catch (e) {
-        console.warn("Usando datos locales de respaldo con etapas cargadas:", e);
+        console.warn("Sincronización fallback con datos locales:", e);
       } finally {
         if (icon) icon.classList.remove("fa-spin");
       }
@@ -2225,6 +2666,7 @@
 
     // Inicialización al cargar la página
     initGoogleAuth();
+    initGoogleIdentity();
     initCommentsData();
     initNotifications();
     populateEtapasDropdown();
@@ -2260,5 +2702,188 @@
       if (webAppUrl) fetchTasksFromSheets();
     }, 30000);
   </script>
+  <!-- Modal Crear Nueva Tarea (Web Interface) -->
+  <div id="createTaskModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-sm font-bold shadow-2xs">
+            <i class="fa-solid fa-plus"></i>
+          </span>
+          <div>
+            <h3 class="text-base font-black text-stone-900 leading-tight">Crear Nueva Tarea Operativa</h3>
+            <p class="text-[11px] text-stone-400">Sincronización instantánea con Google Sheets & Gantt Maestro</p>
+          </div>
+        </div>
+        <button onclick="closeCreateTaskModal()" class="text-stone-400 hover:text-stone-700 text-lg p-1 rounded-lg hover:bg-stone-100">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleSaveNewTask(event)" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">ID WBS / Tarea:</label>
+            <input id="newTaskWbsId" type="text" required class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-emerald-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Nombre de la Tarea:</label>
+            <input id="newTaskName" type="text" required placeholder="Ej: Instalación de sensores LoRaWAN en pozo..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Etapa de Trabajo:</label>
+            <select id="newTaskEtapa" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+              <!-- Opciones dinámicas de etapas -->
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Responsable Principal:</label>
+            <select id="newTaskResp" onchange="updateNewTaskCostPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+              <option value="Arturo B.">Arturo B. (Operaciones - $200/h)</option>
+              <option value="Gema R.">Gema R. (Dirección Agroecológica - $200/h)</option>
+              <option value="Arturo A.">Arturo A. (Finanzas e Infraestructura - $200/h)</option>
+              <option value="Don Chiyo">Don Chiyo (Encargado de Rancho - $140/h)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Fecha de Inicio:</label>
+            <input id="newTaskStart" type="date" required class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Fecha Límite:</label>
+            <input id="newTaskEnd" type="date" required class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Estado Inicial:</label>
+            <select id="newTaskEstado" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+              <option value="No Iniciada">No Iniciada</option>
+              <option value="En Progreso">En Progreso</option>
+              <option value="Completada">Completada</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Prioridad:</label>
+            <select id="newTaskPrioridad" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+              <option value="Media">Media</option>
+              <option value="Alta">Alta</option>
+              <option value="Crítica">Crítica</option>
+              <option value="Baja">Baja</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Calculadora de Costos Tripartita -->
+        <div class="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200/70 space-y-2">
+          <span class="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+            <i class="fa-solid fa-calculator text-emerald-700"></i> Desglose de Presupuesto Estimado:
+          </span>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="text-[11px] font-bold text-stone-600 block mb-1">Horas Estimadas:</label>
+              <input id="newTaskHoras" type="number" min="0" value="10" oninput="updateNewTaskCostPreview()" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold">
+            </div>
+            <div>
+              <label class="text-[11px] font-bold text-stone-600 block mb-1">Materiales / Insumos ($):</label>
+              <input id="newTaskMat" type="number" min="0" value="0" oninput="updateNewTaskCostPreview()" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold">
+            </div>
+            <div>
+              <label class="text-[11px] font-bold text-stone-600 block mb-1">Servicios Terceros ($):</label>
+              <input id="newTaskTerc" type="number" min="0" value="0" oninput="updateNewTaskCostPreview()" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold">
+            </div>
+          </div>
+          <div class="pt-2 border-t border-emerald-200/50 flex items-center justify-between text-xs">
+            <span class="text-stone-600 font-medium">Personal: <strong id="lblPreviewCostoPers" class="text-stone-900">$2,000.00</strong></span>
+            <span class="text-emerald-950 font-black text-sm">Costo Total: <strong id="lblPreviewCostoTot" class="text-emerald-800">$2,000.00 MXN</strong></span>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-bold text-stone-600 block mb-1">Nota Inicial / Bitácora (Opcional):</label>
+          <textarea id="newTaskNota" rows="2" placeholder="Instrucciones o especificaciones iniciales para el responsable..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-stone-100">
+          <button type="button" onclick="closeCreateTaskModal()" class="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 text-xs font-bold hover:bg-stone-50 transition">
+            Cancelar
+          </button>
+          <button type="submit" id="btnSubmitNewTask" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm flex items-center gap-2">
+            <i class="fa-solid fa-cloud-arrow-up"></i> Guardar y Sincronizar Tarea
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Guía WhatsApp Bot -->
+  <div id="whatsappModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-xl bg-green-100 text-green-700 flex items-center justify-center text-base font-bold shadow-2xs">
+            <i class="fa-brands fa-whatsapp"></i>
+          </span>
+          <div>
+            <h3 class="text-base font-black text-stone-900 leading-tight">Asistente Operativo WhatsApp</h3>
+            <p class="text-[11px] text-stone-400">Control de Tareas y Chat en Campo</p>
+          </div>
+        </div>
+        <button onclick="closeWhatsappModal()" class="text-stone-400 hover:text-stone-700 text-lg p-1 rounded-lg hover:bg-stone-100">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-stone-700">
+        <p class="leading-relaxed">
+          Desde tu celular en WhatsApp puedes gestionar directamente las actividades de <strong>San Pedro Chimay</strong> sin necesidad de entrar a la computadora:
+        </p>
+
+        <div class="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
+          <p class="font-bold text-stone-900 flex items-center gap-1.5">
+            <i class="fa-solid fa-terminal text-emerald-700"></i> Comandos Soportados en WhatsApp:
+          </p>
+          <ul class="space-y-1.5 text-[11px]">
+            <li class="p-1.5 rounded-lg bg-white border border-stone-100">
+              <strong class="text-emerald-800 font-mono">mis tareas</strong>: Muestra tu lista de actividades asignadas con fecha límite y estado.
+            </li>
+            <li class="p-1.5 rounded-lg bg-white border border-stone-100">
+              <strong class="text-blue-800 font-mono">TSK-09: [tu mensaje]</strong>: Publica en el chat de esa tarea en la web con la etiqueta <span class="px-1 bg-green-100 text-green-800 font-bold rounded">📱 WhatsApp</span>.
+            </li>
+            <li class="p-1.5 rounded-lg bg-white border border-stone-100">
+              <strong class="text-emerald-700 font-mono">completar TSK-09</strong>: Marca la tarea como finalizada en Google Sheets y Google Tasks.
+            </li>
+            <li class="p-1.5 rounded-lg bg-white border border-stone-100">
+              <strong class="text-amber-700 font-mono">iniciar TSK-11</strong>: Pone la tarea en estado "En Progreso".
+            </li>
+            <li class="p-1.5 rounded-lg bg-white border border-stone-100">
+              <strong class="text-purple-700 font-mono">crear [nombre] para [persona]</strong>: Registra una nueva tarea directamente en Sheets.
+            </li>
+          </ul>
+        </div>
+
+        <div class="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 space-y-1">
+          <p class="text-[11px] font-bold text-emerald-950">Webhook Oficial de Google Apps Script:</p>
+          <p class="text-[10px] font-mono text-emerald-800 bg-white p-2 rounded-xl border border-emerald-200 break-all select-all">
+            https://script.google.com/macros/s/AKfycbzELfx7e7LBojMnRPLLq6CSCyUH7TawfkJsEjBwhRciy5RVF0StL37LTAVq4t6lKUuq/exec
+          </p>
+          <p class="text-[10px] text-emerald-700">
+            Conecta este endpoint a tu número en Twilio for WhatsApp, Meta Cloud API o Make.com.
+          </p>
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button onclick="closeWhatsappModal()" class="px-4 py-1.5 rounded-xl bg-stone-800 text-white font-bold text-xs hover:bg-stone-900 transition">
+          Entendido
+        </button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
