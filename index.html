@@ -112,125 +112,42 @@
     </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full space-y-6">
+  <!-- Barra de Navegación de Vistas (Transición Limpia) -->
+  <nav class="bg-white border-b border-stone-200 shadow-2xs sticky top-[57px] sm:top-[64px] z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 overflow-x-auto">
+      <div class="flex items-center gap-1.5 sm:gap-2 flex-nowrap">
+        <span class="text-[11px] font-bold text-stone-400 uppercase tracking-wider mr-1 hidden md:inline">Vistas:</span>
+        <button class="nav-view-btn px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-emerald-800 text-white shadow-sm" data-view="todos" onclick="transitionToView('todos')">
+          <i class="fa-solid fa-globe text-emerald-300"></i> Vista Global (Ventana 1)
+        </button>
+        <button class="nav-view-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap bg-stone-100 hover:bg-stone-200 text-stone-700" data-view="Arturo B." onclick="transitionToView('Arturo B.')">
+          <span class="w-2 h-2 rounded-full bg-blue-500"></span> Arturo B.
+        </button>
+        <button class="nav-view-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap bg-stone-100 hover:bg-stone-200 text-stone-700" data-view="Gema R." onclick="transitionToView('Gema R.')">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Gema R.
+        </button>
+        <button class="nav-view-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap bg-stone-100 hover:bg-stone-200 text-stone-700" data-view="Arturo A." onclick="transitionToView('Arturo A.')">
+          <span class="w-2 h-2 rounded-full bg-purple-500"></span> Arturo A.
+        </button>
+        <button class="nav-view-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap bg-stone-100 hover:bg-stone-200 text-stone-700" data-view="Don Chiyo" onclick="transitionToView('Don Chiyo')">
+          <span class="w-2 h-2 rounded-full bg-amber-500"></span> Don Chiyo
+        </button>
+      </div>
 
-    <!-- KPI Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm flex items-center justify-between">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-wider text-stone-500">Total Tareas</p>
-          <p id="kpiTotal" class="text-2xl font-black text-stone-800 mt-1">5</p>
-        </div>
-        <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg">
-          <i class="fa-solid fa-list-check"></i>
-        </div>
-      </div>
-      <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm flex items-center justify-between">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-wider text-amber-600">En Progreso</p>
-          <p id="kpiProgreso" class="text-2xl font-black text-amber-600 mt-1">2</p>
-        </div>
-        <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-lg">
-          <i class="fa-solid fa-spinner animate-spin"></i>
-        </div>
-      </div>
-      <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm flex items-center justify-between">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-wider text-emerald-600">Completadas</p>
-          <p id="kpiCompletadas" class="text-2xl font-black text-emerald-700 mt-1">0</p>
-        </div>
-        <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg">
-          <i class="fa-solid fa-circle-check"></i>
-        </div>
-      </div>
-      <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm flex items-center justify-between">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-wider text-stone-500">Inversión Piloto</p>
-          <p id="kpiCosto" class="text-2xl font-black text-emerald-900 mt-1">$118,600</p>
-        </div>
-        <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg">
-          <i class="fa-solid fa-sack-dollar"></i>
-        </div>
+      <!-- Selector de Escala Temporal Compartido -->
+      <div class="inline-flex rounded-lg border border-stone-200 p-0.5 bg-stone-100 text-xs font-semibold flex-shrink-0">
+        <button class="scale-btn px-2.5 py-1 rounded text-stone-600 hover:text-emerald-800 transition" data-scale="Day" onclick="changeGlobalScale('Day')">Día</button>
+        <button class="scale-btn px-2.5 py-1 rounded bg-white shadow-xs text-emerald-900 font-bold transition" data-scale="Week" onclick="changeGlobalScale('Week')">Semana</button>
+        <button class="scale-btn px-2.5 py-1 rounded text-stone-600 hover:text-emerald-800 transition" data-scale="Month" onclick="changeGlobalScale('Month')">Mes</button>
       </div>
     </div>
+  </nav>
 
-    <!-- Controls Bar -->
-    <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-      <!-- Filtro Responsable -->
-      <div class="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-        <span class="text-xs font-bold text-stone-500 uppercase mr-1">Equipo:</span>
-        <button class="filter-btn px-3 py-1 rounded-full text-xs font-semibold bg-emerald-800 text-white transition shadow-xs" data-resp="todos">Todos</button>
-        <button class="filter-btn px-3 py-1 rounded-full text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 transition" data-resp="Arturo B.">Arturo B.</button>
-        <button class="filter-btn px-3 py-1 rounded-full text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 transition" data-resp="Gema R.">Gema R.</button>
-        <button class="filter-btn px-3 py-1 rounded-full text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 transition" data-resp="Arturo A.">Arturo A.</button>
-        <button class="filter-btn px-3 py-1 rounded-full text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 transition" data-resp="Don Chiyo">Don Chiyo</button>
-      </div>
-
-      <!-- Vistas y Escalas -->
-      <div class="flex items-center gap-2 w-full md:w-auto justify-end">
-        <div class="inline-flex rounded-lg border border-stone-200 p-1 bg-stone-50">
-          <button id="viewGantt" class="px-3 py-1 rounded-md text-xs font-bold bg-white shadow-xs text-emerald-900 flex items-center gap-1.5">
-            <i class="fa-solid fa-chart-gantt"></i> Gantt
-          </button>
-          <button id="viewCards" class="px-3 py-1 rounded-md text-xs font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1.5">
-            <i class="fa-solid fa-table-columns"></i> Tarjetas
-          </button>
-        </div>
-
-        <div id="ganttModes" class="inline-flex rounded-lg border border-stone-200 p-1 bg-stone-50 text-xs font-semibold">
-          <button class="mode-btn px-2.5 py-1 rounded text-stone-600 hover:text-emerald-800" data-mode="Day">Día</button>
-          <button class="mode-btn px-2.5 py-1 rounded bg-white shadow-xs text-emerald-900 font-bold" data-mode="Week">Semana</button>
-          <button class="mode-btn px-2.5 py-1 rounded text-stone-600 hover:text-emerald-800" data-mode="Month">Mes</button>
-        </div>
-      </div>
+  <!-- Contenedor Único y Dinámico de la Vista Activa (NUNCA ANIDADAS) -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
+    <div id="viewContainer" class="space-y-6">
+      <!-- Se genera e inyecta dinámicamente: Vista Global O Vista Especialista -->
     </div>
-
-    <!-- Gantt View Container -->
-    <div id="ganttSection" class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-base font-bold text-stone-800 flex items-center gap-2">
-          <i class="fa-solid fa-timeline text-emerald-600"></i> Cronograma de Hitos y Tareas en Campo
-        </h2>
-        <span class="text-xs text-stone-400 italic">Haz clic en cualquier barra para ver el detalle y completarla</span>
-      </div>
-      <div id="ganttWrapper" class="relative w-full overflow-x-auto min-h-[360px]">
-        <div id="ganttChartMount">
-          <svg id="ganttChart"></svg>
-        </div>
-      </div>
-    </div>
-
-    <!-- Cards / Kanban View Container -->
-    <div id="cardsSection" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6">
-      <!-- Columna No Iniciada -->
-      <div class="bg-stone-100/70 p-4 rounded-xl border border-stone-200 flex flex-col space-y-3">
-        <div class="flex items-center justify-between font-bold text-xs uppercase tracking-wider text-stone-600 border-b pb-2">
-          <span>⚪ No Iniciada</span>
-          <span id="badgeNoIniciada" class="px-2 py-0.5 rounded-full bg-stone-200 text-stone-800">3</span>
-        </div>
-        <div id="colNoIniciada" class="space-y-3 flex-1"></div>
-      </div>
-
-      <!-- Columna En Progreso -->
-      <div class="bg-amber-50/50 p-4 rounded-xl border border-amber-200/70 flex flex-col space-y-3">
-        <div class="flex items-center justify-between font-bold text-xs uppercase tracking-wider text-amber-800 border-b border-amber-200 pb-2">
-          <span>🟡 En Progreso</span>
-          <span id="badgeEnProgreso" class="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">2</span>
-        </div>
-        <div id="colEnProgreso" class="space-y-3 flex-1"></div>
-      </div>
-
-      <!-- Columna Completada -->
-      <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200/70 flex flex-col space-y-3">
-        <div class="flex items-center justify-between font-bold text-xs uppercase tracking-wider text-emerald-800 border-b border-emerald-200 pb-2">
-          <span>🟢 Completada</span>
-          <span id="badgeCompletada" class="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900">0</span>
-        </div>
-        <div id="colCompletada" class="space-y-3 flex-1"></div>
-      </div>
-    </div>
-
   </main>
 
   <!-- Modal Detalle Tarea -->
@@ -305,7 +222,43 @@
   </footer>
 
   <script>
-    // Datos locales iniciales de respaldo
+    // Metadatos de los Especialistas del Ecosistema IN2TECHMX
+    const TEAM_INFO = {
+      "Arturo B.": {
+        name: "Arturo B.",
+        rol: "Operaciones, Zonificación y Ejecución de Terreno",
+        tarifa: "$200.00 MXN/h (40h/sem)",
+        email: "arturo.dlb.r@gmail.com",
+        avatarBg: "bg-blue-600",
+        initials: "AB"
+      },
+      "Gema R.": {
+        name: "Gema R.",
+        rol: "Dirección Agroecológica, Certificaciones y Calidad",
+        tarifa: "$200.00 MXN/h (25h/sem)",
+        email: "gemaromerom22@gmail.com",
+        avatarBg: "bg-emerald-600",
+        initials: "GR"
+      },
+      "Arturo A.": {
+        name: "Arturo A.",
+        rol: "Infraestructura, Automatización y Finanzas",
+        tarifa: "$200.00 MXN/h (25h/sem)",
+        email: "in2techmx@gmail.com",
+        avatarBg: "bg-purple-600",
+        initials: "AA"
+      },
+      "Don Chiyo": {
+        name: "Don Chiyo",
+        rol: "Encargado de Rancho, Riego y Labores Culturales",
+        tarifa: "$140.00 MXN/h (48h/sem)",
+        email: "chiyo.rancho@in2tech.mx",
+        avatarBg: "bg-amber-600",
+        initials: "DC"
+      }
+    };
+
+    // Datos locales iniciales de respaldo (se actualizan automáticamente al sincronizar con Sheets)
     let tasksData = [
       { id: "TSK-PIL-01", name: "Delimitación en campo de Zona Piloto (1000 a 5000 m2)", responsable: "Arturo B.", horas: 16, costoPersonal: 3200, costoMateriales: 1200, costoTerceros: 0, costoTotal: 4400, start: "2026-09-20", end: "2026-09-25", progress: 50, estado: "En Progreso", prioridad: "Alta" },
       { id: "TSK-PIL-02", name: "Gestión de Título de Concesión Pozo N° 1 CONAGUA", responsable: "Gema R.", horas: 25, costoPersonal: 5000, costoMateriales: 0, costoTerceros: 4500, costoTotal: 9500, start: "2026-09-18", end: "2026-10-15", progress: 50, estado: "En Progreso", prioridad: "Crítica" },
@@ -314,58 +267,271 @@
       { id: "TSK-PIL-05", name: "Siembra Primer Lote de Brotes (800 charolas sin suelo)", responsable: "Arturo A.", horas: 30, costoPersonal: 6000, costoMateriales: 18200, costoTerceros: 0, costoTotal: 24200, start: "2026-10-15", end: "2026-10-28", progress: 0, estado: "No Iniciada", prioridad: "Alta" }
     ];
 
-    let ganttChart = null;
-    let currentFilter = "todos";
+    // Estados de la Aplicación
+    let currentView = "todos";       // 'todos' | 'Arturo B.' | 'Gema R.' | 'Arturo A.' | 'Don Chiyo'
+    let currentMode = "Week";        // 'Day' | 'Week' | 'Month'
+    let currentSubView = "gantt";     // 'gantt' | 'cards'
     let selectedTaskId = null;
     let webAppUrl = localStorage.getItem("chimay_webapp_url") || "";
 
-    // Cargar tareas desde Apps Script si hay URL
-    async function fetchTasksFromSheets() {
-      if (!webAppUrl) return;
-      const icon = document.getElementById("refreshIcon");
-      if (icon) icon.classList.add("fa-spin");
-      try {
-        const res = await fetch(webAppUrl);
-        const json = await res.json();
-        if (json && json.success && json.tareas && json.tareas.length > 0) {
-          tasksData = json.tareas;
-          renderAll();
-          const lbl = document.getElementById("lastSyncLabel");
-          if (lbl) {
-            const now = new Date();
-            lbl.innerText = `Sincronizado: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
-          }
+    // Función de Transición entre Vistas (Garantiza CERO Anidamiento)
+    function transitionToView(viewId) {
+      currentView = viewId;
+
+      // 1. Actualizar estilos de los botones en la barra de navegación superior
+      document.querySelectorAll(".nav-view-btn").forEach(btn => {
+        const v = btn.getAttribute("data-view");
+        if (v === viewId) {
+          btn.className = "nav-view-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-800 text-white shadow-sm flex items-center gap-1.5 whitespace-nowrap transition";
+        } else {
+          btn.className = "nav-view-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1.5 whitespace-nowrap transition";
         }
-      } catch (e) {
-        console.warn("Usando datos locales de respaldo:", e);
-      } finally {
-        if (icon) icon.classList.remove("fa-spin");
+      });
+
+      const container = document.getElementById("viewContainer");
+      if (!container) return;
+
+      // 2. Animación de salida (fade out)
+      container.style.opacity = "0";
+      container.style.transform = "translateY(4px)";
+
+      setTimeout(() => {
+        // 3. LIMPIEZA ABSOLUTA DEL DOM ANTERIOR (Evita cualquier anidamiento)
+        container.innerHTML = "";
+
+        if (viewId === "todos") {
+          renderGlobalView(container);
+        } else {
+          renderSpecialistView(container, viewId);
+        }
+
+        // 4. Animación de entrada (fade in)
+        container.style.opacity = "1";
+        container.style.transform = "translateY(0)";
+      }, 90);
+    }
+
+    // Renderizado de la Ventana 1: Cronograma Global Maestro
+    function renderGlobalView(container) {
+      const total = tasksData.length;
+      const prog = tasksData.filter(t => t.estado === "En Progreso").length;
+      const comp = tasksData.filter(t => t.estado === "Completada").length;
+      const costo = tasksData.reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
+
+      container.innerHTML = `
+        <!-- Encabezado de la Vista Global -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-stone-200 shadow-xs">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">Ventana 1 &bull; Consolidada</span>
+              <h2 class="text-lg font-black text-stone-900">Cronograma Maestro del Proyecto Chimay</h2>
+            </div>
+            <p class="text-xs text-stone-500 mt-0.5">Visualización completa de todas las tareas, responsables e inversión del rancho.</p>
+          </div>
+          <div class="inline-flex rounded-lg border border-stone-200 p-1 bg-stone-50">
+            <button id="btnToggleGantt" class="px-3 py-1 rounded-md text-xs font-bold ${currentSubView === 'gantt' ? 'bg-white shadow-xs text-emerald-900' : 'text-stone-600 hover:text-stone-900'} flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-chart-gantt"></i> Gantt
+            </button>
+            <button id="btnToggleCards" class="px-3 py-1 rounded-md text-xs font-bold ${currentSubView === 'cards' ? 'bg-white shadow-xs text-emerald-900' : 'text-stone-600 hover:text-stone-900'} flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-table-columns"></i> Tarjetas
+            </button>
+          </div>
+        </div>
+
+        <!-- Tarjetas KPI Globales -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
+            <div><p class="text-xs font-bold uppercase tracking-wider text-stone-500">Total Tareas</p><p class="text-2xl font-black text-stone-800 mt-1">${total}</p></div>
+            <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg"><i class="fa-solid fa-list-check"></i></div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
+            <div><p class="text-xs font-bold uppercase tracking-wider text-amber-600">En Progreso</p><p class="text-2xl font-black text-amber-600 mt-1">${prog}</p></div>
+            <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-lg"><i class="fa-solid fa-spinner animate-spin"></i></div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
+            <div><p class="text-xs font-bold uppercase tracking-wider text-emerald-600">Completadas</p><p class="text-2xl font-black text-emerald-700 mt-1">${comp}</p></div>
+            <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg"><i class="fa-solid fa-circle-check"></i></div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
+            <div><p class="text-xs font-bold uppercase tracking-wider text-stone-500">Inversión Piloto</p><p class="text-2xl font-black text-emerald-900 mt-1">$${costo.toLocaleString("es-MX")}</p></div>
+            <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg"><i class="fa-solid fa-sack-dollar"></i></div>
+          </div>
+        </div>
+
+        <!-- Vista Gantt Global -->
+        <div id="globalGanttSection" class="${currentSubView === 'gantt' ? '' : 'hidden'} bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+          <div class="flex justify-between items-center">
+            <h3 class="text-sm font-bold text-stone-800 flex items-center gap-2">
+              <i class="fa-solid fa-timeline text-emerald-600"></i> Línea Temporal General de Operaciones
+            </h3>
+            <span class="text-xs text-stone-400 italic">Haz clic en cualquier barra para ver detalles o marcarla completada</span>
+          </div>
+          <div class="w-full overflow-x-auto min-h-[300px]">
+            <svg id="globalGanttSvg"></svg>
+          </div>
+        </div>
+
+        <!-- Vista Kanban Cards Global -->
+        <div id="globalCardsSection" class="${currentSubView === 'cards' ? '' : 'hidden'} grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-stone-100/70 p-4 rounded-xl border border-stone-200 flex flex-col space-y-3">
+            <div class="flex items-center justify-between font-bold text-xs uppercase tracking-wider text-stone-600 border-b pb-2">
+              <span>⚪ No Iniciada</span>
+              <span id="kBadgeNoInic" class="px-2 py-0.5 rounded-full bg-stone-200 text-stone-800">0</span>
+            </div>
+            <div id="kColNoInic" class="space-y-3 flex-1"></div>
+          </div>
+          <div class="bg-amber-50/50 p-4 rounded-xl border border-amber-200/70 flex flex-col space-y-3">
+            <div class="flex items-center justify-between font-bold text-xs uppercase tracking-wider text-amber-800 border-b border-amber-200 pb-2">
+              <span>🟡 En Progreso</span>
+              <span id="kBadgeProg" class="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">0</span>
+            </div>
+            <div id="kColProg" class="space-y-3 flex-1"></div>
+          </div>
+          <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200/70 flex flex-col space-y-3">
+            <div class="flex items-center justify-between font-bold text-xs uppercase tracking-wider text-emerald-800 border-b border-emerald-200 pb-2">
+              <span>🟢 Completada</span>
+              <span id="kBadgeComp" class="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900">0</span>
+            </div>
+            <div id="kColComp" class="space-y-3 flex-1"></div>
+          </div>
+        </div>
+      `;
+
+      const btnG = document.getElementById("btnToggleGantt");
+      const btnC = document.getElementById("btnToggleCards");
+      if (btnG && btnC) {
+        btnG.onclick = () => {
+          currentSubView = "gantt";
+          document.getElementById("globalGanttSection").classList.remove("hidden");
+          document.getElementById("globalCardsSection").classList.add("hidden");
+          btnG.className = "px-3 py-1 rounded-md text-xs font-bold bg-white shadow-xs text-emerald-900 flex items-center gap-1.5 transition";
+          btnC.className = "px-3 py-1 rounded-md text-xs font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1.5 transition";
+          mountGantt("#globalGanttSvg", tasksData);
+        };
+        btnC.onclick = () => {
+          currentSubView = "cards";
+          document.getElementById("globalGanttSection").classList.add("hidden");
+          document.getElementById("globalCardsSection").classList.remove("hidden");
+          btnC.className = "px-3 py-1 rounded-md text-xs font-bold bg-white shadow-xs text-emerald-900 flex items-center gap-1.5 transition";
+          btnG.className = "px-3 py-1 rounded-md text-xs font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1.5 transition";
+          renderKanbanColumns(tasksData);
+        };
+      }
+
+      if (currentSubView === "gantt") {
+        mountGantt("#globalGanttSvg", tasksData);
+      } else {
+        renderKanbanColumns(tasksData);
       }
     }
 
-    let currentMode = "Week";
+    // Renderizado de la Ventana 2: Especialista Individual (Aislada, Cero Anidamiento)
+    function renderSpecialistView(container, specialistName) {
+      const info = TEAM_INFO[specialistName] || {
+        name: specialistName,
+        rol: "Especialista de Proyecto",
+        tarifa: "N/A",
+        email: "",
+        avatarBg: "bg-emerald-700",
+        initials: specialistName.substring(0, 2).toUpperCase()
+      };
 
-    function renderGantt() {
-      const mount = document.getElementById("ganttChartMount");
-      if (!mount) return;
+      const userTasks = tasksData.filter(t => t.responsable && t.responsable.includes(specialistName));
+      const total = userTasks.length;
+      const prog = userTasks.filter(t => t.estado === "En Progreso").length;
+      const comp = userTasks.filter(t => t.estado === "Completada").length;
+      const horas = userTasks.reduce((acc, t) => acc + (Number(t.horas) || 0), 0);
+      const costo = userTasks.reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
 
-      const filtered = tasksData.filter(t => currentFilter === "todos" || (t.responsable && t.responsable.includes(currentFilter)));
+      container.innerHTML = `
+        <!-- Tarjeta de Perfil del Especialista con Botón de Retorno -->
+        <div class="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-2xl ${info.avatarBg} text-white flex items-center justify-center text-xl font-black shadow-md flex-shrink-0">
+              ${info.initials}
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h2 class="text-xl font-black text-stone-900">${info.name}</h2>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">Ventana Especialista</span>
+              </div>
+              <p class="text-xs font-semibold text-stone-600 mt-0.5">${info.rol}</p>
+              <div class="flex items-center gap-3 text-xs text-stone-400 mt-1 flex-wrap">
+                <span class="font-medium text-emerald-800"><i class="fa-solid fa-money-bill-wave text-emerald-600"></i> ${info.tarifa}</span>
+                <span>&bull;</span>
+                <span><i class="fa-regular fa-envelope text-stone-400"></i> ${info.email}</span>
+              </div>
+            </div>
+          </div>
 
-      if (filtered.length === 0) {
-        mount.innerHTML = `
-          <div class="flex flex-col items-center justify-center py-16 text-stone-400">
-            <i class="fa-solid fa-user-slash text-3xl mb-2 text-stone-300"></i>
-            <p class="font-bold text-sm text-stone-600">No hay tareas asignadas a este responsable</p>
-            <p class="text-xs text-stone-400 mt-1">Selecciona "Todos" para ver el cronograma completo.</p>
+          <div class="flex items-center gap-2 w-full md:w-auto justify-end border-t md:border-t-0 pt-3 md:pt-0 border-stone-100">
+            <button onclick="transitionToView('todos')" class="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-2 border border-emerald-200 transition shadow-2xs">
+              <i class="fa-solid fa-arrow-left"></i> Volver a Vista Global
+            </button>
+          </div>
+        </div>
+
+        <!-- Mini KPIs del Especialista -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
+            <div><p class="text-xs font-bold uppercase tracking-wider text-stone-500">Tareas Asignadas</p><p class="text-2xl font-black text-stone-800 mt-1">${total}</p></div>
+            <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg"><i class="fa-solid fa-user-check"></i></div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
+            <div><p class="text-xs font-bold uppercase tracking-wider text-amber-600">En Progreso</p><p class="text-2xl font-black text-amber-600 mt-1">${prog}</p></div>
+            <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-lg"><i class="fa-solid fa-spinner animate-spin"></i></div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
+            <div><p class="text-xs font-bold uppercase tracking-wider text-stone-500">Horas Estimadas</p><p class="text-2xl font-black text-stone-800 mt-1">${horas}h</p></div>
+            <div class="w-10 h-10 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center text-lg"><i class="fa-solid fa-clock"></i></div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
+            <div><p class="text-xs font-bold uppercase tracking-wider text-stone-500">Presupuesto Asignado</p><p class="text-2xl font-black text-emerald-900 mt-1">$${costo.toLocaleString("es-MX")}</p></div>
+            <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg"><i class="fa-solid fa-sack-dollar"></i></div>
+          </div>
+        </div>
+
+        <!-- Cronograma Gantt del Especialista (Aislado) -->
+        <div class="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+          <div class="flex justify-between items-center">
+            <h3 class="text-sm font-bold text-stone-800 flex items-center gap-2">
+              <i class="fa-solid fa-chart-gantt text-emerald-600"></i> Cronograma Exclusivo de ${info.name}
+            </h3>
+            <span class="text-xs text-stone-400 italic">Haz clic en la barra para ver el desglose o completarla</span>
+          </div>
+          <div class="w-full overflow-x-auto min-h-[220px]">
+            <svg id="specialistGanttSvg"></svg>
+          </div>
+        </div>
+
+        <!-- Tarjetas Detalladas de las Tareas Asignadas -->
+        <div class="space-y-3">
+          <h3 class="text-sm font-bold text-stone-800 flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-emerald-600"></i> Detalle de Tareas Asignadas
+          </h3>
+          <div id="specialistCardsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+      `;
+
+      if (userTasks.length > 0) {
+        mountGantt("#specialistGanttSvg", userTasks);
+        renderUserCards("#specialistCardsList", userTasks);
+      } else {
+        document.getElementById("specialistGanttSvg").parentElement.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-12 text-stone-400">
+            <i class="fa-solid fa-calendar-xmark text-3xl mb-2 text-stone-300"></i>
+            <p class="text-sm font-semibold text-stone-600">No hay tareas activas asignadas a este especialista.</p>
           </div>
         `;
-        return;
       }
+    }
 
-      // Reinicialización limpia del DOM eliminando contenedores anidados previos y headers viejos
-      mount.innerHTML = '<svg id="ganttChart"></svg>';
+    // Motor de Montaje de Frappe Gantt (Instancia limpia, soporte de scroll y colores)
+    function mountGantt(svgSelector, tasks) {
+      const svgEl = document.querySelector(svgSelector);
+      if (!svgEl) return;
 
-      const frappeTasks = filtered.map(t => {
+      const frappeTasks = tasks.map(t => {
         const sDate = (t.start && String(t.start).length >= 10) ? String(t.start).substring(0, 10) : "2026-09-20";
         let eDate = (t.end && String(t.end).length >= 10) ? String(t.end).substring(0, 10) : sDate;
         if (new Date(eDate) < new Date(sDate)) eDate = sDate;
@@ -378,7 +544,7 @@
 
         return {
           id: String(t.id),
-          name: `[${t.id}] ${t.name} (${t.responsable})`,
+          name: `[${t.id}] ${t.name}`,
           start: sDate,
           end: eDate,
           progress: prog,
@@ -387,7 +553,7 @@
       });
 
       try {
-        ganttChart = new Gantt("#ganttChart", frappeTasks, {
+        new Gantt(svgSelector, frappeTasks, {
           header_height: 50,
           column_width: currentMode === "Day" ? 38 : (currentMode === "Month" ? 70 : 36),
           step: 24,
@@ -403,79 +569,108 @@
           }
         });
 
-        // Auto-scroll para enfocar la barra en pantalla y que no quede fuera de vista a la derecha
+        // Auto-scroll al inicio de las tareas para que la barra nunca quede oculta a la derecha
         setTimeout(() => {
-          const container = mount.querySelector(".gantt-container");
+          const container = svgEl.parentElement;
           if (container && frappeTasks.length > 0) {
             const firstBar = container.querySelector(".bar-wrapper");
             if (firstBar) {
               const rect = firstBar.querySelector(".bar");
               if (rect) {
                 const barX = parseFloat(rect.getAttribute("x") || "0");
-                if (barX > 200) {
-                  container.scrollTo({ left: Math.max(0, barX - 120), behavior: 'smooth' });
+                if (barX > 180) {
+                  container.scrollTo({ left: Math.max(0, barX - 100), behavior: 'smooth' });
                 } else {
                   container.scrollTo({ left: 0, behavior: 'smooth' });
                 }
               }
             }
           }
-        }, 120);
+        }, 100);
 
-      } catch (err) {
-        console.error("Error al renderizar Frappe Gantt:", err);
+      } catch(err) {
+        console.error("Error al inicializar Frappe Gantt:", err);
       }
     }
 
-    function renderCards() {
-      const colNoInic = document.getElementById("colNoIniciada");
-      const colProg = document.getElementById("colEnProgreso");
-      const colComp = document.getElementById("colCompletada");
-      colNoInic.innerHTML = ""; colProg.innerHTML = ""; colComp.innerHTML = "";
+    // Renderizar tarjetas en las 3 columnas Kanban de la Vista Global
+    function renderKanbanColumns(tasks) {
+      const colNo = document.getElementById("kColNoInic");
+      const colPr = document.getElementById("kColProg");
+      const colCo = document.getElementById("kColComp");
+      if (!colNo || !colPr || !colCo) return;
 
-      let cNo = 0, cProg = 0, cComp = 0;
+      colNo.innerHTML = ""; colPr.innerHTML = ""; colCo.innerHTML = "";
+      let cNo = 0, cPr = 0, cCo = 0;
 
-      tasksData.forEach(t => {
-        if (currentFilter !== "todos" && !t.responsable.includes(currentFilter)) return;
-
-        const card = document.createElement("div");
-        card.className = "bg-white p-3.5 rounded-xl border border-stone-200 shadow-xs hover:shadow-md transition cursor-pointer space-y-2.5";
-        card.onclick = () => openTaskModal(t.id);
-
-        card.innerHTML = `
-          <div class="flex justify-between items-center text-xs">
-            <span class="font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">${t.id}</span>
-            <span class="text-stone-400 font-semibold">${t.horas}h</span>
-          </div>
-          <p class="font-bold text-stone-800 text-xs leading-snug">${t.name}</p>
-          <div class="flex justify-between items-center text-xs text-stone-500 pt-1 border-t border-stone-50">
-            <span class="font-semibold text-stone-700">👤 ${t.responsable}</span>
-            <span class="font-black text-emerald-900">$${Number(t.costoTotal).toLocaleString()}</span>
-          </div>
-        `;
-
-        if (t.estado === "Completada") { colComp.appendChild(card); cComp++; }
-        else if (t.estado === "En Progreso") { colProg.appendChild(card); cProg++; }
-        else { colNoInic.appendChild(card); cNo++; }
+      tasks.forEach(t => {
+        const card = createCardElement(t);
+        if (t.estado === "Completada") { colCo.appendChild(card); cCo++; }
+        else if (t.estado === "En Progreso") { colPr.appendChild(card); cPr++; }
+        else { colNo.appendChild(card); cNo++; }
       });
 
-      document.getElementById("badgeNoIniciada").innerText = cNo;
-      document.getElementById("badgeEnProgreso").innerText = cProg;
-      document.getElementById("badgeCompletada").innerText = cComp;
+      const bNo = document.getElementById("kBadgeNoInic");
+      const bPr = document.getElementById("kBadgeProg");
+      const bCo = document.getElementById("kBadgeComp");
+      if (bNo) bNo.innerText = cNo;
+      if (bPr) bPr.innerText = cPr;
+      if (bCo) bCo.innerText = cCo;
     }
 
-    function updateKPIs() {
-      const total = tasksData.length;
-      const prog = tasksData.filter(t => t.estado === "En Progreso").length;
-      const comp = tasksData.filter(t => t.estado === "Completada").length;
-      const costo = tasksData.reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
+    // Renderizar tarjetas en la Vista Especialista
+    function renderUserCards(gridSelector, tasks) {
+      const grid = document.querySelector(gridSelector);
+      if (!grid) return;
+      grid.innerHTML = "";
 
-      document.getElementById("kpiTotal").innerText = total;
-      document.getElementById("kpiProgreso").innerText = prog;
-      document.getElementById("kpiCompletadas").innerText = comp;
-      document.getElementById("kpiCosto").innerText = "$" + costo.toLocaleString("es-MX");
+      tasks.forEach(t => {
+        grid.appendChild(createCardElement(t));
+      });
     }
 
+    // Creador genérico de tarjetas de tarea
+    function createCardElement(t) {
+      const card = document.createElement("div");
+      card.className = "bg-white p-4 rounded-xl border border-stone-200 shadow-xs hover:shadow-md transition cursor-pointer space-y-2.5";
+      card.onclick = () => openTaskModal(t.id);
+
+      let statusBadge = "<span class='px-2 py-0.5 rounded text-[10px] font-bold bg-stone-100 text-stone-600'>⚪ No Iniciada</span>";
+      if (t.estado === "Completada") statusBadge = "<span class='px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800'>🟢 Completada</span>";
+      else if (t.estado === "En Progreso") statusBadge = "<span class='px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800'>🟡 En Progreso</span>";
+
+      card.innerHTML = `
+        <div class="flex justify-between items-center text-xs">
+          <span class="font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">${t.id}</span>
+          ${statusBadge}
+        </div>
+        <p class="font-bold text-stone-800 text-xs leading-snug">${t.name}</p>
+        <div class="flex justify-between items-center text-xs text-stone-500 pt-2 border-t border-stone-100">
+          <span class="text-stone-600 font-medium"><i class="fa-regular fa-clock"></i> ${t.horas}h</span>
+          <span class="font-black text-emerald-900">$${Number(t.costoTotal).toLocaleString()} MXN</span>
+        </div>
+      `;
+      return card;
+    }
+
+    // Cambio de Escala Global (Día / Semana / Mes)
+    function changeGlobalScale(mode) {
+      currentMode = mode;
+      document.querySelectorAll(".scale-btn").forEach(b => {
+        if (b.getAttribute("data-scale") === mode) {
+          b.className = "scale-btn px-2.5 py-1 rounded bg-white shadow-xs text-emerald-900 font-bold transition";
+        } else {
+          b.className = "scale-btn px-2.5 py-1 rounded text-stone-600 hover:text-emerald-800 transition";
+        }
+      });
+      const container = document.getElementById("viewContainer");
+      if (container) {
+        if (currentView === "todos") renderGlobalView(container);
+        else renderSpecialistView(container, currentView);
+      }
+    }
+
+    // Modal de Tarea
     function openTaskModal(id) {
       const t = tasksData.find(x => x.id === id);
       if (!t) return;
@@ -484,7 +679,7 @@
       document.getElementById("modalBadgeId").innerText = t.id;
       document.getElementById("modalTitle").innerText = t.name;
       document.getElementById("modalResp").innerText = t.responsable;
-      document.getElementById("modalStatus").innerText = `${t.prioridad} • ${t.estado}`;
+      document.getElementById("modalStatus").innerText = `${t.prioridad || 'Media'} • ${t.estado}`;
       document.getElementById("modalDates").innerText = `${t.start} al ${t.end}`;
       document.getElementById("modalCost").innerText = "$" + Number(t.costoTotal).toLocaleString("es-MX", {minimumFractionDigits:2}) + " MXN";
       document.getElementById("modalCostPers").innerText = "$" + Number(t.costoPersonal).toLocaleString("es-MX", {minimumFractionDigits:2});
@@ -510,10 +705,15 @@
       if (!t) return;
       t.estado = "Completada";
       t.progress = 100;
-      renderAll();
+
+      const container = document.getElementById("viewContainer");
+      if (container) {
+        if (currentView === "todos") renderGlobalView(container);
+        else renderSpecialistView(container, currentView);
+      }
+
       document.getElementById("taskModal").classList.add("hidden");
 
-      // Si está conectado al Web App de Apps Script, enviar POST
       if (webAppUrl) {
         try {
           await fetch(webAppUrl, {
@@ -529,55 +729,38 @@
       }
     }
 
-    function renderAll() {
-      renderGantt();
-      renderCards();
-      updateKPIs();
+    // Sincronización desde Google Sheets (Apps Script)
+    async function fetchTasksFromSheets() {
+      if (!webAppUrl) return;
+      const icon = document.getElementById("refreshIcon");
+      if (icon) icon.classList.add("fa-spin");
+      try {
+        const res = await fetch(webAppUrl);
+        const json = await res.json();
+        if (json && json.success && json.tareas && json.tareas.length > 0) {
+          tasksData = json.tareas;
+          const container = document.getElementById("viewContainer");
+          if (container) {
+            if (currentView === "todos") renderGlobalView(container);
+            else renderSpecialistView(container, currentView);
+          }
+          const lbl = document.getElementById("lastSyncLabel");
+          if (lbl) {
+            const now = new Date();
+            lbl.innerText = `Sincronizado: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+          }
+        }
+      } catch (e) {
+        console.warn("Usando datos locales de respaldo:", e);
+      } finally {
+        if (icon) icon.classList.remove("fa-spin");
+      }
     }
 
-    // Eventos
-    document.querySelectorAll(".filter-btn").forEach(btn => {
-      btn.onclick = () => {
-        document.querySelectorAll(".filter-btn").forEach(b => {
-          b.className = "filter-btn px-3 py-1 rounded-full text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 transition";
-        });
-        btn.className = "filter-btn px-3 py-1 rounded-full text-xs font-semibold bg-emerald-800 text-white transition shadow-xs";
-        currentFilter = btn.getAttribute("data-resp");
-        renderAll();
-      };
-    });
-
-    document.querySelectorAll(".mode-btn").forEach(btn => {
-      btn.onclick = () => {
-        document.querySelectorAll(".mode-btn").forEach(b => {
-          b.className = "mode-btn px-2.5 py-1 rounded text-stone-600 hover:text-emerald-800";
-        });
-        btn.className = "mode-btn px-2.5 py-1 rounded bg-white shadow-xs text-emerald-900 font-bold";
-        currentMode = btn.getAttribute("data-mode");
-        renderGantt();
-      };
-    });
-
-    document.getElementById("viewGantt").onclick = () => {
-      document.getElementById("ganttSection").classList.remove("hidden");
-      document.getElementById("cardsSection").classList.add("hidden");
-      document.getElementById("ganttModes").classList.remove("hidden");
-      document.getElementById("viewGantt").className = "px-3 py-1 rounded-md text-xs font-bold bg-white shadow-xs text-emerald-900 flex items-center gap-1.5";
-      document.getElementById("viewCards").className = "px-3 py-1 rounded-md text-xs font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1.5";
-    };
-
-    document.getElementById("viewCards").onclick = () => {
-      document.getElementById("ganttSection").classList.add("hidden");
-      document.getElementById("cardsSection").classList.remove("hidden");
-      document.getElementById("ganttModes").classList.add("hidden");
-      document.getElementById("viewCards").className = "px-3 py-1 rounded-md text-xs font-bold bg-white shadow-xs text-emerald-900 flex items-center gap-1.5";
-      document.getElementById("viewGantt").className = "px-3 py-1 rounded-md text-xs font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1.5";
-    };
-
+    // Listeners del Modal y Configuración
     document.getElementById("closeModal").onclick = () => document.getElementById("taskModal").classList.add("hidden");
     document.getElementById("btnCompletarModal").onclick = marcarCompletada;
 
-    // Config Modal
     document.getElementById("btnConfig").onclick = () => {
       document.getElementById("inputWebAppUrl").value = webAppUrl;
       document.getElementById("configModal").classList.remove("hidden");
@@ -592,14 +775,18 @@
 
     document.getElementById("btnRefresh").onclick = () => {
       fetchTasksFromSheets();
-      renderAll();
+      const container = document.getElementById("viewContainer");
+      if (container) {
+        if (currentView === "todos") renderGlobalView(container);
+        else renderSpecialistView(container, currentView);
+      }
     };
 
-    // Inicializar
-    renderAll();
+    // Inicialización al cargar la página
+    transitionToView('todos');
     fetchTasksFromSheets();
 
-    // Auto-sincronización periódica en segundo plano cada 30 segundos
+    // Auto-sincronización periódica cada 30 segundos
     setInterval(() => {
       if (webAppUrl) fetchTasksFromSheets();
     }, 30000);
