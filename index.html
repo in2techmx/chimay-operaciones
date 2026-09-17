@@ -184,6 +184,39 @@
     </div>
   </nav>
 
+  <!-- Sub-barra de Filtro Dinámico por Etapa & Consolidación -->
+  <section class="bg-stone-100/90 border-b border-stone-200/80 backdrop-blur-xs py-2.5 px-4 sm:px-6">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5 flex-wrap w-full sm:w-auto">
+        <label for="selectEtapa" class="flex items-center gap-1.5 text-xs font-bold text-stone-700 whitespace-nowrap">
+          <i class="fa-solid fa-layer-group text-emerald-700 text-sm"></i>
+          <span>Filtrar por Etapa:</span>
+        </label>
+        <div class="relative flex-1 sm:flex-initial min-w-[260px]">
+          <select id="selectEtapa" onchange="changeEtapaFilter(this.value)" class="w-full bg-white border border-stone-300 hover:border-emerald-600 focus:border-emerald-600 rounded-xl px-3 py-1.5 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 shadow-2xs pr-8 cursor-pointer appearance-none transition">
+            <option value="todas">✨ Todas las Etapas (Consolidado General)</option>
+          </select>
+          <i class="fa-solid fa-chevron-down text-[10px] text-stone-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+        </div>
+        <span id="etapaBadgeCount" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300/50">
+          42 tareas
+        </span>
+      </div>
+
+      <!-- Resumen Consolidado de la Etapa Seleccionada -->
+      <div class="flex items-center gap-3 text-xs flex-wrap self-end sm:self-center">
+        <div class="flex items-center gap-1.5 bg-white px-3 py-1 rounded-xl border border-stone-200 shadow-2xs">
+          <span class="text-stone-400 font-medium">Estado Etapa:</span>
+          <span id="etapaStatusPill" class="font-bold text-emerald-800">Todas Activas</span>
+        </div>
+        <div class="flex items-center gap-1.5 bg-white px-3 py-1 rounded-xl border border-stone-200 shadow-2xs">
+          <span class="text-stone-400 font-medium">Inversión Etapa:</span>
+          <span id="etapaPresupuestoText" class="font-black text-emerald-900">$512,160.00 MXN</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Contenedor Único y Dinámico de la Vista Activa (NUNCA ANIDADAS) -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
     <div id="viewContainer" class="space-y-6">
@@ -196,7 +229,7 @@
     <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-5">
       <div class="flex justify-between items-start border-b border-stone-100 pb-3">
         <div>
-          <span id="modalBadgeId" class="px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-emerald-100 text-emerald-800">TSK-PIL-01</span>
+          <span id="modalBadgeId" class="px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-emerald-100 text-emerald-800">TSK-01</span>
           <h3 id="modalTitle" class="text-lg font-bold text-stone-900 mt-1">Título de la Tarea</h3>
         </div>
         <button id="closeModal" class="text-stone-400 hover:text-stone-600 text-lg p-1">
@@ -205,6 +238,15 @@
       </div>
 
       <div class="grid grid-cols-2 gap-3 text-xs">
+        <div class="bg-stone-50 p-3 rounded-lg border border-stone-100 col-span-2 flex items-center justify-between">
+          <div>
+            <span class="text-stone-400 block font-medium">Etapa / Fase del Proyecto:</span>
+            <span id="modalEtapa" class="font-bold text-stone-800 text-sm">Etapa 1: Legal y Gobernanza</span>
+          </div>
+          <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-sm">
+            <i class="fa-solid fa-layer-group"></i>
+          </span>
+        </div>
         <div class="bg-stone-50 p-3 rounded-lg border border-stone-100">
           <span class="text-stone-400 block font-medium">Responsable:</span>
           <span id="modalResp" class="font-bold text-stone-800 text-sm">Arturo B.</span>
@@ -278,71 +320,169 @@
       }
     };
 
-    // Base de datos maestra de tareas operativas (42 tareas de la Triada Productiva)
+    // Base de datos maestra de tareas operativas (42 tareas estructuradas por Etapa)
     let tasksData = [
-      // FASE 1: Legal, Gobernanza & Financiamiento
-      { id: "TSK-01", name: "Formalización de Sociedad S.P.R. de R.L. ante Notario", responsable: "Gema R.", horas: 20, costoPersonal: 4000, costoMateriales: 0, costoTerceros: 8500, costoTotal: 12500, start: "2026-09-01", end: "2026-09-15", progress: 100, estado: "Completada", prioridad: "Alta" },
-      { id: "TSK-02", name: "Alta Patronal IMSS Subdelegación Mérida Sur", responsable: "Gema R.", horas: 15, costoPersonal: 3000, costoMateriales: 0, costoTerceros: 0, costoTotal: 3000, start: "2026-09-10", end: "2026-09-20", progress: 100, estado: "Completada", prioridad: "Alta" },
-      { id: "TSK-03", name: "Gestión de Título de Concesión Pozo N° 1 CONAGUA", responsable: "Gema R.", horas: 25, costoPersonal: 5000, costoMateriales: 0, costoTerceros: 4500, costoTotal: 9500, start: "2026-09-15", end: "2026-10-15", progress: 50, estado: "En Progreso", prioridad: "Crítica" },
-      { id: "TSK-04", name: "Estudio Fisicoquímico y Bacteriológico de Agua de Pozo", responsable: "Arturo B.", horas: 10, costoPersonal: 2000, costoMateriales: 800, costoTerceros: 2000, costoTotal: 4800, start: "2026-09-12", end: "2026-09-22", progress: 100, estado: "Completada", prioridad: "Media" },
-      { id: "TSK-05", name: "Levantamiento Topográfico y Curvas de Nivel (5 HA)", responsable: "Arturo B.", horas: 16, costoPersonal: 3200, costoMateriales: 1000, costoTerceros: 3000, costoTotal: 7200, start: "2026-09-18", end: "2026-09-26", progress: 50, estado: "En Progreso", prioridad: "Alta" },
-      { id: "TSK-06", name: "Solicitud Subsidio CFE Tarifa 09 Agrícola Bombeo", responsable: "Arturo A.", horas: 12, costoPersonal: 2400, costoMateriales: 0, costoTerceros: 0, costoTotal: 2400, start: "2026-09-20", end: "2026-10-05", progress: 20, estado: "En Progreso", prioridad: "Alta" },
-      { id: "TSK-07", name: "Postulación Programa SEDER 'Peso a Peso' 50% Maquinaria", responsable: "Arturo A.", horas: 18, costoPersonal: 3600, costoMateriales: 0, costoTerceros: 0, costoTotal: 3600, start: "2026-09-22", end: "2026-10-10", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-08", name: "Apertura de Cuenta Bancaria Productiva Mancomunada", responsable: "Arturo A.", horas: 8, costoPersonal: 1600, costoMateriales: 0, costoTerceros: 0, costoTotal: 1600, start: "2026-09-25", end: "2026-09-30", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      // ETAPA 1: Legal y Gobernanza
+      { id: "TSK-01", name: "Formalización de Sociedad S.P.R. de R.L. ante Notario", etapa: "Etapa 1: Legal y Gobernanza", responsable: "Gema R.", horas: 20, costoPersonal: 4000, costoMateriales: 0, costoTerceros: 8500, costoTotal: 12500, start: "2026-09-01", end: "2026-09-15", progress: 100, estado: "Completada", prioridad: "Alta" },
+      { id: "TSK-02", name: "Alta Patronal IMSS Subdelegación Mérida Sur", etapa: "Etapa 1: Legal y Gobernanza", responsable: "Gema R.", horas: 15, costoPersonal: 3000, costoMateriales: 0, costoTerceros: 0, costoTotal: 3000, start: "2026-09-10", end: "2026-09-20", progress: 100, estado: "Completada", prioridad: "Alta" },
+      { id: "TSK-03", name: "Gestión de Título de Concesión Pozo N° 1 CONAGUA", etapa: "Etapa 1: Legal y Gobernanza", responsable: "Gema R.", horas: 25, costoPersonal: 5000, costoMateriales: 0, costoTerceros: 4500, costoTotal: 9500, start: "2026-09-15", end: "2026-10-15", progress: 50, estado: "En Progreso", prioridad: "Crítica" },
+      { id: "TSK-04", name: "Estudio Fisicoquímico y Bacteriológico de Agua de Pozo", etapa: "Etapa 1: Legal y Gobernanza", responsable: "Arturo B.", horas: 10, costoPersonal: 2000, costoMateriales: 800, costoTerceros: 2000, costoTotal: 4800, start: "2026-09-12", end: "2026-09-22", progress: 100, estado: "Completada", prioridad: "Media" },
+      { id: "TSK-05", name: "Levantamiento Topográfico y Curvas de Nivel (5 HA)", etapa: "Etapa 1: Legal y Gobernanza", responsable: "Arturo B.", horas: 16, costoPersonal: 3200, costoMateriales: 1000, costoTerceros: 3000, costoTotal: 7200, start: "2026-09-18", end: "2026-09-26", progress: 50, estado: "En Progreso", prioridad: "Alta" },
+      { id: "TSK-06", name: "Solicitud Subsidio CFE Tarifa 09 Agrícola Bombeo", etapa: "Etapa 1: Legal y Gobernanza", responsable: "Arturo A.", horas: 12, costoPersonal: 2400, costoMateriales: 0, costoTerceros: 0, costoTotal: 2400, start: "2026-09-20", end: "2026-10-05", progress: 20, estado: "En Progreso", prioridad: "Alta" },
+      { id: "TSK-07", name: "Postulación Programa SEDER 'Peso a Peso' 50% Maquinaria", etapa: "Etapa 1: Legal y Gobernanza", responsable: "Arturo A.", horas: 18, costoPersonal: 3600, costoMateriales: 0, costoTerceros: 0, costoTotal: 3600, start: "2026-09-22", end: "2026-10-10", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-08", name: "Apertura de Cuenta Bancaria Productiva Mancomunada", etapa: "Etapa 1: Legal y Gobernanza", responsable: "Arturo A.", horas: 8, costoPersonal: 1600, costoMateriales: 0, costoTerceros: 0, costoTotal: 1600, start: "2026-09-25", end: "2026-09-30", progress: 0, estado: "No Iniciada", prioridad: "Media" },
 
-      // FASE 2: Infraestructura Hidráulica, Riego & Pozo N° 1
-      { id: "TSK-09", name: "Desazolve y Limpieza Mecánica de Pozo N° 1 (18m)", responsable: "Don Chiyo", horas: 30, costoPersonal: 4200, costoMateriales: 1500, costoTerceros: 2500, costoTotal: 8200, start: "2026-09-22", end: "2026-10-02", progress: 40, estado: "En Progreso", prioridad: "Alta" },
-      { id: "TSK-10", name: "Instalación de Bomba Sumergible Solar 5 HP", responsable: "Arturo B.", horas: 24, costoPersonal: 4800, costoMateriales: 28500, costoTerceros: 5200, costoTotal: 38500, start: "2026-10-01", end: "2026-10-12", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-11", name: "Montaje Tinacos Nodriza 10,000L de Almacenamiento Primario", responsable: "Don Chiyo", horas: 25, costoPersonal: 3500, costoMateriales: 19000, costoTerceros: 0, costoTotal: 22500, start: "2026-10-05", end: "2026-10-15", progress: 0, estado: "No Iniciada", prioridad: "Media" },
-      { id: "TSK-12", name: "Tendido de Red Principal PVC Hidráulico 3 pulgadas", responsable: "Arturo B.", horas: 35, costoPersonal: 7000, costoMateriales: 16500, costoTerceros: 2500, costoTotal: 26000, start: "2026-10-10", end: "2026-10-25", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-13", name: "Instalación de Cabezal Filtrado Automático Grava/Malla", responsable: "Arturo B.", horas: 18, costoPersonal: 3600, costoMateriales: 11200, costoTerceros: 1600, costoTotal: 16400, start: "2026-10-15", end: "2026-10-25", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-14", name: "Red de Sub-conducción y Válvulas por Sectores", responsable: "Don Chiyo", horas: 40, costoPersonal: 5600, costoMateriales: 9000, costoTerceros: 0, costoTotal: 14600, start: "2026-10-20", end: "2026-11-05", progress: 0, estado: "No Iniciada", prioridad: "Media" },
-      { id: "TSK-15", name: "Pruebas de Presión Dinámica y Coeficiente de Uniformidad", responsable: "Arturo B.", horas: 14, costoPersonal: 2800, costoMateriales: 1000, costoTerceros: 0, costoTotal: 3800, start: "2026-11-02", end: "2026-11-08", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      // ETAPA 2: Infraestructura Hidráulica
+      { id: "TSK-09", name: "Desazolve y Limpieza Mecánica de Pozo N° 1 (18m)", etapa: "Etapa 2: Infraestructura Hidráulica", responsable: "Don Chiyo", horas: 30, costoPersonal: 4200, costoMateriales: 1500, costoTerceros: 2500, costoTotal: 8200, start: "2026-09-22", end: "2026-10-02", progress: 40, estado: "En Progreso", prioridad: "Alta" },
+      { id: "TSK-10", name: "Instalación de Bomba Sumergible Solar 5 HP", etapa: "Etapa 2: Infraestructura Hidráulica", responsable: "Arturo B.", horas: 24, costoPersonal: 4800, costoMateriales: 28500, costoTerceros: 5200, costoTotal: 38500, start: "2026-10-01", end: "2026-10-12", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-11", name: "Montaje Tinacos Nodriza 10,000L de Almacenamiento Primario", etapa: "Etapa 2: Infraestructura Hidráulica", responsable: "Don Chiyo", horas: 25, costoPersonal: 3500, costoMateriales: 19000, costoTerceros: 0, costoTotal: 22500, start: "2026-10-05", end: "2026-10-15", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-12", name: "Tendido de Red Principal PVC Hidráulico 3 pulgadas", etapa: "Etapa 2: Infraestructura Hidráulica", responsable: "Arturo B.", horas: 35, costoPersonal: 7000, costoMateriales: 16500, costoTerceros: 2500, costoTotal: 26000, start: "2026-10-10", end: "2026-10-25", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-13", name: "Instalación de Cabezal Filtrado Automático Grava/Malla", etapa: "Etapa 2: Infraestructura Hidráulica", responsable: "Arturo B.", horas: 18, costoPersonal: 3600, costoMateriales: 11200, costoTerceros: 1600, costoTotal: 16400, start: "2026-10-15", end: "2026-10-25", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-14", name: "Red de Sub-conducción y Válvulas por Sectores", etapa: "Etapa 2: Infraestructura Hidráulica", responsable: "Don Chiyo", horas: 40, costoPersonal: 5600, costoMateriales: 9000, costoTerceros: 0, costoTotal: 14600, start: "2026-10-20", end: "2026-11-05", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-15", name: "Pruebas de Presión Dinámica y Coeficiente de Uniformidad", etapa: "Etapa 2: Infraestructura Hidráulica", responsable: "Arturo B.", horas: 14, costoPersonal: 2800, costoMateriales: 1000, costoTerceros: 0, costoTotal: 3800, start: "2026-11-02", end: "2026-11-08", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
 
-      // FASE 3: Módulo Piloto de Microgreens / Brotes sin Suelo
-      { id: "TSK-16", name: "Nivelación y Cama de Grava Filtrante Invernadero", responsable: "Don Chiyo", horas: 35, costoPersonal: 4900, costoMateriales: 8000, costoTerceros: 0, costoTotal: 12900, start: "2026-09-28", end: "2026-10-08", progress: 0, estado: "No Iniciada", prioridad: "Media" },
-      { id: "TSK-17", name: "Estructura Malla Sombra 70% Bicolor Térmica con Estanterías", responsable: "Don Chiyo", horas: 45, costoPersonal: 6300, costoMateriales: 48000, costoTerceros: 0, costoTotal: 54300, start: "2026-10-05", end: "2026-10-22", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-18", name: "Ensamblado Racks Metálicos Galvanizados (4 niveles)", responsable: "Arturo B.", horas: 28, costoPersonal: 5600, costoMateriales: 19200, costoTerceros: 0, costoTotal: 24800, start: "2026-10-15", end: "2026-10-28", progress: 0, estado: "No Iniciada", prioridad: "Media" },
-      { id: "TSK-19", name: "Montaje Sistema Nebulización Automatizado Foggers 4 bar", responsable: "Arturo B.", horas: 20, costoPersonal: 4000, costoMateriales: 14200, costoTerceros: 0, costoTotal: 18200, start: "2026-10-22", end: "2026-11-02", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-20", name: "Adquisición y Sanitización de 1,200 Charolas 1020", responsable: "Arturo A.", horas: 15, costoPersonal: 3000, costoMateriales: 11200, costoTerceros: 0, costoTotal: 14200, start: "2026-10-18", end: "2026-10-28", progress: 0, estado: "No Iniciada", prioridad: "Media" },
-      { id: "TSK-21", name: "Calibración Nutrición Orgánica y Sensores CE/pH", responsable: "Gema R.", horas: 16, costoPersonal: 3200, costoMateriales: 2600, costoTerceros: 0, costoTotal: 5800, start: "2026-10-25", end: "2026-11-04", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-22", name: "Siembra Primer Lote (Rábano Sango, Girasol y Guisante)", responsable: "Arturo A.", horas: 25, costoPersonal: 5000, costoMateriales: 6500, costoTerceros: 0, costoTotal: 11500, start: "2026-11-01", end: "2026-11-12", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-23", name: "Monitoreo Germinación en Cámara Oscura (Ciclo 72h)", responsable: "Don Chiyo", horas: 20, costoPersonal: 2800, costoMateriales: 0, costoTerceros: 0, costoTotal: 2800, start: "2026-11-04", end: "2026-11-10", progress: 0, estado: "No Iniciada", prioridad: "Media" },
-      { id: "TSK-24", name: "Cosecha Sanitaria, Sanitizado Ácido Peracético y Empaque", responsable: "Gema R.", horas: 22, costoPersonal: 4400, costoMateriales: 2000, costoTerceros: 0, costoTotal: 6400, start: "2026-11-10", end: "2026-11-16", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-25", name: "Pruebas de Vida de Anaquel en Frío (4°C) a 14 Días", responsable: "Gema R.", horas: 15, costoPersonal: 3000, costoMateriales: 0, costoTerceros: 0, costoTotal: 3000, start: "2026-11-15", end: "2026-11-30", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      // ETAPA 3: Módulo Microgreens
+      { id: "TSK-16", name: "Nivelación y Cama de Grava Filtrante Invernadero", etapa: "Etapa 3: Módulo Microgreens", responsable: "Don Chiyo", horas: 35, costoPersonal: 4900, costoMateriales: 8000, costoTerceros: 0, costoTotal: 12900, start: "2026-09-28", end: "2026-10-08", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-17", name: "Estructura Malla Sombra 70% Bicolor Térmica con Estanterías", etapa: "Etapa 3: Módulo Microgreens", responsable: "Don Chiyo", horas: 45, costoPersonal: 6300, costoMateriales: 48000, costoTerceros: 0, costoTotal: 54300, start: "2026-10-05", end: "2026-10-22", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-18", name: "Ensamblado Racks Metálicos Galvanizados (4 niveles)", etapa: "Etapa 3: Módulo Microgreens", responsable: "Arturo B.", horas: 28, costoPersonal: 5600, costoMateriales: 19200, costoTerceros: 0, costoTotal: 24800, start: "2026-10-15", end: "2026-10-28", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-19", name: "Montaje Sistema Nebulización Automatizado Foggers 4 bar", etapa: "Etapa 3: Módulo Microgreens", responsable: "Arturo B.", horas: 20, costoPersonal: 4000, costoMateriales: 14200, costoTerceros: 0, costoTotal: 18200, start: "2026-10-22", end: "2026-11-02", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-20", name: "Adquisición y Sanitización de 1,200 Charolas 1020", etapa: "Etapa 3: Módulo Microgreens", responsable: "Arturo A.", horas: 15, costoPersonal: 3000, costoMateriales: 11200, costoTerceros: 0, costoTotal: 14200, start: "2026-10-18", end: "2026-10-28", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-21", name: "Calibración Nutrición Orgánica y Sensores CE/pH", etapa: "Etapa 3: Módulo Microgreens", responsable: "Gema R.", horas: 16, costoPersonal: 3200, costoMateriales: 2600, costoTerceros: 0, costoTotal: 5800, start: "2026-10-25", end: "2026-11-04", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-22", name: "Siembra Primer Lote (Rábano Sango, Girasol y Guisante)", etapa: "Etapa 3: Módulo Microgreens", responsable: "Arturo A.", horas: 25, costoPersonal: 5000, costoMateriales: 6500, costoTerceros: 0, costoTotal: 11500, start: "2026-11-01", end: "2026-11-12", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-23", name: "Monitoreo Germinación en Cámara Oscura (Ciclo 72h)", etapa: "Etapa 3: Módulo Microgreens", responsable: "Don Chiyo", horas: 20, costoPersonal: 2800, costoMateriales: 0, costoTerceros: 0, costoTotal: 2800, start: "2026-11-04", end: "2026-11-10", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-24", name: "Cosecha Sanitaria, Sanitizado Ácido Peracético y Empaque", etapa: "Etapa 3: Módulo Microgreens", responsable: "Gema R.", horas: 22, costoPersonal: 4400, costoMateriales: 2000, costoTerceros: 0, costoTotal: 6400, start: "2026-11-10", end: "2026-11-16", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-25", name: "Pruebas de Vida de Anaquel en Frío (4°C) a 14 Días", etapa: "Etapa 3: Módulo Microgreens", responsable: "Gema R.", horas: 15, costoPersonal: 3000, costoMateriales: 0, costoTerceros: 0, costoTotal: 3000, start: "2026-11-15", end: "2026-11-30", progress: 0, estado: "No Iniciada", prioridad: "Media" },
 
-      // FASE 4: Tecnificación de Lote Chile Habanero 3.8 HA
-      { id: "TSK-26", name: "Rastreo y Barbecho Profundo Suelo Luvisol/Kankab", responsable: "Don Chiyo", horas: 48, costoPersonal: 6720, costoMateriales: 7000, costoTerceros: 5000, costoTotal: 18720, start: "2026-10-15", end: "2026-10-30", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-27", name: "Incorporación Composta Madura (15 ton/HA) y Microorganismos", responsable: "Don Chiyo", horas: 40, costoPersonal: 5600, costoMateriales: 24000, costoTerceros: 0, costoTotal: 29600, start: "2026-10-28", end: "2026-11-12", progress: 0, estado: "No Iniciada", prioridad: "Media" },
-      { id: "TSK-28", name: "Acolchado Plástico Bicolor Plata/Negro y Cinta Goteo 1.0 L/h", responsable: "Arturo B.", horas: 32, costoPersonal: 6400, costoMateriales: 32000, costoTerceros: 0, costoTotal: 38400, start: "2026-11-05", end: "2026-11-20", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-29", name: "Contratación 2 Becarios Programa Jóvenes Construyendo el Futuro", responsable: "Gema R.", horas: 18, costoPersonal: 3600, costoMateriales: 0, costoTerceros: 0, costoTotal: 3600, start: "2026-11-01", end: "2026-11-18", progress: 0, estado: "No Iniciada", prioridad: "Media" },
-      { id: "TSK-30", name: "Adquisición Plántula Certificada Habanero Jaguar (INIFAP)", responsable: "Arturo A.", horas: 20, costoPersonal: 4000, costoMateriales: 24000, costoTerceros: 0, costoTotal: 28000, start: "2026-11-10", end: "2026-11-22", progress: 0, estado: "No Iniciada", prioridad: "Crítica" },
-      { id: "TSK-31", name: "Trasplante Manual a Campo Definitivo (22,000 plantas/HA)", responsable: "Don Chiyo", horas: 50, costoPersonal: 7000, costoMateriales: 7000, costoTerceros: 0, costoTotal: 14000, start: "2026-11-20", end: "2026-12-05", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-32", name: "Plan Fertirriego Bioestimulante y Ácidos Húmicos", responsable: "Arturo B.", horas: 25, costoPersonal: 5000, costoMateriales: 11500, costoTerceros: 0, costoTotal: 16500, start: "2026-11-25", end: "2026-12-15", progress: 0, estado: "No Iniciada", prioridad: "Media" },
-      { id: "TSK-33", name: "Monitoreo Fitosanitario y Control Biológico Mosca Blanca", responsable: "Gema R.", horas: 24, costoPersonal: 4800, costoMateriales: 3000, costoTerceros: 0, costoTotal: 7800, start: "2026-12-01", end: "2026-12-28", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-34", name: "Instalación Cortinas Rompevientos Pasto Napier y Neem", responsable: "Don Chiyo", horas: 36, costoPersonal: 5040, costoMateriales: 4000, costoTerceros: 0, costoTotal: 9040, start: "2026-11-15", end: "2026-11-30", progress: 0, estado: "No Iniciada", prioridad: "Baja" },
+      // ETAPA 4: Tecnificación Habanero
+      { id: "TSK-26", name: "Rastreo y Barbecho Profundo Suelo Luvisol/Kankab", etapa: "Etapa 4: Tecnificación Habanero", responsable: "Don Chiyo", horas: 48, costoPersonal: 6720, costoMateriales: 7000, costoTerceros: 5000, costoTotal: 18720, start: "2026-10-15", end: "2026-10-30", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-27", name: "Incorporación Composta Madura (15 ton/HA) y Microorganismos", etapa: "Etapa 4: Tecnificación Habanero", responsable: "Don Chiyo", horas: 40, costoPersonal: 5600, costoMateriales: 24000, costoTerceros: 0, costoTotal: 29600, start: "2026-10-28", end: "2026-11-12", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-28", name: "Acolchado Plástico Bicolor Plata/Negro y Cinta Goteo 1.0 L/h", etapa: "Etapa 4: Tecnificación Habanero", responsable: "Arturo B.", horas: 32, costoPersonal: 6400, costoMateriales: 32000, costoTerceros: 0, costoTotal: 38400, start: "2026-11-05", end: "2026-11-20", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-29", name: "Contratación 2 Becarios Programa Jóvenes Construyendo el Futuro", etapa: "Etapa 4: Tecnificación Habanero", responsable: "Gema R.", horas: 18, costoPersonal: 3600, costoMateriales: 0, costoTerceros: 0, costoTotal: 3600, start: "2026-11-01", end: "2026-11-18", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-30", name: "Adquisición Plántula Certificada Habanero Jaguar (INIFAP)", etapa: "Etapa 4: Tecnificación Habanero", responsable: "Arturo A.", horas: 20, costoPersonal: 4000, costoMateriales: 24000, costoTerceros: 0, costoTotal: 28000, start: "2026-11-10", end: "2026-11-22", progress: 0, estado: "No Iniciada", prioridad: "Crítica" },
+      { id: "TSK-31", name: "Trasplante Manual a Campo Definitivo (22,000 plantas/HA)", etapa: "Etapa 4: Tecnificación Habanero", responsable: "Don Chiyo", horas: 50, costoPersonal: 7000, costoMateriales: 7000, costoTerceros: 0, costoTotal: 14000, start: "2026-11-20", end: "2026-12-05", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-32", name: "Plan Fertirriego Bioestimulante y Ácidos Húmicos", etapa: "Etapa 4: Tecnificación Habanero", responsable: "Arturo B.", horas: 25, costoPersonal: 5000, costoMateriales: 11500, costoTerceros: 0, costoTotal: 16500, start: "2026-11-25", end: "2026-12-15", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-33", name: "Monitoreo Fitosanitario y Control Biológico Mosca Blanca", etapa: "Etapa 4: Tecnificación Habanero", responsable: "Gema R.", horas: 24, costoPersonal: 4800, costoMateriales: 3000, costoTerceros: 0, costoTotal: 7800, start: "2026-12-01", end: "2026-12-28", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-34", name: "Instalación Cortinas Rompevientos Pasto Napier y Neem", etapa: "Etapa 4: Tecnificación Habanero", responsable: "Don Chiyo", horas: 36, costoPersonal: 5040, costoMateriales: 4000, costoTerceros: 0, costoTotal: 9040, start: "2026-11-15", end: "2026-11-30", progress: 0, estado: "No Iniciada", prioridad: "Baja" },
 
-      // FASE 5: Deshidratador Solar AISI 304 & Energía Renovable
-      { id: "TSK-35", name: "Cimentación Base de Concreto para Deshidratador Solar", responsable: "Don Chiyo", horas: 30, costoPersonal: 4200, costoMateriales: 7000, costoTerceros: 0, costoTotal: 11200, start: "2026-12-01", end: "2026-12-14", progress: 0, estado: "No Iniciada", prioridad: "Media" },
-      { id: "TSK-36", name: "Ensamble Cámara Deshidratación Acero Inox AISI 304", responsable: "Arturo B.", horas: 35, costoPersonal: 7000, costoMateriales: 31000, costoTerceros: 4000, costoTotal: 42000, start: "2026-12-10", end: "2026-12-28", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-37", name: "Instalación Colectores Solares Aire Térmico y Extractores 12V", responsable: "Arturo B.", horas: 25, costoPersonal: 5000, costoMateriales: 16000, costoTerceros: 0, costoTotal: 21000, start: "2026-12-20", end: "2027-01-10", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-38", name: "Lote Piloto Deshidratación Habanero Entero y Escamas", responsable: "Gema R.", horas: 20, costoPersonal: 4000, costoMateriales: 2200, costoTerceros: 0, costoTotal: 6200, start: "2027-01-05", end: "2027-01-20", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      // ETAPA 5: Deshidratador Solar
+      { id: "TSK-35", name: "Cimentación Base de Concreto para Deshidratador Solar", etapa: "Etapa 5: Deshidratador Solar", responsable: "Don Chiyo", horas: 30, costoPersonal: 4200, costoMateriales: 7000, costoTerceros: 0, costoTotal: 11200, start: "2026-12-01", end: "2026-12-14", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-36", name: "Ensamble Cámara Deshidratación Acero Inox AISI 304", etapa: "Etapa 5: Deshidratador Solar", responsable: "Arturo B.", horas: 35, costoPersonal: 7000, costoMateriales: 31000, costoTerceros: 4000, costoTotal: 42000, start: "2026-12-10", end: "2026-12-28", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-37", name: "Instalación Colectores Solares Aire Térmico y Extractores 12V", etapa: "Etapa 5: Deshidratador Solar", responsable: "Arturo B.", horas: 25, costoPersonal: 5000, costoMateriales: 16000, costoTerceros: 0, costoTotal: 21000, start: "2026-12-20", end: "2027-01-10", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-38", name: "Lote Piloto Deshidratación Habanero Entero y Escamas", etapa: "Etapa 5: Deshidratador Solar", responsable: "Gema R.", horas: 20, costoPersonal: 4000, costoMateriales: 2200, costoTerceros: 0, costoTotal: 6200, start: "2027-01-05", end: "2027-01-20", progress: 0, estado: "No Iniciada", prioridad: "Media" },
 
-      // FASE 6: Comercialización, Certificación y Alianzas B2B
-      { id: "TSK-39", name: "Degustación y Muestreo con Chefs Ejecutivos (Kuuk, Chablé)", responsable: "Arturo A.", horas: 22, costoPersonal: 4400, costoMateriales: 2500, costoTerceros: 0, costoTotal: 6900, start: "2026-11-18", end: "2026-12-05", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-40", name: "Stand y Arranque de Venta en Mercado Slow Food Mérida", responsable: "Gema R.", horas: 20, costoPersonal: 4000, costoMateriales: 1500, costoTerceros: 0, costoTotal: 5500, start: "2026-11-25", end: "2026-12-10", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
-      { id: "TSK-41", name: "Auditoría Preliminar SENASICA Buenas Prácticas Agrícolas", responsable: "Gema R.", horas: 18, costoPersonal: 3600, costoMateriales: 0, costoTerceros: 5000, costoTotal: 8600, start: "2026-12-15", end: "2027-01-15", progress: 0, estado: "No Iniciada", prioridad: "Media" },
-      { id: "TSK-42", name: "Registro de Marca 'Rancho Chimay / Gema' ante el IMPI", responsable: "Arturo A.", horas: 16, costoPersonal: 3200, costoMateriales: 0, costoTerceros: 3600, costoTotal: 6800, start: "2026-12-01", end: "2027-01-10", progress: 0, estado: "No Iniciada", prioridad: "Media" }
+      // ETAPA 6: Comercialización y Certificación
+      { id: "TSK-39", name: "Degustación y Muestreo con Chefs Ejecutivos (Kuuk, Chablé)", etapa: "Etapa 6: Comercialización y Certificación", responsable: "Arturo A.", horas: 22, costoPersonal: 4400, costoMateriales: 2500, costoTerceros: 0, costoTotal: 6900, start: "2026-11-18", end: "2026-12-05", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-40", name: "Stand y Arranque de Venta en Mercado Slow Food Mérida", etapa: "Etapa 6: Comercialización y Certificación", responsable: "Gema R.", horas: 20, costoPersonal: 4000, costoMateriales: 1500, costoTerceros: 0, costoTotal: 5500, start: "2026-11-25", end: "2026-12-10", progress: 0, estado: "No Iniciada", prioridad: "Alta" },
+      { id: "TSK-41", name: "Auditoría Preliminar SENASICA Buenas Prácticas Agrícolas", etapa: "Etapa 6: Comercialización y Certificación", responsable: "Gema R.", horas: 18, costoPersonal: 3600, costoMateriales: 0, costoTerceros: 5000, costoTotal: 8600, start: "2026-12-15", end: "2027-01-15", progress: 0, estado: "No Iniciada", prioridad: "Media" },
+      { id: "TSK-42", name: "Registro de Marca 'Rancho Chimay / Gema' ante el IMPI", etapa: "Etapa 6: Comercialización y Certificación", responsable: "Arturo A.", horas: 16, costoPersonal: 3200, costoMateriales: 0, costoTerceros: 3600, costoTotal: 6800, start: "2026-12-01", end: "2027-01-10", progress: 0, estado: "No Iniciada", prioridad: "Media" }
     ];
 
     // Estados de la Aplicación
     let currentView = "todos";       // 'todos' | 'Arturo B.' | 'Gema R.' | 'Arturo A.' | 'Don Chiyo'
+    let currentEtapa = "todas";      // 'todas' | '<Nombre Dinámico de la Etapa>'
     let currentMode = "Week";        // 'Day' | 'Week' | 'Month'
     let currentSubView = "gantt";     // 'gantt' | 'cards'
     let selectedTaskId = null;
     
     // Endpoint Maestro Google Apps Script (Hardcoded permanente para sincronización en vivo)
     const webAppUrl = "https://script.google.com/macros/s/AKfycbzELfx7e7LBojMnRPLLq6CSCyUH7TawfkJsEjBwhRciy5RVF0StL37LTAVq4t6lKUuq/exec";
+
+    // Selector y Filtro de Tareas Activas (Intersección Etapa + Especialista)
+    function getActiveTasks(specialist = null) {
+      let list = tasksData;
+      if (currentEtapa && currentEtapa !== "todas") {
+        list = list.filter(t => (t.etapa || "").trim() === currentEtapa.trim());
+      }
+      if (specialist && specialist !== "todos") {
+        list = list.filter(t => t.responsable && t.responsable.includes(specialist));
+      }
+      return list;
+    }
+
+    // Poblar dinámicamente el selector de Etapas (Independiente del nombre de la etapa)
+    function populateEtapasDropdown() {
+      const select = document.getElementById("selectEtapa");
+      if (!select) return;
+
+      const etapasSet = new Set();
+      tasksData.forEach(t => {
+        const e = (t.etapa || "").trim();
+        if (e) etapasSet.add(e);
+      });
+      const etapas = Array.from(etapasSet);
+
+      const prevSelection = currentEtapa;
+      select.innerHTML = `<option value="todas">✨ Todas las Etapas (Consolidado General - ${tasksData.length} tareas)</option>`;
+
+      etapas.forEach(et => {
+        const tasksInEtapa = tasksData.filter(t => (t.etapa || "").trim() === et);
+        const count = tasksInEtapa.length;
+        const costo = tasksInEtapa.reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
+        const opt = document.createElement("option");
+        opt.value = et;
+        opt.textContent = `📁 ${et} (${count} t | $${(costo/1000).toFixed(1)}k)`;
+        select.appendChild(opt);
+      });
+
+      if (etapas.includes(prevSelection)) {
+        select.value = prevSelection;
+      } else {
+        currentEtapa = "todas";
+        select.value = "todas";
+      }
+
+      updateEtapaBarInfo();
+    }
+
+    // Cambio dinámico de filtro de Etapa
+    function changeEtapaFilter(etapaValue) {
+      currentEtapa = etapaValue;
+      updateEtapaBarInfo();
+
+      const container = document.getElementById("viewContainer");
+      if (container) {
+        if (currentView === "todos") {
+          renderGlobalView(container);
+        } else {
+          renderSpecialistView(container, currentView);
+        }
+      }
+    }
+
+    // Actualiza los badges de la sub-barra de Etapa
+    function updateEtapaBarInfo() {
+      const countBadge = document.getElementById("etapaBadgeCount");
+      const statusPill = document.getElementById("etapaStatusPill");
+      const costPill = document.getElementById("etapaPresupuestoText");
+
+      const filtered = getActiveTasks();
+      if (countBadge) {
+        countBadge.textContent = `${filtered.length} tarea${filtered.length === 1 ? '' : 's'}`;
+      }
+      if (costPill) {
+        const sum = filtered.reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
+        costPill.textContent = `$${sum.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN`;
+      }
+      if (statusPill) {
+        if (currentEtapa === "todas") {
+          statusPill.textContent = "Todas Activas";
+          statusPill.className = "font-bold text-emerald-800";
+        } else {
+          const prog = filtered.filter(t => t.estado === "En Progreso").length;
+          const comp = filtered.filter(t => t.estado === "Completada").length;
+          if (comp === filtered.length && filtered.length > 0) {
+            statusPill.textContent = "Completada";
+            statusPill.className = "font-bold text-emerald-700";
+          } else if (prog > 0 || comp > 0) {
+            statusPill.textContent = "En Curso";
+            statusPill.className = "font-bold text-amber-700";
+          } else {
+            statusPill.textContent = "Planificada";
+            statusPill.className = "font-bold text-stone-600";
+          }
+        }
+      }
+    }
 
     // Función de Transición entre Vistas (Garantiza CERO Anidamiento)
     function transitionToView(viewId) {
@@ -383,21 +523,31 @@
 
     // Renderizado de la Ventana 1: Cronograma Global Maestro
     function renderGlobalView(container) {
-      const total = tasksData.length;
-      const prog = tasksData.filter(t => t.estado === "En Progreso").length;
-      const comp = tasksData.filter(t => t.estado === "Completada").length;
-      const costo = tasksData.reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
+      const activeTasks = getActiveTasks();
+      const total = activeTasks.length;
+      const prog = activeTasks.filter(t => t.estado === "En Progreso").length;
+      const comp = activeTasks.filter(t => t.estado === "Completada").length;
+      const costo = activeTasks.reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
+
+      const etapaLabel = currentEtapa === "todas" 
+        ? "Cronograma Maestro Consolidado" 
+        : `Filtrado por: ${currentEtapa}`;
 
       container.innerHTML = `
         <!-- Encabezado de la Vista Global -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-stone-200 shadow-xs">
           <div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
               <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">Ventana 1 &bull; Consolidada</span>
-              <h2 class="text-lg font-black text-stone-900">Cronograma Maestro del Proyecto Chimay</h2>
+              ${currentEtapa !== "todas" ? `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300/60 flex items-center gap-1"><i class="fa-solid fa-filter text-[10px]"></i> ${currentEtapa}</span>` : ''}
+              <h2 class="text-lg font-black text-stone-900">${etapaLabel}</h2>
             </div>
-            <p class="text-xs text-stone-500 mt-0.5">Visualización completa de todas las tareas, responsables e inversión del rancho.</p>
+            <p class="text-xs text-stone-500 mt-0.5">
+              ${currentEtapa === "todas" ? "Visualización completa de todas las tareas, responsables e inversión del rancho." : `Mostrando exclusivamente las tareas correspondientes a la etapa seleccionada (${total} tareas).`}
+              ${currentEtapa !== "todas" ? `<button onclick="changeEtapaFilter('todas'); document.getElementById('selectEtapa').value='todas';" class="text-emerald-700 hover:text-emerald-800 underline font-semibold ml-1">Ver todas las etapas</button>` : ''}
+            </p>
           </div>
+
           <div class="inline-flex rounded-lg border border-stone-200 p-1 bg-stone-50">
             <button id="btnToggleGantt" class="px-3 py-1 rounded-md text-xs font-bold ${currentSubView === 'gantt' ? 'bg-white shadow-xs text-emerald-900' : 'text-stone-600 hover:text-stone-900'} flex items-center gap-1.5 transition">
               <i class="fa-solid fa-chart-gantt"></i> Gantt
@@ -423,7 +573,7 @@
             <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg"><i class="fa-solid fa-circle-check"></i></div>
           </div>
           <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
-            <div><p class="text-xs font-bold uppercase tracking-wider text-stone-500">Inversión Piloto</p><p class="text-2xl font-black text-emerald-900 mt-1">$${costo.toLocaleString("es-MX")}</p></div>
+            <div><p class="text-xs font-bold uppercase tracking-wider text-stone-500">Inversión Etapa</p><p class="text-2xl font-black text-emerald-900 mt-1">$${costo.toLocaleString("es-MX", {minimumFractionDigits: 2})}</p></div>
             <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg"><i class="fa-solid fa-sack-dollar"></i></div>
           </div>
         </div>
@@ -433,14 +583,20 @@
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div>
               <h3 class="text-sm font-bold text-stone-800 flex items-center gap-2">
-                <i class="fa-solid fa-timeline text-emerald-600"></i> Cronograma Maestro de Operaciones (${total} Tareas)
+                <i class="fa-solid fa-timeline text-emerald-600"></i> Cronograma de Operaciones (${total} Tareas)
               </h3>
-              <p class="text-xs text-stone-400">Desplázate horizontalmente para ver los meses o verticalmente para recorrer las fases.</p>
+              <p class="text-xs text-stone-400">Desplázate horizontalmente para ver el horizonte temporal o verticalmente para recorrer tareas.</p>
             </div>
-            <span class="text-xs text-stone-400 italic hidden md:inline">Haz clic en cualquier barra para ver detalles o costos</span>
+            <span class="text-xs text-stone-400 italic hidden md:inline">Haz clic en cualquier barra para ver detalles, etapa o costos</span>
           </div>
           <div class="w-full overflow-x-auto overflow-y-auto max-h-[620px] rounded-xl border border-stone-100 p-1 bg-stone-50/40">
-            <svg id="globalGanttSvg"></svg>
+            ${total > 0 ? `<svg id="globalGanttSvg"></svg>` : `
+              <div class="flex flex-col items-center justify-center py-16 text-stone-400">
+                <i class="fa-solid fa-folder-open text-4xl mb-3 text-stone-300"></i>
+                <p class="text-sm font-semibold text-stone-600">No hay tareas asociadas a esta etapa.</p>
+                <button onclick="changeEtapaFilter('todas'); document.getElementById('selectEtapa').value='todas';" class="mt-3 px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-bold">Ver Todas las Etapas</button>
+              </div>
+            `}
           </div>
         </div>
 
@@ -479,7 +635,7 @@
           document.getElementById("globalCardsSection").classList.add("hidden");
           btnG.className = "px-3 py-1 rounded-md text-xs font-bold bg-white shadow-xs text-emerald-900 flex items-center gap-1.5 transition";
           btnC.className = "px-3 py-1 rounded-md text-xs font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1.5 transition";
-          mountGantt("#globalGanttSvg", tasksData);
+          if (activeTasks.length > 0) mountGantt("#globalGanttSvg", activeTasks);
         };
         btnC.onclick = () => {
           currentSubView = "cards";
@@ -487,14 +643,14 @@
           document.getElementById("globalCardsSection").classList.remove("hidden");
           btnC.className = "px-3 py-1 rounded-md text-xs font-bold bg-white shadow-xs text-emerald-900 flex items-center gap-1.5 transition";
           btnG.className = "px-3 py-1 rounded-md text-xs font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1.5 transition";
-          renderKanbanColumns(tasksData);
+          renderKanbanColumns(activeTasks);
         };
       }
 
       if (currentSubView === "gantt") {
-        mountGantt("#globalGanttSvg", tasksData);
+        if (activeTasks.length > 0) mountGantt("#globalGanttSvg", activeTasks);
       } else {
-        renderKanbanColumns(tasksData);
+        renderKanbanColumns(activeTasks);
       }
     }
 
@@ -509,7 +665,7 @@
         initials: specialistName.substring(0, 2).toUpperCase()
       };
 
-      const userTasks = tasksData.filter(t => t.responsable && t.responsable.includes(specialistName));
+      const userTasks = getActiveTasks(specialistName);
       const total = userTasks.length;
       const prog = userTasks.filter(t => t.estado === "En Progreso").length;
       const comp = userTasks.filter(t => t.estado === "Completada").length;
@@ -527,6 +683,7 @@
               <div class="flex items-center gap-2 flex-wrap">
                 <h2 class="text-xl font-black text-stone-900">${info.name}</h2>
                 <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">Ventana Especialista</span>
+                ${currentEtapa !== "todas" ? `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300/60"><i class="fa-solid fa-filter text-[10px]"></i> ${currentEtapa}</span>` : ''}
               </div>
               <p class="text-xs font-semibold text-stone-600 mt-0.5">${info.rol}</p>
               <div class="flex items-center gap-3 text-xs text-stone-400 mt-1 flex-wrap">
@@ -559,7 +716,7 @@
             <div class="w-10 h-10 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center text-lg"><i class="fa-solid fa-clock"></i></div>
           </div>
           <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
-            <div><p class="text-xs font-bold uppercase tracking-wider text-stone-500">Presupuesto Asignado</p><p class="text-2xl font-black text-emerald-900 mt-1">$${costo.toLocaleString("es-MX")}</p></div>
+            <div><p class="text-xs font-bold uppercase tracking-wider text-stone-500">Presupuesto Asignado</p><p class="text-2xl font-black text-emerald-900 mt-1">$${costo.toLocaleString("es-MX", {minimumFractionDigits: 2})}</p></div>
             <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg"><i class="fa-solid fa-sack-dollar"></i></div>
           </div>
         </div>
@@ -590,10 +747,14 @@
         mountGantt("#specialistGanttSvg", userTasks);
         renderUserCards("#specialistCardsList", userTasks);
       } else {
+        const msg = currentEtapa !== "todas" 
+          ? `No hay tareas asignadas a ${info.name} en la etapa "${currentEtapa}".` 
+          : `No hay tareas activas asignadas a este especialista.`;
         document.getElementById("specialistGanttSvg").parentElement.innerHTML = `
           <div class="flex flex-col items-center justify-center py-12 text-stone-400">
             <i class="fa-solid fa-calendar-xmark text-3xl mb-2 text-stone-300"></i>
-            <p class="text-sm font-semibold text-stone-600">No hay tareas activas asignadas a este especialista.</p>
+            <p class="text-sm font-semibold text-stone-600">${msg}</p>
+            ${currentEtapa !== "todas" ? `<button onclick="changeEtapaFilter('todas'); document.getElementById('selectEtapa').value='todas';" class="mt-2 text-xs text-emerald-700 hover:underline font-bold">Ver en todas las etapas</button>` : ''}
           </div>
         `;
       }
@@ -718,9 +879,13 @@
           ${statusBadge}
         </div>
         <p class="font-bold text-stone-800 text-xs leading-snug">${t.name}</p>
+        <div class="text-[11px] text-stone-500 flex items-center gap-1.5 truncate">
+          <i class="fa-solid fa-layer-group text-stone-400 text-[10px]"></i>
+          <span class="truncate font-medium">${t.etapa || 'Etapa General'}</span>
+        </div>
         <div class="flex justify-between items-center text-xs text-stone-500 pt-2 border-t border-stone-100">
           <span class="text-stone-600 font-medium"><i class="fa-regular fa-clock"></i> ${t.horas}h</span>
-          <span class="font-black text-emerald-900">$${Number(t.costoTotal).toLocaleString()} MXN</span>
+          <span class="font-black text-emerald-900">$${Number(t.costoTotal).toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN</span>
         </div>
       `;
       return card;
@@ -751,6 +916,7 @@
 
       document.getElementById("modalBadgeId").innerText = t.id;
       document.getElementById("modalTitle").innerText = t.name;
+      document.getElementById("modalEtapa").innerText = t.etapa || "Etapa General";
       document.getElementById("modalResp").innerText = t.responsable;
       document.getElementById("modalStatus").innerText = `${t.prioridad || 'Media'} • ${t.estado}`;
       document.getElementById("modalDates").innerText = `${t.start} al ${t.end}`;
@@ -784,6 +950,7 @@
         if (currentView === "todos") renderGlobalView(container);
         else renderSpecialistView(container, currentView);
       }
+      updateEtapaBarInfo();
 
       document.getElementById("taskModal").classList.add("hidden");
 
@@ -812,6 +979,7 @@
         const json = await res.json();
         if (json && json.success && json.tareas && Array.isArray(json.tareas) && json.tareas.length > 0) {
           tasksData = json.tareas;
+          populateEtapasDropdown();
           const container = document.getElementById("viewContainer");
           if (container) {
             if (currentView === "todos") renderGlobalView(container);
@@ -829,7 +997,7 @@
           }
         }
       } catch (e) {
-        console.warn("Usando datos locales de respaldo:", e);
+        console.warn("Usando datos locales de respaldo con etapas cargadas:", e);
       } finally {
         if (icon) icon.classList.remove("fa-spin");
       }
@@ -849,6 +1017,7 @@
     };
 
     // Inicialización al cargar la página
+    populateEtapasDropdown();
     transitionToView('todos');
     fetchTasksFromSheets();
 
