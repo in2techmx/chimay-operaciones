@@ -166,26 +166,32 @@
     </div>
   </header>
 
-  <!-- Barra de Navegación de Vistas (Transición Limpia) -->
+  <!-- Barra de Navegación de Vistas y Menú de Recursos (Filtro Dinámico y Escalable) -->
   <nav class="bg-white border-b border-stone-200 shadow-2xs sticky top-[57px] sm:top-[64px] z-30">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 overflow-x-auto">
-      <div class="flex items-center gap-1.5 sm:gap-2 flex-nowrap">
-        <span class="text-[11px] font-bold text-stone-400 uppercase tracking-wider mr-1 hidden md:inline">Vistas:</span>
-        <button class="nav-view-btn px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-emerald-800 text-white shadow-sm" data-view="todos" onclick="transitionToView('todos')">
-          <i class="fa-solid fa-globe text-emerald-300"></i> Vista Global (Ventana 1)
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+        <!-- Botón Directo Vista Global -->
+        <button id="btnVistaGlobal" onclick="selectRecurso('todos')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-emerald-800 text-white shadow-sm hover:bg-emerald-900">
+          <i class="fa-solid fa-globe text-emerald-300"></i> Vista Global
         </button>
-        <button class="nav-view-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap bg-stone-100 hover:bg-stone-200 text-stone-700" data-view="Arturo B." onclick="transitionToView('Arturo B.')">
-          <span class="w-2 h-2 rounded-full bg-blue-500"></span> Arturo B.
-        </button>
-        <button class="nav-view-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap bg-stone-100 hover:bg-stone-200 text-stone-700" data-view="Gema R." onclick="transitionToView('Gema R.')">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Gema R.
-        </button>
-        <button class="nav-view-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap bg-stone-100 hover:bg-stone-200 text-stone-700" data-view="Arturo A." onclick="transitionToView('Arturo A.')">
-          <span class="w-2 h-2 rounded-full bg-purple-500"></span> Arturo A.
-        </button>
-        <button class="nav-view-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap bg-stone-100 hover:bg-stone-200 text-stone-700" data-view="Don Chiyo" onclick="transitionToView('Don Chiyo')">
-          <span class="w-2 h-2 rounded-full bg-amber-500"></span> Don Chiyo
-        </button>
+
+        <!-- Separador visual discreto -->
+        <span class="h-4 w-px bg-stone-200 hidden sm:inline-block"></span>
+
+        <!-- Menú Desplegable de Recursos (Filtro Dinámico y Escalable para N especialistas) -->
+        <div class="flex items-center gap-1.5">
+          <label for="selectRecurso" class="text-xs font-bold text-stone-600 flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-users text-emerald-700"></i>
+            <span class="hidden md:inline">Recurso / Especialista:</span>
+            <span class="md:hidden">Recurso:</span>
+          </label>
+          <div class="relative min-w-[200px] sm:min-w-[270px]">
+            <select id="selectRecurso" onchange="selectRecurso(this.value)" class="w-full bg-white border border-stone-300 hover:border-emerald-600 focus:border-emerald-600 rounded-xl pl-3 pr-8 py-1.5 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 shadow-2xs cursor-pointer appearance-none transition">
+              <option value="todos">👥 Todos los Recursos (Equipo Completo)</option>
+            </select>
+            <i class="fa-solid fa-chevron-down text-[10px] text-stone-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+          </div>
+        </div>
       </div>
 
       <!-- Selector de Escala Temporal Compartido -->
@@ -497,29 +503,92 @@
       }
     }
 
+    // Poblar dinámicamente el menú selector de Recursos (Escalable para N especialistas)
+    function populateRecursosDropdown() {
+      const select = document.getElementById("selectRecurso");
+      if (!select) return;
+
+      const respSet = new Set();
+      tasksData.forEach(t => {
+        if (t.responsable) {
+          t.responsable.split(",").forEach(r => {
+            const clean = r.trim();
+            if (clean) respSet.add(clean);
+          });
+        }
+      });
+      const especialistas = Array.from(respSet).sort();
+
+      const prevSelection = currentView;
+      select.innerHTML = `<option value="todos">👥 Todos los Recursos (Equipo Completo - ${tasksData.length} tareas)</option>`;
+
+      especialistas.forEach(esp => {
+        const count = tasksData.filter(t => (t.responsable || "").includes(esp)).length;
+        const info = TEAM_INFO[esp];
+        const rolSnippet = info && info.rol ? ` — ${info.rol.split(',')[0]}` : '';
+        const opt = document.createElement("option");
+        opt.value = esp;
+        opt.textContent = `👤 ${esp}${rolSnippet} (${count} t)`;
+        select.appendChild(opt);
+      });
+
+      if (especialistas.includes(prevSelection)) {
+        select.value = prevSelection;
+      } else {
+        select.value = "todos";
+      }
+      updateNavButtonsState(currentView);
+    }
+
+    // Selección de Recurso desde el Menú Desplegable o Botón Global
+    function selectRecurso(recursoValue) {
+      currentView = recursoValue;
+      
+      const select = document.getElementById("selectRecurso");
+      if (select && select.value !== recursoValue) {
+        select.value = recursoValue;
+      }
+
+      updateNavButtonsState(recursoValue);
+      transitionToView(recursoValue);
+    }
+
+    // Actualiza el aspecto de los controles de navegación superior
+    function updateNavButtonsState(viewId) {
+      const btnGlobal = document.getElementById("btnVistaGlobal");
+      const select = document.getElementById("selectRecurso");
+
+      if (viewId === "todos") {
+        if (btnGlobal) {
+          btnGlobal.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-800 text-white shadow-sm flex items-center gap-1.5 whitespace-nowrap transition hover:bg-emerald-900";
+        }
+        if (select) {
+          select.className = "w-full bg-white border border-stone-300 hover:border-emerald-600 focus:border-emerald-600 rounded-xl pl-3 pr-8 py-1.5 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 shadow-2xs cursor-pointer appearance-none transition";
+        }
+      } else {
+        if (btnGlobal) {
+          btnGlobal.className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1.5 whitespace-nowrap transition";
+        }
+        if (select) {
+          select.className = "w-full bg-emerald-50/80 border border-emerald-600 rounded-xl pl-3 pr-8 py-1.5 text-xs font-black text-emerald-950 ring-2 ring-emerald-500/30 shadow-2xs cursor-pointer appearance-none transition";
+        }
+      }
+    }
+
     // Función de Transición entre Vistas (Garantiza CERO Anidamiento)
     function transitionToView(viewId) {
       currentView = viewId;
-
-      // 1. Actualizar estilos de los botones en la barra de navegación superior
-      document.querySelectorAll(".nav-view-btn").forEach(btn => {
-        const v = btn.getAttribute("data-view");
-        if (v === viewId) {
-          btn.className = "nav-view-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-800 text-white shadow-sm flex items-center gap-1.5 whitespace-nowrap transition";
-        } else {
-          btn.className = "nav-view-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1.5 whitespace-nowrap transition";
-        }
-      });
+      updateNavButtonsState(viewId);
 
       const container = document.getElementById("viewContainer");
       if (!container) return;
 
-      // 2. Animación de salida (fade out)
+      // 1. Animación de salida (fade out)
       container.style.opacity = "0";
       container.style.transform = "translateY(4px)";
 
       setTimeout(() => {
-        // 3. LIMPIEZA ABSOLUTA DEL DOM ANTERIOR (Evita cualquier anidamiento)
+        // 2. LIMPIEZA ABSOLUTA DEL DOM ANTERIOR (Evita cualquier anidamiento)
         container.innerHTML = "";
 
         if (viewId === "todos") {
@@ -528,7 +597,7 @@
           renderSpecialistView(container, viewId);
         }
 
-        // 4. Animación de entrada (fade in)
+        // 3. Animación de entrada (fade in)
         container.style.opacity = "1";
         container.style.transform = "translateY(0)";
       }, 90);
@@ -740,7 +809,7 @@
           </div>
 
           <div class="flex items-center gap-2 w-full md:w-auto justify-end border-t md:border-t-0 pt-3 md:pt-0 border-stone-100">
-            <button onclick="transitionToView('todos')" class="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-2 border border-emerald-200 transition shadow-2xs">
+            <button onclick="selectRecurso('todos')" class="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-2 border border-emerald-200 transition shadow-2xs">
               <i class="fa-solid fa-arrow-left"></i> Volver a Vista Global
             </button>
           </div>
@@ -1137,6 +1206,7 @@
         if (json && json.success && json.tareas && Array.isArray(json.tareas) && json.tareas.length > 0) {
           tasksData = json.tareas;
           populateEtapasDropdown();
+          populateRecursosDropdown();
           const container = document.getElementById("viewContainer");
           if (container) {
             if (currentView === "todos") renderGlobalView(container);
@@ -1175,7 +1245,8 @@
 
     // Inicialización al cargar la página
     populateEtapasDropdown();
-    transitionToView('todos');
+    populateRecursosDropdown();
+    selectRecurso('todos');
     fetchTasksFromSheets();
 
     // Auto-sincronización periódica cada 30 segundos
