@@ -170,23 +170,43 @@
             <span id="notifBadge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-emerald-900 shadow-sm animate-pulse">0</span>
           </button>
 
-          <!-- Bandeja Desplegable de Notificaciones -->
-          <div id="notifTray" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-stone-200 z-50 overflow-hidden text-stone-800">
+          <!-- Bandeja Desplegable de Notificaciones Categorizadas (Chat, Vencimiento, Asignación) -->
+          <div id="notifTray" class="hidden absolute right-0 mt-2 w-88 sm:w-[480px] md:w-[520px] bg-white rounded-3xl shadow-2xl border border-stone-200 z-50 overflow-hidden text-stone-800 animate-in fade-in zoom-in duration-100">
             <div class="px-4 py-3 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <i class="fa-solid fa-bell text-emerald-700 text-xs"></i>
-                <span class="text-xs font-bold text-stone-900">Notificaciones de Tareas</span>
-                <span id="notifUnreadPill" class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 hidden">0</span>
+                <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs shadow-2xs">
+                  <i class="fa-solid fa-bell"></i>
+                </span>
+                <span class="text-xs font-black text-stone-900">Centro de Notificaciones & Alertas</span>
+                <span id="notifUnreadPill" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-700 hidden">0 nuevas</span>
               </div>
-              <button onclick="markAllNotifsRead()" class="text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline">
+              <button onclick="markAllNotifsRead()" class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline">
                 Marcar todas leídas
               </button>
             </div>
-            <div id="notifList" class="max-h-[340px] overflow-y-auto divide-y divide-stone-100">
-              <!-- Renderizado dinámico de notificaciones -->
+
+            <!-- Pestañas de Filtro por Categoría con Conteo en Tiempo Real -->
+            <div class="flex items-center gap-1.5 px-3 py-2 bg-stone-100/70 border-b border-stone-200/70 overflow-x-auto text-xs">
+              <button onclick="setNotifCategoryFilter('todas')" class="notif-tab-btn px-2.5 py-1 rounded-lg text-[11px] font-bold transition whitespace-nowrap bg-stone-800 text-white shadow-2xs" data-cat="todas">
+                🔘 Todas (<span id="tabCountTodas">0</span>)
+              </button>
+              <button onclick="setNotifCategoryFilter('chat')" class="notif-tab-btn px-2.5 py-1 rounded-lg text-[11px] font-bold transition whitespace-nowrap bg-white text-stone-600 hover:text-blue-700 hover:bg-blue-50 border border-stone-200" data-cat="chat">
+                💬 Chat (<span id="tabCountChat">0</span>)
+              </button>
+              <button onclick="setNotifCategoryFilter('expiracion')" class="notif-tab-btn px-2.5 py-1 rounded-lg text-[11px] font-bold transition whitespace-nowrap bg-white text-stone-600 hover:text-amber-700 hover:bg-amber-50 border border-stone-200" data-cat="expiracion">
+                ⏰ Vencimientos (<span id="tabCountExp">0</span>)
+              </button>
+              <button onclick="setNotifCategoryFilter('asignacion')" class="notif-tab-btn px-2.5 py-1 rounded-lg text-[11px] font-bold transition whitespace-nowrap bg-white text-stone-600 hover:text-emerald-700 hover:bg-emerald-50 border border-stone-200" data-cat="asignacion">
+                📋 Asignadas (<span id="tabCountAsig">0</span>)
+              </button>
             </div>
-            <div class="px-4 py-2 bg-stone-50/80 border-t border-stone-100 text-center text-[10px] text-stone-400 font-medium">
-              Alertas para tareas donde eres responsable o participaste en el chat
+
+            <div id="notifList" class="max-h-[360px] overflow-y-auto divide-y divide-stone-100">
+              <!-- Renderizado dinámico de notificaciones categorizadas -->
+            </div>
+            <div class="px-4 py-2 bg-stone-50/80 border-t border-stone-100 flex items-center justify-between text-[10px] text-stone-400 font-medium">
+              <span>Categorías: 💬 Menciones &bull; ⏰ Vencimiento &bull; 📋 Asignación</span>
+              <span class="text-emerald-700 font-semibold">Trazabilidad en tiempo real</span>
             </div>
           </div>
         </div>
@@ -958,9 +978,24 @@
       }
     }
 
-    // ==========================================
-    // 3. MOTOR DE NOTIFICACIONES DE TAREAS (🔔)
-    // ==========================================
+    // =========================================================================
+    // 3. MOTOR DE ALERTAS CATEGORIZADAS (💬 Chat, ⏰ Vencimiento, 📋 Asignación)
+    // =========================================================================
+    let activeNotifCategory = "todas"; // 'todas' | 'chat' | 'expiracion' | 'asignacion'
+
+    function setNotifCategoryFilter(cat) {
+      activeNotifCategory = cat;
+      document.querySelectorAll(".notif-tab-btn").forEach(btn => {
+        const c = btn.getAttribute("data-cat");
+        if (c === cat) {
+          btn.className = "notif-tab-btn px-2.5 py-1 rounded-lg text-[11px] font-black transition whitespace-nowrap bg-stone-900 text-white shadow-xs";
+        } else {
+          btn.className = "notif-tab-btn px-2.5 py-1 rounded-lg text-[11px] font-bold transition whitespace-nowrap bg-white text-stone-600 hover:text-stone-900 border border-stone-200";
+        }
+      });
+      renderNotifications();
+    }
+
     function triggerTaskNotifications(task, comment) {
       const recipients = new Map();
 
@@ -980,16 +1015,17 @@
         }
       });
 
-      // Crear y persistir la notificación para cada destinatario
+      // Crear y persistir la notificación de tipo 'chat'
       recipients.forEach((reason, recipientEmail) => {
         addNotification(recipientEmail, {
           id: "notif-" + Date.now() + "-" + Math.random().toString(36).substr(2, 4),
+          type: "chat",
           taskId: task.id,
           taskName: task.name,
           authorName: comment.author,
           authorAvatarBg: comment.avatarBg,
           authorInitials: comment.initials,
-          snippet: comment.text.substring(0, 75) + (comment.text.length > 75 ? "..." : ""),
+          snippet: comment.text.substring(0, 80) + (comment.text.length > 80 ? "..." : ""),
           timestamp: "Justo ahora",
           reason: reason,
           read: false
@@ -1012,7 +1048,7 @@
       try {
         const list = getNotificationsForUser(email);
         list.unshift(notif);
-        if (list.length > 30) list.pop(); // Mantener últimas 30
+        if (list.length > 40) list.pop(); // Mantener últimas 40
         localStorage.setItem(`chimay_notifs_${email}`, JSON.stringify(list));
       } catch (e) {
         console.error("Error al guardar notificación:", e);
@@ -1021,37 +1057,135 @@
 
     function initNotifications() {
       const email = currentUser ? currentUser.email : "arturo.dlb.r@gmail.com";
-      const existing = getNotificationsForUser(email);
-      if (!existing || existing.length === 0) {
-        // Notificación de bienvenida / demostración para mostrar el funcionamiento
+      let notifs = getNotificationsForUser(email);
+
+      // Si el buzón está vacío para este usuario, inicializar con alertas estructuradas de las 3 categorías
+      if (!notifs || notifs.length === 0) {
+        notifs = [];
         if (email === "arturo.dlb.r@gmail.com") {
-          addNotification(email, {
-            id: "notif-seed-1",
+          notifs.push({
+            id: "notif-seed-chat-1",
+            type: "chat",
             taskId: "TSK-01",
             taskName: "Formalización de Sociedad S.P.R. de R.L. ante Notario",
             authorName: "Gema R.",
             authorAvatarBg: "bg-emerald-600",
             authorInitials: "GR",
-            snippet: "Revisé y aprobé el objeto social. Ya quedó firmado...",
-            timestamp: "Hace 25 min",
+            snippet: "Revisé y aprobé el objeto social. Ya quedó firmado por todos los socios fundadores.",
+            timestamp: "Hace 20 min",
             reason: "Participas en la conversación de esta tarea",
             read: false
           });
+          notifs.push({
+            id: "notif-seed-exp-1",
+            type: "expiracion",
+            taskId: "TSK-05",
+            taskName: "Levantamiento Topográfico y Curvas de Nivel (5 HA)",
+            authorName: "Cronograma",
+            authorAvatarBg: "bg-amber-600",
+            authorInitials: "⏰",
+            snippet: "Fecha límite próxima (2026-09-26). Quedan 8h estimadas de campo para concluir curvas de nivel.",
+            timestamp: "Hoy 08:30",
+            reason: "Vencimiento cercano en los próximos 4 días",
+            read: false
+          });
+          notifs.push({
+            id: "notif-seed-asig-1",
+            type: "asignacion",
+            taskId: "TSK-10",
+            taskName: "Instalación de Bomba Sumergible Solar 5 HP",
+            authorName: "Dirección Técnica",
+            authorAvatarBg: "bg-emerald-700",
+            authorInitials: "📋",
+            snippet: "Fuiste asignado como responsable técnico para montaje de paneles y pruebas hidráulicas.",
+            timestamp: "Ayer 16:40",
+            reason: "Nueva tarea asignada en Etapa 2: Hidráulica",
+            read: false
+          });
         } else if (email === "gemaromerom22@gmail.com") {
-          addNotification(email, {
-            id: "notif-seed-2",
+          notifs.push({
+            id: "notif-seed-chat-2",
+            type: "chat",
             taskId: "TSK-03",
             taskName: "Gestión de Título de Concesión Pozo N° 1 CONAGUA",
             authorName: "Arturo A.",
             authorAvatarBg: "bg-purple-600",
             authorInitials: "AA",
-            snippet: "Se recopilaron las coordenadas UTM del pozo y la memoria...",
-            timestamp: "Hoy 09:30",
+            snippet: "Se recopilaron las coordenadas UTM del pozo y la memoria de gasto proyectado (1.5 lps).",
+            timestamp: "Hace 15 min",
             reason: "Eres la responsable asignada a esta tarea",
             read: false
           });
+          notifs.push({
+            id: "notif-seed-exp-2",
+            type: "expiracion",
+            taskId: "TSK-03",
+            taskName: "Gestión de Título de Concesión Pozo N° 1 CONAGUA",
+            authorName: "Cronograma",
+            authorAvatarBg: "bg-amber-600",
+            authorInitials: "⏰",
+            snippet: "Seguimiento crítico: expediente CONAGUA entra en plazo de prevención administrativa.",
+            timestamp: "Hoy 09:10",
+            reason: "Vencimiento próximo de plazo legal",
+            read: false
+          });
+          notifs.push({
+            id: "notif-seed-asig-2",
+            type: "asignacion",
+            taskId: "TSK-21",
+            taskName: "Calibración Nutrición Orgánica y Sensores CE/pH",
+            authorName: "Dirección Técnica",
+            authorAvatarBg: "bg-emerald-700",
+            authorInitials: "📋",
+            snippet: "Asignada como especialista líder para formular bioestimulantes y calibrar sensores.",
+            timestamp: "Ayer 11:20",
+            reason: "Nueva tarea asignada en Etapa 3: Microgreens",
+            read: false
+          });
+        } else {
+          notifs.push({
+            id: "notif-seed-gen-1",
+            type: "chat",
+            taskId: "TSK-01",
+            taskName: "Formalización de Sociedad S.P.R. de R.L.",
+            authorName: "Gema R.",
+            authorAvatarBg: "bg-emerald-600",
+            authorInitials: "GR",
+            snippet: "Actualización de avances en notaría.",
+            timestamp: "Hoy",
+            reason: "Conversación de equipo",
+            read: false
+          });
+          notifs.push({
+            id: "notif-seed-gen-2",
+            type: "expiracion",
+            taskId: "TSK-06",
+            taskName: "Solicitud Subsidio CFE Tarifa 09",
+            authorName: "Cronograma",
+            authorAvatarBg: "bg-amber-600",
+            authorInitials: "⏰",
+            snippet: "Vence en 8 días (2026-10-05).",
+            timestamp: "Hoy",
+            reason: "Vencimiento próximo",
+            read: false
+          });
+          notifs.push({
+            id: "notif-seed-gen-3",
+            type: "asignacion",
+            taskId: "TSK-20",
+            taskName: "Adquisición y Sanitización de 1,200 Charolas 1020",
+            authorName: "Dirección",
+            authorAvatarBg: "bg-emerald-700",
+            authorInitials: "📋",
+            snippet: "Asignado para gestión de compra de insumos.",
+            timestamp: "Ayer",
+            reason: "Nueva tarea asignada",
+            read: false
+          });
         }
+        localStorage.setItem(`chimay_notifs_${email}`, JSON.stringify(notifs));
       }
+
       renderNotifications();
     }
 
@@ -1065,6 +1199,22 @@
       const notifs = getNotificationsForUser(email);
       const unreadCount = notifs.filter(n => !n.read).length;
 
+      // Actualizar contadores de las pestañas de categorías
+      const countTodas = notifs.length;
+      const countChat = notifs.filter(n => n.type === "chat").length;
+      const countExp = notifs.filter(n => n.type === "expiracion").length;
+      const countAsig = notifs.filter(n => n.type === "asignacion").length;
+
+      const elTodas = document.getElementById("tabCountTodas");
+      const elChat = document.getElementById("tabCountChat");
+      const elExp = document.getElementById("tabCountExp");
+      const elAsig = document.getElementById("tabCountAsig");
+
+      if (elTodas) elTodas.innerText = countTodas;
+      if (elChat) elChat.innerText = countChat;
+      if (elExp) elExp.innerText = countExp;
+      if (elAsig) elAsig.innerText = countAsig;
+
       if (unreadCount > 0) {
         badge.innerText = unreadCount > 9 ? "9+" : unreadCount;
         badge.classList.remove("hidden");
@@ -1077,41 +1227,88 @@
         if (unreadPill) unreadPill.classList.add("hidden");
       }
 
-      if (notifs.length === 0) {
+      // Filtrar según pestaña activa
+      let filteredNotifs = notifs;
+      if (activeNotifCategory !== "todas") {
+        filteredNotifs = notifs.filter(n => n.type === activeNotifCategory);
+      }
+
+      if (filteredNotifs.length === 0) {
         listEl.innerHTML = `
           <div class="p-8 text-center text-stone-400 space-y-2">
-            <i class="fa-regular fa-bell-slash text-2xl text-stone-300"></i>
-            <p class="text-xs font-bold text-stone-600">Buzón de alertas al día</p>
-            <p class="text-[11px] text-stone-400">Recibirás avisos cuando otros miembros comenten en tus tareas.</p>
+            <i class="fa-regular fa-bell-slash text-3xl text-stone-300"></i>
+            <p class="text-xs font-bold text-stone-600">No hay alertas en esta categoría</p>
+            <p class="text-[11px] text-stone-400">Las notificaciones aparecerán aquí automáticamente.</p>
           </div>
         `;
         return;
       }
 
       listEl.innerHTML = "";
-      notifs.forEach(n => {
+      filteredNotifs.forEach(n => {
+        let catBadge = "";
+        let borderAccent = "border-l-4 border-emerald-600";
+        let iconBg = n.authorAvatarBg || "bg-emerald-600";
+        let iconHtml = n.authorInitials || "US";
+        let miniBadge = "💬";
+        let miniBadgeBg = "bg-blue-600";
+        let reasonColor = "text-emerald-800";
+
+        if (n.type === "chat") {
+          borderAccent = "border-l-4 border-blue-500";
+          miniBadge = "💬";
+          miniBadgeBg = "bg-blue-600";
+          reasonColor = "text-blue-800";
+          catBadge = `<span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1"><i class="fa-solid fa-comments text-[9px]"></i> Chat / Mención</span>`;
+        } else if (n.type === "expiracion") {
+          borderAccent = "border-l-4 border-amber-500";
+          iconBg = "bg-amber-600";
+          iconHtml = `<i class="fa-solid fa-clock text-xs"></i>`;
+          miniBadge = "⏰";
+          miniBadgeBg = "bg-amber-600";
+          reasonColor = "text-amber-800";
+          catBadge = `<span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1"><i class="fa-solid fa-hourglass-half text-[9px] text-amber-700"></i> Vence Pronto</span>`;
+        } else if (n.type === "asignacion") {
+          borderAccent = "border-l-4 border-emerald-600";
+          iconBg = "bg-emerald-700";
+          iconHtml = `<i class="fa-solid fa-user-check text-xs"></i>`;
+          miniBadge = "📋";
+          miniBadgeBg = "bg-emerald-700";
+          reasonColor = "text-emerald-800";
+          catBadge = `<span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-1"><i class="fa-solid fa-clipboard-check text-[9px] text-emerald-700"></i> Asignada</span>`;
+        }
+
         const item = document.createElement("div");
-        item.className = `p-3.5 hover:bg-emerald-50/70 transition cursor-pointer flex items-start gap-3 ${n.read ? 'opacity-70 bg-white' : 'bg-emerald-50/40 border-l-4 border-emerald-600'}`;
+        item.className = `p-3.5 hover:bg-stone-50 transition cursor-pointer flex items-start gap-3 border-b border-stone-100 ${borderAccent} ${n.read ? 'opacity-70 bg-white' : 'bg-stone-50/50'}`;
         item.onclick = () => openTaskFromNotification(n.taskId, n.id);
 
         item.innerHTML = `
-          <span class="w-8 h-8 rounded-xl ${n.authorAvatarBg || 'bg-emerald-600'} text-white font-black text-[11px] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
-            ${n.authorInitials || 'US'}
-          </span>
+          <div class="relative shrink-0 mt-0.5">
+            <span class="w-9 h-9 rounded-xl ${iconBg} text-white font-black text-xs flex items-center justify-center shadow-2xs">
+              ${iconHtml}
+            </span>
+            <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full ${miniBadgeBg} flex items-center justify-center text-[8px] text-white font-bold border border-white shadow-2xs">
+              ${miniBadge}
+            </span>
+          </div>
           <div class="flex-1 min-w-0 space-y-1">
             <div class="flex items-center justify-between gap-1">
-              <div class="flex items-center gap-1.5 min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="font-mono font-black text-[10px] bg-stone-100 text-stone-800 px-1.5 py-0.2 rounded border border-stone-200 shrink-0">${n.taskId}</span>
-                <p class="text-xs font-black text-stone-900 truncate">${n.taskName}</p>
+                ${catBadge}
               </div>
-              ${!n.read ? '<span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>' : ''}
+              <div class="flex items-center gap-1.5 shrink-0">
+                <span class="text-[10px] text-stone-400 font-medium">${n.timestamp}</span>
+                ${!n.read ? '<span class="w-2 h-2 rounded-full bg-rose-500 shrink-0 animate-pulse" title="No leída"></span>' : ''}
+              </div>
             </div>
+            <p class="text-xs font-black text-stone-900 truncate">${n.taskName}</p>
             <p class="text-xs text-stone-700 leading-snug">
-              <strong class="text-stone-900 font-bold">${n.authorName}:</strong> "${n.snippet}"
+              ${n.type === 'chat' ? `<strong class="text-stone-900 font-bold">${n.authorName}:</strong> "${n.snippet}"` : n.snippet}
             </p>
             <div class="flex items-center justify-between text-[10px] text-stone-400 pt-0.5">
-              <span class="text-emerald-800 font-bold">${n.reason}</span>
-              <span>${n.timestamp}</span>
+              <span class="${reasonColor} font-bold">${n.reason}</span>
+              <span class="text-emerald-700 font-bold hover:underline">Ver tarea &rarr;</span>
             </div>
           </div>
         `;
