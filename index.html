@@ -34,10 +34,38 @@
       rx: 6px !important;
       ry: 6px !important;
     }
-    .gantt .bar-label {
-      font-size: 11px !important;
+    /* MEJORA RADICAL DE LEGIBILIDAD: Contorno Halo SVG (Stroke + Fill) */
+    .gantt .bar-label,
+    .gantt .bar-label.big {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+      font-size: 13px !important;
+      font-weight: 800 !important;
+      fill: #0f172a !important; /* Negro carbón intenso */
+      paint-order: stroke fill !important;
+      stroke: #ffffff !important; /* Halo blanco de alto contraste */
+      stroke-width: 3.5px !important;
+      stroke-linecap: round !important;
+      stroke-linejoin: round !important;
+      letter-spacing: 0.015em !important;
+      dominant-baseline: central !important;
+    }
+
+    /* Títulos de meses y números de días en la cabecera del calendario */
+    .gantt .grid-header {
+      fill: #f8fafc !important;
+      stroke: #e2e8f0 !important;
+    }
+    .gantt .upper-text {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      font-size: 14px !important;
+      font-weight: 800 !important;
+      fill: #0f172a !important;
+    }
+    .gantt .lower-text {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      font-size: 12px !important;
       font-weight: 700 !important;
-      fill: #1e293b !important;
+      fill: #334155 !important;
     }
 
     /* 1. Tarea Completada (Verde Esmeralda) */
@@ -49,9 +77,13 @@
     .gantt .bar-wrapper.gantt-completada .bar-progress {
       fill: #059669 !important;
     }
-    .gantt .bar-wrapper.gantt-completada .bar-label {
+    .gantt .bar-wrapper.gantt-completada .bar-label,
+    .gantt .bar-wrapper.gantt-completada .bar-label.big {
       fill: #064e3b !important;
-      font-weight: 700 !important;
+      stroke: #ffffff !important;
+      stroke-width: 3.5px !important;
+      paint-order: stroke fill !important;
+      font-weight: 800 !important;
     }
 
     /* 2. Tarea En Progreso (Ámbar / Naranja Dinámico) */
@@ -63,9 +95,13 @@
     .gantt .bar-wrapper.gantt-progreso .bar-progress {
       fill: #d97706 !important;
     }
-    .gantt .bar-wrapper.gantt-progreso .bar-label {
-      fill: #78350f !important;
-      font-weight: 700 !important;
+    .gantt .bar-wrapper.gantt-progreso .bar-label,
+    .gantt .bar-wrapper.gantt-progreso .bar-label.big {
+      fill: #451a03 !important;
+      stroke: #ffffff !important;
+      stroke-width: 3.5px !important;
+      paint-order: stroke fill !important;
+      font-weight: 800 !important;
     }
 
     /* 3. Tarea No Iniciada (Gris Suave Visible con Borde Definido - NUNCA BLANCO) */
@@ -75,9 +111,13 @@
       stroke-width: 1.5px !important;
       stroke-dasharray: 4 2;
     }
-    .gantt .bar-wrapper.gantt-noiniciada .bar-label {
-      fill: #334155 !important;
-      font-weight: 600 !important;
+    .gantt .bar-wrapper.gantt-noiniciada .bar-label,
+    .gantt .bar-wrapper.gantt-noiniciada .bar-label.big {
+      fill: #0f172a !important;
+      stroke: #ffffff !important;
+      stroke-width: 3.5px !important;
+      paint-order: stroke fill !important;
+      font-weight: 800 !important;
     }
 
     .gantt-container {
@@ -208,7 +248,7 @@
       <p class="text-xs text-stone-600 leading-relaxed">
         Pega la URL de tu <strong>Aplicación Web de Google Apps Script</strong> (la que obtienes al dar clic en <em>Implementar ➔ Nueva implementación ➔ Aplicación web</em>):
       </p>
-      <input id="inputWebAppUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full text-xs p-3 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono">
+      <input id="inputWebAppUrl" type="url" value="https://script.google.com/macros/s/AKfycbzELfx7e7LBojMnRPLLq6CSCyUH7TawfkJsEjBwhRciy5RVF0StL37LTAVq4t6lKUuq/exec" placeholder="https://script.google.com/macros/s/.../exec" class="w-full text-xs p-3 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono">
       <div class="flex justify-end gap-2 pt-2">
         <button id="saveConfig" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition">
           Guardar y Conectar
@@ -272,7 +312,11 @@
     let currentMode = "Week";        // 'Day' | 'Week' | 'Month'
     let currentSubView = "gantt";     // 'gantt' | 'cards'
     let selectedTaskId = null;
-    let webAppUrl = localStorage.getItem("chimay_webapp_url") || "";
+    
+    // Endpoint Maestro Google Apps Script (Hardcoded permanente para sincronización en vivo)
+    const DEFAULT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzELfx7e7LBojMnRPLLq6CSCyUH7TawfkJsEjBwhRciy5RVF0StL37LTAVq4t6lKUuq/exec";
+    const storedUrl = localStorage.getItem("chimay_webapp_url");
+    let webAppUrl = (storedUrl && storedUrl.startsWith("https://")) ? storedUrl : DEFAULT_WEBAPP_URL;
 
     // Función de Transición entre Vistas (Garantiza CERO Anidamiento)
     function transitionToView(viewId) {
@@ -554,14 +598,14 @@
 
       try {
         new Gantt(svgSelector, frappeTasks, {
-          header_height: 50,
-          column_width: currentMode === "Day" ? 38 : (currentMode === "Month" ? 70 : 36),
+          header_height: 52,
+          column_width: currentMode === "Day" ? 42 : (currentMode === "Month" ? 75 : 38),
           step: 24,
           view_modes: ['Day', 'Week', 'Month'],
-          bar_height: 32,
+          bar_height: 38,
           bar_corner_radius: 6,
           arrow_curve: 5,
-          padding: 18,
+          padding: 22,
           view_mode: currentMode,
           date_format: 'YYYY-MM-DD',
           on_click: function(task) {
@@ -737,7 +781,7 @@
       try {
         const res = await fetch(webAppUrl);
         const json = await res.json();
-        if (json && json.success && json.tareas && json.tareas.length > 0) {
+        if (json && json.success && json.tareas && Array.isArray(json.tareas) && json.tareas.length > 0) {
           tasksData = json.tareas;
           const container = document.getElementById("viewContainer");
           if (container) {
@@ -748,6 +792,11 @@
           if (lbl) {
             const now = new Date();
             lbl.innerText = `Sincronizado: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+          }
+        } else if (json && json.status === "online") {
+          const lbl = document.getElementById("lastSyncLabel");
+          if (lbl) {
+            lbl.innerText = `Sheets Conectado (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`;
           }
         }
       } catch (e) {
