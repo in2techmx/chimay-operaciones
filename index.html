@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -30,11 +30,12 @@
         </div>
       </div>
       <div class="flex items-center space-x-2">
+        <span id="lastSyncLabel" class="text-[11px] text-emerald-300 font-mono hidden sm:inline-block"></span>
         <button id="btnConfig" class="px-3 py-1.5 rounded-lg bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 text-xs font-semibold flex items-center gap-1.5 border border-emerald-600/40 transition shadow-sm">
           <i class="fa-solid fa-link text-emerald-400"></i> Conectar Sheets
         </button>
         <button id="btnRefresh" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm">
-          <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+          <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i> Actualizar
         </button>
       </div>
     </div>
@@ -248,15 +249,24 @@
     // Cargar tareas desde Apps Script si hay URL
     async function fetchTasksFromSheets() {
       if (!webAppUrl) return;
+      const icon = document.getElementById("refreshIcon");
+      if (icon) icon.classList.add("fa-spin");
       try {
         const res = await fetch(webAppUrl);
         const json = await res.json();
         if (json && json.success && json.tareas && json.tareas.length > 0) {
           tasksData = json.tareas;
           renderAll();
+          const lbl = document.getElementById("lastSyncLabel");
+          if (lbl) {
+            const now = new Date();
+            lbl.innerText = `Sincronizado: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+          }
         }
       } catch (e) {
         console.warn("Usando datos locales de respaldo:", e);
+      } finally {
+        if (icon) icon.classList.remove("fa-spin");
       }
     }
 
@@ -463,6 +473,11 @@
     // Inicializar
     renderAll();
     fetchTasksFromSheets();
+
+    // Auto-sincronización periódica en segundo plano cada 30 segundos
+    setInterval(() => {
+      if (webAppUrl) fetchTasksFromSheets();
+    }, 30000);
   </script>
 </body>
 </html>
