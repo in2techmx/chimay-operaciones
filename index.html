@@ -168,7 +168,7 @@
     </div>
 
     <!-- Filtro / Overlay de Gradiente Cinemático Oscuro (Permite visibilidad del fondo) -->
-    <div class="absolute inset-0 z-10 bg-gradient-to-t from-stone-950/85 via-stone-950/45 to-stone-950/25 pointer-events-none"></div>
+    <div class="absolute inset-0 z-10 pointer-events-none" style="background: radial-gradient(circle at center, rgba(12, 10, 9, 0.20) 0%, rgba(12, 10, 9, 0.65) 100%);"></div>
 
     <!-- Badge Informativo de la Locación en la Esquina Inferior Izquierda -->
     <div class="absolute bottom-6 left-6 z-20 hidden md:flex flex-col gap-1 text-white/90 bg-black/40 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 shadow-lg pointer-events-none">
@@ -187,30 +187,32 @@
     </div>
 
     <!-- Módulo Central Flotante: Tarjeta de Bienvenida & Login Glassmorphism Translúcido -->
-    <div class="relative z-20 w-full max-w-md p-6 sm:p-8 my-8 mx-4 rounded-3xl bg-stone-900/45 backdrop-blur-md border border-white/20 shadow-2xl text-white space-y-5 animate-in fade-in zoom-in duration-300">
+    <div class="relative z-20 w-full max-w-md p-6 sm:p-8 my-8 mx-4 rounded-3xl shadow-2xl text-white space-y-5 animate-in fade-in zoom-in duration-300"
+         style="background: rgba(18, 22, 28, 0.38); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.22); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
       <!-- Identidad y Bienvenida -->
       <div class="text-center space-y-2">
         <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-emerald-500/30 to-green-600/20 border border-emerald-400/40 flex items-center justify-center text-3xl shadow-inner">
           🌱
         </div>
-        <h1 class="text-2xl font-black tracking-wider text-emerald-400 uppercase">PROYECTO CHIMAY</h1>
-        <p class="text-xs text-stone-300 font-medium leading-relaxed">
+        <h1 class="text-2xl font-black tracking-wider text-emerald-400 uppercase drop-shadow-sm">PROYECTO CHIMAY</h1>
+        <p class="text-xs text-stone-200 font-medium leading-relaxed drop-shadow-sm">
           Centro de Operaciones &bull; Cronograma Maestro Gantt
         </p>
-        <p class="text-[11px] text-stone-400 leading-normal pt-1">
+        <p class="text-[11px] text-stone-300 leading-normal pt-1 drop-shadow-sm">
           Bienvenido al sistema de operaciones agroecológicas de San Pedro Chimay. Identifícate con tu cuenta oficial para ingresar al proyecto:
         </p>
       </div>
 
       <!-- Contenedor Exclusivo de Autenticación Google -->
-      <div class="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3 text-center">
+      <div class="p-4 rounded-2xl space-y-3 text-center"
+           style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);">
         <div id="landingGsiButtonContainer" class="flex justify-center my-1 min-h-[44px]">
           <div class="text-xs text-stone-400 flex items-center gap-2 py-2">
             <span class="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></span>
             Conectando con Google Identity Services...
           </div>
         </div>
-        <p class="text-[10px] text-stone-400 font-medium">
+        <p class="text-[10px] text-stone-300 font-medium">
           Acceso exclusivo para cuentas de Google autorizadas en el proyecto
         </p>
       </div>
