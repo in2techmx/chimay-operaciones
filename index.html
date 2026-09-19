@@ -175,6 +175,9 @@
         <button id="btnWhatsappInfo" onclick="openWhatsappModal()" class="px-2.5 py-1.5 rounded-xl bg-emerald-800/80 hover:bg-emerald-700 text-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition border border-emerald-600/40 shadow-sm cursor-pointer" title="Comandos y Guía de WhatsApp Bot">
           <i class="fa-brands fa-whatsapp text-green-400 text-sm"></i> <span class="hidden md:inline">WhatsApp Bot</span>
         </button>
+        <button id="btnUserManagement" onclick="openUserManagementModal()" class="px-2.5 py-1.5 rounded-xl bg-purple-800/80 hover:bg-purple-700 text-purple-100 text-xs font-semibold flex items-center gap-1.5 transition border border-purple-600/40 shadow-sm cursor-pointer" title="Gestión de Usuarios, Roles y Permisos">
+          <i class="fa-solid fa-users-gear text-purple-300 text-sm"></i> <span class="hidden md:inline">Gestión Usuarios</span>
+        </button>
         <button id="btnRefresh" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm" title="Actualizar datos desde Google Sheets">
           <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i> <span class="hidden sm:inline">Actualizar</span>
         </button>
@@ -910,7 +913,7 @@
       "Arturo B.": {
         id: "USR-ABR",
         name: "Arturo B.",
-        rol: "Líder Operativo de Proyecto",
+        rol: "Gerente Operativo",
         tarifa: "$200.00 MXN/h (40h/sem)",
         costoHora: 200,
         email: "arturo.dlb.r@gmail.com",
@@ -920,7 +923,7 @@
       "Gema R.": {
         id: "USR-GR",
         name: "Gema R.",
-        rol: "Dirección Legal & IMSS",
+        rol: "Gerente Legal",
         tarifa: "$200.00 MXN/h (25h/sem)",
         costoHora: 200,
         email: "gemaromerom22@gmail.com",
@@ -930,7 +933,7 @@
       "Arturo A.": {
         id: "USR-AAA",
         name: "Arturo A.",
-        rol: "Project Manager / Líder Comercial",
+        rol: "Web Master (Master Admon)",
         tarifa: "$200.00 MXN/h (25h/sem)",
         costoHora: 200,
         email: "in2techmx@gmail.com",
@@ -941,7 +944,7 @@
       "Don Chiyo": {
         id: "USR-004",
         name: "Don Chiyo",
-        rol: "Almacén e Instalaciones Rancho Gema",
+        rol: "Encargado de Rancho",
         tarifa: "$140.00 MXN/h (48h/sem)",
         costoHora: 140,
         email: "chiyo.rancho@in2tech.mx",
@@ -954,6 +957,116 @@
     TEAM_INFO["Arturo A"] = TEAM_INFO["Arturo A."];
     TEAM_INFO["arnaiz.art"] = TEAM_INFO["Arturo A."];
     TEAM_INFO["arnaiz.art@gmail.com"] = TEAM_INFO["Arturo A."];
+
+    // ==========================================
+    // GESTIÓN CENTRALIZADA DE USUARIOS, ROLES Y PERMISOS (RBAC)
+    // ==========================================
+    const DEFAULT_USERS_CONFIG = {
+      "Arturo A.": {
+        name: "Arturo A.",
+        email: "in2techmx@gmail.com",
+        aliasEmail: "arnaiz.art@gmail.com",
+        rol: "Web Master (Master Admon)",
+        canEditTasks: true,
+        editScope: "todas", // "todas" | "asignadas"
+        avatarBg: "bg-purple-600",
+        initials: "AA"
+      },
+      "Arturo B.": {
+        name: "Arturo B.",
+        email: "arturo.dlb.r@gmail.com",
+        rol: "Gerente Operativo",
+        canEditTasks: true,
+        editScope: "asignadas", // "todas" | "asignadas"
+        avatarBg: "bg-blue-600",
+        initials: "AB"
+      },
+      "Gema R.": {
+        name: "Gema R.",
+        email: "gemaromerom22@gmail.com",
+        rol: "Gerente Legal",
+        canEditTasks: true,
+        editScope: "asignadas", // "todas" | "asignadas"
+        avatarBg: "bg-emerald-600",
+        initials: "GR"
+      },
+      "Don Chiyo": {
+        name: "Don Chiyo",
+        email: "chiyo.rancho@in2tech.mx",
+        rol: "Encargado de Rancho",
+        canEditTasks: false,
+        editScope: "asignadas", // "todas" | "asignadas"
+        avatarBg: "bg-amber-600",
+        initials: "DC"
+      }
+    };
+
+    let usersConfig = {};
+
+    function initUsersConfig() {
+      try {
+        const saved = localStorage.getItem("chimay_users_config");
+        if (saved) {
+          usersConfig = JSON.parse(saved);
+          Object.keys(DEFAULT_USERS_CONFIG).forEach(k => {
+            if (!usersConfig[k]) usersConfig[k] = { ...DEFAULT_USERS_CONFIG[k] };
+          });
+        } else {
+          usersConfig = JSON.parse(JSON.stringify(DEFAULT_USERS_CONFIG));
+          localStorage.setItem("chimay_users_config", JSON.stringify(usersConfig));
+        }
+      } catch (e) {
+        usersConfig = JSON.parse(JSON.stringify(DEFAULT_USERS_CONFIG));
+      }
+      syncTeamInfoWithUsersConfig();
+    }
+
+    function syncTeamInfoWithUsersConfig() {
+      Object.keys(usersConfig).forEach(k => {
+        if (TEAM_INFO[k]) {
+          TEAM_INFO[k].rol = usersConfig[k].rol;
+        }
+      });
+      if (TEAM_INFO["Arturo A"]) TEAM_INFO["Arturo A"].rol = usersConfig["Arturo A."].rol;
+      if (TEAM_INFO["arnaiz.art"]) TEAM_INFO["arnaiz.art"].rol = usersConfig["Arturo A."].rol;
+    }
+
+    function getUserConfigForActiveUser() {
+      if (!currentUser) return null;
+      const email = (currentUser.email || "").toLowerCase();
+      const name = (currentUser.name || "").toLowerCase();
+      for (let key in usersConfig) {
+        const u = usersConfig[key];
+        if (email === u.email.toLowerCase() || (u.aliasEmail && email === u.aliasEmail.toLowerCase())) return u;
+        if (name.includes(u.name.toLowerCase()) || (u.name.toLowerCase().includes("arturo a") && (name.includes("arnaiz") || email.includes("arnaiz") || email.includes("in2tech")))) return u;
+      }
+      // Fallback si currentUser es un email genérico
+      for (let key in usersConfig) {
+        const u = usersConfig[key];
+        if (name.includes(u.name.toLowerCase().split(' ')[0])) return u;
+      }
+      return null;
+    }
+
+    function canUserEditTask(task) {
+      if (!currentUser) return false;
+      const u = getUserConfigForActiveUser();
+      if (!u) return false;
+      if (!u.canEditTasks) return false;
+      if (u.editScope === "todas") return true;
+      if (u.editScope === "asignadas") {
+        if (!task) return true;
+        const resp = (task.responsable || "").toLowerCase();
+        const uName = (u.name || "").toLowerCase();
+        const uEmail = (u.email || "").toLowerCase();
+        return resp.includes(uName) || 
+               (resp.includes("arturo a") && (uEmail.includes("in2tech") || uEmail.includes("arnaiz"))) || 
+               (resp.includes("arturo b") && uEmail.includes("arturo.dlb")) || 
+               (resp.includes("gema") && uEmail.includes("gema")) || 
+               (resp.includes("chiyo") && uEmail.includes("chiyo"));
+      }
+      return false;
+    }
 
     // Base de datos maestra de tareas operativas sincronizada con los 4 recursos inamovibles
     let tasksData = [
@@ -1132,6 +1245,9 @@
                 <span class="inline-block mt-2 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">${currentUser.rol || 'Especialista'}</span>
               </div>
               <div class="py-1.5 space-y-1">
+                <button onclick="openUserManagementModal(); toggleUserDropdown();" class="w-full text-left px-3 py-2 text-xs font-bold text-stone-700 hover:bg-purple-50 hover:text-purple-950 rounded-xl transition flex items-center gap-2">
+                  <i class="fa-solid fa-users-gear text-purple-700"></i> Gestión de Usuarios & Permisos
+                </button>
                 <button onclick="openGoogleAuthModal(); toggleUserDropdown();" class="w-full text-left px-3 py-2 text-xs font-bold text-stone-700 hover:bg-emerald-50 hover:text-emerald-950 rounded-xl transition flex items-center gap-2">
                   <i class="fa-brands fa-google text-emerald-700"></i> Cambiar de Cuenta Google
                 </button>
@@ -1442,10 +1558,10 @@
       const selectResp = document.getElementById("newTaskResp");
       if (selectResp) {
         selectResp.innerHTML = `
-          <option value="Arturo B.">Arturo B. (Líder Operativo de Proyecto - $200/h)</option>
-          <option value="Gema R.">Gema R. (Dirección Legal & IMSS - $200/h)</option>
-          <option value="Arturo A.">Arturo A. (Project Manager / Líder Comercial - $200/h)</option>
-          <option value="Don Chiyo">Don Chiyo (Almacén e Instalaciones Rancho Gema - $140/h)</option>
+          <option value="Arturo B.">Arturo B. (Gerente Operativo - $200/h)</option>
+          <option value="Gema R.">Gema R. (Gerente Legal - $200/h)</option>
+          <option value="Arturo A.">Arturo A. (Web Master / Master Admon - $200/h)</option>
+          <option value="Don Chiyo">Don Chiyo (Encargado de Rancho - $140/h)</option>
         `;
       }
 
@@ -1641,13 +1757,13 @@ Sincronizando con Google Sheets...`);
     }
 
     function openEditTaskModal(id) {
-      if (!isUserArnaiz()) {
-        alert("🔒 Acceso Restringido: Únicamente el usuario arnaiz.art cuenta con permisos para editar tareas del proyecto.");
-        return;
-      }
-
       const t = tasksData.find(x => x.id === id);
       if (!t) return;
+
+      if (!canUserEditTask(t)) {
+        alert("🔒 Acceso Restringido: No cuentas con permisos para editar esta tarea según tu rol y configuración de usuario.");
+        return;
+      }
 
       // Ocultar modal de detalle para mostrar el modal de edición
       const detailModal = document.getElementById("taskModal");
@@ -1748,12 +1864,13 @@ Sincronizando con Google Sheets...`);
 
     async function handleSaveEditedTask(e) {
       e.preventDefault();
-      if (!isUserArnaiz()) {
-        alert("🔒 Acceso Restringido: Únicamente el usuario arnaiz.art cuenta con permisos para editar tareas.");
+      const id = document.getElementById("editTaskId").value.trim().toUpperCase();
+      const currentTask = tasksData.find(x => x.id === id);
+      if (!currentTask || !canUserEditTask(currentTask)) {
+        alert("🔒 Acceso Restringido: No cuentas con permisos para guardar cambios en esta tarea.");
         return;
       }
 
-      const id = document.getElementById("editTaskId").value.trim().toUpperCase();
       const name = document.getElementById("editTaskName").value.trim();
       let etapa = document.getElementById("editTaskEtapa").value;
       if (etapa === "__NUEVA__") {
@@ -1802,16 +1919,17 @@ Sincronizando con Google Sheets...`);
       // Guardar en bitácora si hay nota de cambio
       if (notaCambio) {
         if (!taskComments[id]) taskComments[id] = [];
-        const author = currentUser || { name: "Arturo A. (arnaiz.art)", email: "in2techmx@gmail.com", rol: "Project Manager", avatarBg: "bg-purple-600", initials: "AA" };
+        const activeCfg = getUserConfigForActiveUser();
+        const authorName = activeCfg ? `${activeCfg.name} (${activeCfg.rol})` : (currentUser ? currentUser.name : "Usuario");
         taskComments[id].push({
           id: `cmt-edit-${Date.now()}`,
-          author: author.name,
-          email: author.email,
-          rol: author.rol,
-          avatarBg: author.avatarBg,
-          initials: author.initials,
+          author: authorName,
+          email: currentUser ? currentUser.email : "",
+          rol: activeCfg ? activeCfg.rol : "Colaborador",
+          avatarBg: activeCfg ? activeCfg.avatarBg : "bg-purple-600",
+          initials: activeCfg ? activeCfg.initials : "US",
           timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
-          text: `✏️ Modificación por arnaiz.art: ${notaCambio}`,
+          text: `✏️ Modificación por ${authorName}: ${notaCambio}`,
           canal: "Web"
         });
         try {
@@ -1850,6 +1968,7 @@ Sincronizando con Google Sheets...`);
       // Sincronizar vía POST a Google Apps Script
       if (webAppUrl) {
         try {
+          const activeCfg = getUserConfigForActiveUser();
           await fetch(webAppUrl, {
             method: "POST",
             mode: "no-cors",
@@ -1870,21 +1989,173 @@ Sincronizando con Google Sheets...`);
               estado: estado,
               prioridad: prioridad,
               notaCambio: notaCambio,
-              autor: currentUser ? currentUser.name : "arnaiz.art"
+              autor: activeCfg ? `${activeCfg.name} (${activeCfg.rol})` : (currentUser ? currentUser.name : "Usuario")
             })
           });
-          alert(`✅ Tarea ${id} actualizada y sincronizada con éxito en Google Sheets por arnaiz.art.`);
+          alert(`✅ Tarea ${id} actualizada y sincronizada con éxito en Google Sheets.`);
         } catch (err) {
           console.error("Error sincronizando edición con Google Sheets:", err);
           alert(`⚠️ Tarea ${id} actualizada localmente. Se sincronizará en la próxima conexión con Google Sheets.`);
         }
       } else {
-        alert(`✅ Tarea ${id} actualizada localmente en el portal por arnaiz.art.`);
+        alert(`✅ Tarea ${id} actualizada localmente en el portal.`);
       }
     }
 
     // ==========================================
-    // 1.4 MODAL Y AYUDA DE WHATSAPP BOT
+    // 1.4 GESTIÓN DE USUARIOS Y PERMISOS (MODAL & LÓGICA RBAC)
+    // ==========================================
+    function openUserManagementModal() {
+      renderUserManagementList();
+      const m = document.getElementById("userManagementModal");
+      if (m) m.classList.remove("hidden");
+    }
+
+    function closeUserManagementModal() {
+      const m = document.getElementById("userManagementModal");
+      if (m) m.classList.add("hidden");
+    }
+
+    function renderUserManagementList() {
+      const container = document.getElementById("userManagementListContainer");
+      if (!container) return;
+
+      container.innerHTML = "";
+      const keys = Object.keys(usersConfig);
+
+      keys.forEach(key => {
+        const u = usersConfig[key];
+        const card = document.createElement("div");
+        card.className = "bg-stone-50/90 border border-stone-200/90 rounded-2xl p-4 space-y-3.5 transition hover:border-purple-300";
+
+        const isChecked = u.canEditTasks ? "checked" : "";
+        const scopeDisabledClass = u.canEditTasks ? "" : "opacity-40 pointer-events-none";
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="w-10 h-10 rounded-xl ${u.avatarBg} text-white font-black text-sm flex items-center justify-center shadow-2xs shrink-0">
+                ${u.initials}
+              </span>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <h4 class="text-sm font-black text-stone-900 leading-tight">${u.name}</h4>
+                  <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-200">
+                    ${u.rol}
+                  </span>
+                </div>
+                <p class="text-[11px] text-stone-500 font-medium truncate">${u.email}${u.aliasEmail ? ` &bull; ${u.aliasEmail}` : ''}</p>
+              </div>
+            </div>
+
+            <!-- Selector de Rol Editable -->
+            <div class="w-full sm:w-auto">
+              <label class="text-[10px] font-bold text-stone-400 block mb-0.5">Rol Oficial:</label>
+              <select onchange="updateUserRoleInConfig('${key}', this.value)" class="bg-white border border-stone-300 rounded-xl px-2.5 py-1 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+                <option value="Web Master (Master Admon)" ${u.rol.includes("Web Master") ? 'selected' : ''}>Web Master (Master Admon)</option>
+                <option value="Gerente Operativo" ${u.rol.includes("Operativo") ? 'selected' : ''}>Gerente Operativo</option>
+                <option value="Gerente Legal" ${u.rol.includes("Legal") ? 'selected' : ''}>Gerente Legal</option>
+                <option value="Encargado de Rancho" ${u.rol.includes("Rancho") ? 'selected' : ''}>Encargado de Rancho</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Fila de Controles: Toggle de Activación & Selector de Alcance -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 border-t border-stone-200/60">
+            <!-- Toggle de Activación -->
+            <div class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-stone-200 shadow-2xs">
+              <div>
+                <span class="text-xs font-bold text-stone-800 block">Permitir Edición de Tareas</span>
+                <span class="text-[10px] text-stone-400 font-medium">Habilitar cambios a tareas en el portal</span>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="toggle_edit_${key.replace(/[^a-zA-Z0-9]/g, '_')}" onchange="toggleUserCanEdit('${key}', this.checked)" ${isChecked} class="sr-only peer">
+                <div class="w-11 h-6 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 shadow-inner"></div>
+              </label>
+            </div>
+
+            <!-- Selector de Alcance de Edición -->
+            <div id="scope_box_${key.replace(/[^a-zA-Z0-9]/g, '_')}" class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-stone-200 shadow-2xs ${scopeDisabledClass} transition-opacity">
+              <div>
+                <span class="text-xs font-bold text-stone-800 block">Alcance de Edición:</span>
+                <span class="text-[10px] text-stone-400 font-medium">¿Qué tareas puede editar?</span>
+              </div>
+              <div class="inline-flex rounded-xl bg-stone-100 p-1 border border-stone-200 text-xs">
+                <button type="button" onclick="setUserEditScope('${key}', 'asignadas')" class="px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${u.editScope === 'asignadas' ? 'bg-white shadow-xs text-purple-900 border border-stone-200' : 'text-stone-500 hover:text-stone-800'}">
+                  <i class="fa-solid fa-user-check text-[10px]"></i> Asignadas
+                </button>
+                <button type="button" onclick="setUserEditScope('${key}', 'todas')" class="px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${u.editScope === 'todas' ? 'bg-purple-600 shadow-xs text-white' : 'text-stone-500 hover:text-stone-800'}">
+                  <i class="fa-solid fa-globe text-[10px]"></i> Todas
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function toggleUserCanEdit(userKey, isChecked) {
+      if (usersConfig[userKey]) {
+        usersConfig[userKey].canEditTasks = isChecked;
+        const boxId = `scope_box_${userKey.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        const box = document.getElementById(boxId);
+        if (box) {
+          if (isChecked) {
+            box.classList.remove("opacity-40", "pointer-events-none");
+          } else {
+            box.classList.add("opacity-40", "pointer-events-none");
+          }
+        }
+      }
+    }
+
+    function setUserEditScope(userKey, scope) {
+      if (usersConfig[userKey]) {
+        usersConfig[userKey].editScope = scope;
+        renderUserManagementList();
+      }
+    }
+
+    function updateUserRoleInConfig(userKey, newRole) {
+      if (usersConfig[userKey]) {
+        usersConfig[userKey].rol = newRole;
+      }
+    }
+
+    function saveUserManagementConfig() {
+      localStorage.setItem("chimay_users_config", JSON.stringify(usersConfig));
+      syncTeamInfoWithUsersConfig();
+      renderUserAuth();
+      renderGoogleAccountsList();
+
+      const status = document.getElementById("userMgmtSaveStatus");
+      if (status) {
+        status.innerHTML = `<span class="text-emerald-700 font-bold"><i class="fa-solid fa-circle-check"></i> Configuración de usuarios y permisos guardada exitosamente.</span>`;
+        setTimeout(() => { status.innerHTML = ""; }, 3000);
+      }
+
+      // Si el modal de detalle está abierto, refrescarlo
+      if (selectedTaskId) {
+        openTaskModal(selectedTaskId);
+      }
+      alert("✅ Permisos de usuarios actualizados y aplicados en todo el portal.");
+    }
+
+    function resetUserManagementConfig() {
+      if (confirm("¿Deseas restablecer los roles y permisos a sus valores predeterminados?")) {
+        usersConfig = JSON.parse(JSON.stringify(DEFAULT_USERS_CONFIG));
+        localStorage.setItem("chimay_users_config", JSON.stringify(usersConfig));
+        syncTeamInfoWithUsersConfig();
+        renderUserManagementList();
+        renderUserAuth();
+        renderGoogleAccountsList();
+        alert("✓ Configuración restablecida a valores iniciales.");
+      }
+    }
+
+    // ==========================================
+    // 1.5 MODAL Y AYUDA DE WHATSAPP BOT
     // ==========================================
     function openWhatsappModal() {
       const m = document.getElementById("whatsappModal");
@@ -4545,19 +4816,26 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
       renderModalImpediments(id);
       populateModalDependencies(id);
 
-      // Renderizar botón de edición condicional (Exclusivo arnaiz.art)
+      // Renderizar botón de edición condicional (Según permisos RBAC del usuario)
       const editBtnContainer = document.getElementById("modalEditBtnContainer");
       if (editBtnContainer) {
-        if (isUserArnaiz()) {
+        const canEdit = canUserEditTask(t);
+        if (canEdit) {
           editBtnContainer.innerHTML = `
-            <button onclick="openEditTaskModal('${t.id}')" class="px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 font-bold text-xs flex items-center gap-1.5 transition shadow-2xs cursor-pointer" title="Editar tarea (Permiso de arnaiz.art)">
+            <button onclick="openEditTaskModal('${t.id}')" class="px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 font-bold text-xs flex items-center gap-1.5 transition shadow-2xs cursor-pointer" title="Editar tarea">
               <i class="fa-solid fa-pen-to-square"></i> <span>Editar Tarea</span>
             </button>
           `;
         } else {
+          const userCfg = getUserConfigForActiveUser();
+          let reason = "Inicia sesión para editar tareas";
+          if (userCfg) {
+            if (!userCfg.canEditTasks) reason = `Edición deshabilitada para ${userCfg.name} (${userCfg.rol})`;
+            else if (userCfg.editScope === "asignadas") reason = `Solo puedes editar tareas asignadas a ti (Asignada a: ${t.responsable})`;
+          }
           editBtnContainer.innerHTML = `
-            <span class="px-2.5 py-1 rounded-xl bg-stone-100 text-stone-400 border border-stone-200 text-[11px] font-semibold flex items-center gap-1 cursor-not-allowed" title="Solo el usuario arnaiz.art tiene permisos de edición">
-              <i class="fa-solid fa-lock text-[10px]"></i> Solo lectura (arnaiz.art)
+            <span class="px-2.5 py-1 rounded-xl bg-stone-100 text-stone-400 border border-stone-200 text-[11px] font-semibold flex items-center gap-1 cursor-not-allowed" title="${reason}">
+              <i class="fa-solid fa-lock text-[10px]"></i> Solo lectura
             </span>
           `;
         }
@@ -4701,6 +4979,7 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
     };
 
     // Inicialización al cargar la página
+    initUsersConfig();
     initGoogleAuth();
     initGoogleIdentity();
     initCommentsData();
@@ -4782,9 +5061,9 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
           <div>
             <label class="text-[11px] font-bold text-stone-600 block mb-1">Responsable Principal:</label>
             <select id="newTaskResp" onchange="updateNewTaskCostPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
-              <option value="Arturo B.">Arturo B. (Operaciones - $200/h)</option>
-              <option value="Gema R.">Gema R. (Dirección Agroecológica - $200/h)</option>
-              <option value="Arturo A.">Arturo A. (Finanzas e Infraestructura - $200/h)</option>
+              <option value="Arturo B.">Arturo B. (Gerente Operativo - $200/h)</option>
+              <option value="Gema R.">Gema R. (Gerente Legal - $200/h)</option>
+              <option value="Arturo A.">Arturo A. (Web Master / Master Admon - $200/h)</option>
               <option value="Don Chiyo">Don Chiyo (Encargado de Rancho - $140/h)</option>
             </select>
           </div>
@@ -4905,10 +5184,10 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
           <div>
             <label class="text-[11px] font-bold text-stone-600 block mb-1">Responsable Principal:</label>
             <select id="editTaskResp" onchange="updateEditTaskCostPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20">
-              <option value="Arturo B.">Arturo B. (Líder Operativo de Proyecto - $200/h)</option>
-              <option value="Gema R.">Gema R. (Dirección Legal & IMSS - $200/h)</option>
-              <option value="Arturo A.">Arturo A. (Project Manager / Líder Comercial - $200/h)</option>
-              <option value="Don Chiyo">Don Chiyo (Almacén e Instalaciones Rancho Gema - $140/h)</option>
+              <option value="Arturo B.">Arturo B. (Gerente Operativo - $200/h)</option>
+              <option value="Gema R.">Gema R. (Gerente Legal - $200/h)</option>
+              <option value="Arturo A.">Arturo A. (Web Master / Master Admon - $200/h)</option>
+              <option value="Don Chiyo">Don Chiyo (Encargado de Rancho - $140/h)</option>
             </select>
           </div>
         </div>
@@ -4986,6 +5265,61 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
           </div>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal Gestión de Usuarios, Roles y Permisos (RBAC) -->
+  <div id="userManagementModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl border border-stone-200 space-y-5 animate-in fade-in zoom-in duration-150 max-h-[92vh] overflow-y-auto my-auto">
+      
+      <!-- Cabecera -->
+      <div class="flex justify-between items-center border-b border-stone-100 pb-4">
+        <div class="flex items-center gap-3">
+          <span class="w-10 h-10 rounded-2xl bg-purple-100 text-purple-800 flex items-center justify-center text-lg font-bold shadow-2xs">
+            <i class="fa-solid fa-users-gear"></i>
+          </span>
+          <div>
+            <h3 class="text-lg font-black text-stone-900 leading-tight">Gestión de Usuarios, Roles y Permisos</h3>
+            <p class="text-xs text-stone-400 font-medium mt-0.5">Control de Acceso Basado en Roles (RBAC) &bull; Permisos de Edición de Tareas</p>
+          </div>
+        </div>
+        <button onclick="closeUserManagementModal()" class="text-stone-400 hover:text-stone-700 text-xl p-1.5 rounded-xl hover:bg-stone-100 transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Nota Informativa -->
+      <div class="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-200/80 text-xs text-purple-950 flex items-start gap-3">
+        <i class="fa-solid fa-shield-halved text-purple-700 text-base shrink-0 mt-0.5"></i>
+        <div class="space-y-1">
+          <p class="font-bold text-purple-900">Políticas de Autorización del Ecosistema IN2TECHMX:</p>
+          <p class="leading-relaxed text-purple-800 text-[11px]">
+            Activa el <strong>toggle de edición</strong> para conceder permisos a cada especialista. Puedes restringir el alcance a <strong>"Solo tareas asignadas"</strong> o habilitar <strong>"Todas las tareas"</strong> (ideal para Web Master / Master Admon).
+          </p>
+        </div>
+      </div>
+
+      <!-- Lista Dinámica de Usuarios -->
+      <div id="userManagementListContainer" class="space-y-3">
+        <!-- Inyectado dinámicamente por renderUserManagementList() -->
+      </div>
+
+      <!-- Acciones Inferiores -->
+      <div class="flex items-center justify-between flex-wrap gap-3 pt-3 border-t border-stone-100">
+        <div id="userMgmtSaveStatus" class="text-xs font-semibold"></div>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="resetUserManagementConfig()" class="px-3.5 py-2 rounded-xl border border-stone-200 hover:bg-stone-100 text-stone-600 font-bold text-xs transition">
+            <i class="fa-solid fa-arrow-rotate-left"></i> Restablecer Valores
+          </button>
+          <button type="button" onclick="closeUserManagementModal()" class="px-3.5 py-2 rounded-xl border border-stone-200 text-stone-600 text-xs font-bold hover:bg-stone-50 transition">
+            Cerrar
+          </button>
+          <button type="button" onclick="saveUserManagementConfig()" class="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition shadow-sm flex items-center gap-2 cursor-pointer">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar Configuración
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 
