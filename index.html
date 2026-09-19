@@ -141,9 +141,124 @@
       stroke-width: 2.5px !important;
       filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.6)) !important;
     }
+
+    /* Animación Cinemática Ken Burns & Carrusel Sleek Yucatán */
+    @keyframes kenburns-slide {
+      0% { transform: scale(1.0) translate(0, 0); }
+      50% { transform: scale(1.08) translate(-1%, -0.5%); }
+      100% { transform: scale(1.0) translate(0, 0); }
+    }
+    .kenburns-active {
+      animation: kenburns-slide 14s ease-in-out infinite alternate;
+    }
+    .carousel-slide {
+      transition: opacity 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
   </style>
 </head>
 <body class="bg-stone-50 text-stone-900 font-sans min-h-screen flex flex-col">
+
+  <!-- ========================================================================= -->
+  <!-- VISTA 1: LANDING PAGE CINEMÁTICA DE AUTENTICACIÓN (YUCATÁN SLEEK) -->
+  <!-- ========================================================================= -->
+  <div id="landingAuthPage" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-stone-950 transition-opacity duration-500">
+    <!-- Carrusel de Fondos con Ken Burns -->
+    <div id="carouselBackground" class="absolute inset-0 z-0 overflow-hidden">
+      <!-- Diapositivas inyectadas dinámicamente por initYucatanCarousel() -->
+    </div>
+
+    <!-- Filtro / Overlay de Gradiente Cinemático Oscuro (Legibilidad Perfecta) -->
+    <div class="absolute inset-0 z-10 bg-gradient-to-t from-stone-950 via-stone-950/70 to-stone-950/40 backdrop-brightness-75 pointer-events-none"></div>
+
+    <!-- Badge Informativo de la Locación en la Esquina Inferior Izquierda -->
+    <div class="absolute bottom-6 left-6 z-20 hidden md:flex flex-col gap-1 text-white/90 bg-black/40 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 shadow-lg pointer-events-none">
+      <div class="flex items-center gap-2">
+        <span id="carouselLocationBadge" class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-400/30"></span>
+        <div id="carouselDotsContainer" class="flex items-center gap-1.5 ml-2"></div>
+      </div>
+      <p id="carouselLocationTitle" class="text-sm font-black tracking-wide leading-tight text-white"></p>
+      <p id="carouselLocationSub" class="text-[11px] text-stone-300 font-light"></p>
+    </div>
+
+    <!-- Badge Superior Derecho: Ecosistema IN2TECHMX -->
+    <div class="absolute top-6 right-6 z-20 flex items-center gap-2 bg-stone-900/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 text-stone-300 text-xs font-semibold shadow-md">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span>IN2TECHMX &bull; Yucatán, México</span>
+    </div>
+
+    <!-- Módulo Central Flotante: Tarjeta de Bienvenida & Login Glassmorphism -->
+    <div class="relative z-20 w-full max-w-md p-6 sm:p-8 my-8 mx-4 rounded-3xl bg-stone-900/80 backdrop-blur-2xl border border-white/15 shadow-2xl text-white space-y-5 animate-in fade-in zoom-in duration-300">
+      <!-- Identidad y Bienvenida -->
+      <div class="text-center space-y-2">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-emerald-500/30 to-green-600/20 border border-emerald-400/40 flex items-center justify-center text-3xl shadow-inner">
+          🌱
+        </div>
+        <h1 class="text-2xl font-black tracking-wider text-emerald-400 uppercase">PROYECTO CHIMAY</h1>
+        <p class="text-xs text-stone-300 font-medium leading-relaxed">
+          Centro de Operaciones &bull; Cronograma Maestro Gantt
+        </p>
+        <p class="text-[11px] text-stone-400 leading-normal pt-1">
+          Bienvenido al sistema de operaciones agroecológicas de San Pedro Chimay. Identifícate con tu cuenta oficial para ingresar al proyecto:
+        </p>
+      </div>
+
+      <!-- Contenedor Oficial de Google Identity Services -->
+      <div class="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-center">
+        <div id="landingGsiButtonContainer" class="flex justify-center my-1 min-h-[44px]">
+          <div class="text-xs text-stone-400 flex items-center gap-2 py-2">
+            <span class="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></span>
+            Cargando Google Identity Services...
+          </div>
+        </div>
+        <p class="text-[10px] text-stone-400">Acceso seguro con Google OAuth 2.0 &bull; Perfil verificado</p>
+      </div>
+
+      <!-- Separador Visual Elegante -->
+      <div class="relative flex py-1 items-center">
+        <div class="flex-grow border-t border-white/10"></div>
+        <span class="flex-shrink mx-3 text-[10px] font-bold text-stone-400 uppercase tracking-widest">O con tu perfil del equipo</span>
+        <div class="flex-grow border-t border-white/10"></div>
+      </div>
+
+      <!-- Selector Rápido de Perfiles de Especialistas (1-clic) -->
+      <div class="space-y-2" id="landingTeamAccountsList">
+        <!-- Renderizado dinámico con renderLandingTeamList() -->
+      </div>
+
+      <!-- Ingreso discreto por correo manual -->
+      <form onsubmit="handleLandingCustomLogin(event)" class="pt-1 flex gap-2">
+        <input id="landingCustomEmail" type="text" required placeholder="tu.nombre@in2tech.mx o gmail" class="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 font-medium">
+        <button type="submit" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-sm cursor-pointer">
+          Ingresar
+        </button>
+      </form>
+
+      <!-- Pie de Tarjeta: Configuración de Google Client ID y Soporte -->
+      <div class="pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-stone-400">
+        <button type="button" onclick="toggleLandingClientIdConfig()" class="hover:text-emerald-300 transition flex items-center gap-1 cursor-pointer">
+          <i class="fa-solid fa-gear"></i> Configurar Google Client ID
+        </button>
+        <span>IN2TECHMX &bull; V1.0</span>
+      </div>
+
+      <!-- Panel colapsable de Client ID en la Landing -->
+      <div id="landingClientIdPanel" class="hidden p-3 rounded-2xl bg-black/40 border border-white/10 space-y-2 text-[11px]">
+        <p class="text-stone-300 leading-relaxed">
+          Ingresa tu Client ID de <strong>Google Cloud Console</strong> con origen <code class="text-emerald-300">https://in2techmx.github.io</code>:
+        </p>
+        <div class="flex gap-2">
+          <input id="landingInputClientId" type="text" placeholder="123456...apps.googleusercontent.com" class="flex-1 bg-white/10 border border-white/20 rounded-xl px-2.5 py-1 text-xs text-white font-mono">
+          <button type="button" onclick="saveLandingGoogleClientId()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition cursor-pointer">Guardar</button>
+        </div>
+        <p id="landingClientIdStatus" class="text-[10px] text-emerald-400 font-semibold"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- VISTA 2: CENTRO DE OPERACIONES DEL PROYECTO (CHIMAY OPS DASHBOARD) -->
+  <!-- ========================================================================= -->
+  <div id="projectOperationsPage" class="hidden flex-1 flex flex-col min-h-screen">
 
   <!-- Header -->
   <header class="bg-gradient-to-r from-emerald-900 via-emerald-800 to-green-950 text-white shadow-lg sticky top-0 z-40">
@@ -602,6 +717,8 @@
   <footer class="bg-white border-t border-stone-200 py-3 text-center text-xs text-stone-400">
     Proyecto Chimay &bull; Ecosistema Agroecológico V1.0 &bull; IN2TECHMX Architecture
   </footer>
+
+  </div> <!-- Fin #projectOperationsPage -->
 
   <script>
     // Metadatos de Proyectos en el Portafolio IN2TECHMX
@@ -1383,20 +1500,12 @@
         if (saved) {
           currentUser = JSON.parse(saved);
         } else {
-          // Usuario por defecto inicial
-          currentUser = {
-            name: "Arturo B.",
-            email: "arturo.dlb.r@gmail.com",
-            rol: "Líder Operativo de Proyecto",
-            avatarBg: "bg-blue-600",
-            initials: "AB",
-            isGoogle: true
-          };
-          localStorage.setItem("chimay_active_user", JSON.stringify(currentUser));
+          currentUser = null;
         }
       } catch (e) {
-        currentUser = { name: "Arturo B.", email: "arturo.dlb.r@gmail.com", rol: "Líder Operativo de Proyecto", avatarBg: "bg-blue-600", initials: "AB", isGoogle: true };
+        currentUser = null;
       }
+      syncAppViewMode();
       renderUserAuth();
       renderGoogleAccountsList();
     }
@@ -1519,8 +1628,198 @@
       });
     }
 
+    // ==========================================
+    // CONTROLADOR DE VISTAS DUAL (LANDING AUTH vs CENTRO DE OPERACIONES)
+    // ==========================================
+    function syncAppViewMode() {
+      const landing = document.getElementById("landingAuthPage");
+      const ops = document.getElementById("projectOperationsPage");
+      if (currentUser) {
+        if (landing) landing.classList.add("hidden");
+        if (ops) ops.classList.remove("hidden");
+        applyRoleBasedUI();
+        const container = document.getElementById("viewContainer");
+        if (container) {
+          if (currentView === "todos") renderGlobalView(container);
+          else renderSpecialistView(container, currentView);
+        }
+      } else {
+        if (landing) landing.classList.remove("hidden");
+        if (ops) ops.classList.add("hidden");
+        initYucatanCarousel();
+        renderLandingTeamList();
+        initGoogleIdentity();
+      }
+    }
+
+    // ==========================================
+    // CARRUSEL CINEMÁTICO DE YUCATÁN (MÉRIDA, SAN PEDRO CHIMAY, CENOTES, CHICHÉN ITZÁ)
+    // ==========================================
+    const YUCATAN_HERO_SLIDES = [
+      {
+        title: "San Pedro Chimay",
+        subtitle: "Hacienda Histórica, Ceibas Ancestrales & Tierra Fértil Maya",
+        location: "Mérida, Yucatán",
+        badge: "🏛️ Hacienda & Agroecología",
+        url: "https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&w=1920&q=85",
+        fallback: "../../imagenes/organic_hero.jpg"
+      },
+      {
+        title: "Cenotes Sagrados de Yucatán",
+        subtitle: "Aguas Cristalinas Turquesas & Manantiales Subterráneos Mayas",
+        location: "Península de Yucatán",
+        badge: "💧 Aguas Sagradas Mayas",
+        url: "https://images.unsplash.com/photo-1569420067644-d89f8173ee02?auto=format&fit=crop&w=1920&q=85",
+        fallback: "../../imagenes/organic_market.jpg"
+      },
+      {
+        title: "Chichén Itzá",
+        subtitle: "Templo de Kukulkán — Maravilla del Mundo & Legado Astronómico",
+        location: "Yucatán, México",
+        badge: "☀️ Patrimonio Milenario",
+        url: "https://images.unsplash.com/photo-1518638150340-f706e86654de?auto=format&fit=crop&w=1920&q=85",
+        fallback: "../../imagenes/organic_hero.jpg"
+      },
+      {
+        title: "Mérida — La Ciudad Blanca",
+        subtitle: "Cuna Cultural, Arquitectura Colonial & Vigor del Sureste",
+        location: "Capital de Yucatán",
+        badge: "🌿 Ciudad Blanca",
+        url: "https://images.unsplash.com/photo-1628108422453-e99d8b7b4ce2?auto=format&fit=crop&w=1920&q=85",
+        fallback: "../../imagenes/rancho_gema_map.jpg"
+      },
+      {
+        title: "Agroecología & Selva Maya",
+        subtitle: "Sistemas Sustentables de Producción e Innovación IN2TECHMX",
+        location: "Proyecto Chimay",
+        badge: "🌱 Agricultura Regenerativa",
+        url: "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1920&q=85",
+        fallback: "../../imagenes/organic_market.jpg"
+      }
+    ];
+
+    let currentSlideIdx = 0;
+    let carouselInterval = null;
+
+    function initYucatanCarousel() {
+      const container = document.getElementById("carouselBackground");
+      if (!container) return;
+
+      container.innerHTML = "";
+      YUCATAN_HERO_SLIDES.forEach((slide, idx) => {
+        const div = document.createElement("div");
+        div.id = `carouselSlide_${idx}`;
+        div.className = `carousel-slide absolute inset-0 w-full h-full bg-cover bg-center ${idx === 0 ? 'opacity-100 kenburns-active' : 'opacity-0'}`;
+        div.style.backgroundImage = `url('${slide.url}'), url('${slide.fallback}')`;
+        container.appendChild(div);
+      });
+
+      updateCarouselInfoBadge(0);
+
+      if (carouselInterval) clearInterval(carouselInterval);
+      carouselInterval = setInterval(() => {
+        nextYucatanSlide();
+      }, 6500);
+    }
+
+    function nextYucatanSlide() {
+      const prevIdx = currentSlideIdx;
+      currentSlideIdx = (currentSlideIdx + 1) % YUCATAN_HERO_SLIDES.length;
+
+      const prevSlide = document.getElementById(`carouselSlide_${prevIdx}`);
+      const nextSlide = document.getElementById(`carouselSlide_${currentSlideIdx}`);
+
+      if (prevSlide) {
+        prevSlide.classList.remove("opacity-100", "kenburns-active");
+        prevSlide.classList.add("opacity-0");
+      }
+      if (nextSlide) {
+        nextSlide.classList.remove("opacity-0");
+        nextSlide.classList.add("opacity-100", "kenburns-active");
+      }
+      updateCarouselInfoBadge(currentSlideIdx);
+    }
+
+    function updateCarouselInfoBadge(idx) {
+      const slide = YUCATAN_HERO_SLIDES[idx];
+      const titleEl = document.getElementById("carouselLocationTitle");
+      const subEl = document.getElementById("carouselLocationSub");
+      const badgeEl = document.getElementById("carouselLocationBadge");
+      const dotsContainer = document.getElementById("carouselDotsContainer");
+
+      if (titleEl) titleEl.textContent = slide.title;
+      if (subEl) subEl.textContent = slide.subtitle;
+      if (badgeEl) badgeEl.textContent = slide.badge;
+
+      if (dotsContainer) {
+        dotsContainer.innerHTML = "";
+        YUCATAN_HERO_SLIDES.forEach((_, i) => {
+          const dot = document.createElement("span");
+          dot.className = `h-1.5 rounded-full transition-all duration-300 ${i === idx ? 'bg-emerald-400 w-5' : 'bg-white/40 w-1.5'}`;
+          dotsContainer.appendChild(dot);
+        });
+      }
+    }
+
+    function renderLandingTeamList() {
+      const list = document.getElementById("landingTeamAccountsList");
+      if (!list) return;
+
+      const teamArray = Object.values(TEAM_INFO);
+      list.innerHTML = "";
+
+      teamArray.forEach(spec => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.onclick = () => switchGoogleUser(spec.email);
+        btn.className = "w-full p-2.5 rounded-2xl border border-white/15 bg-white/5 hover:bg-white/15 flex items-center justify-between gap-3 text-left transition group cursor-pointer shadow-xs";
+        btn.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="w-9 h-9 rounded-xl ${spec.avatarBg} text-white font-black text-xs flex items-center justify-center shadow-sm shrink-0">
+              ${spec.initials}
+            </span>
+            <div class="min-w-0">
+              <p class="text-xs font-black text-white leading-tight">${spec.name}</p>
+              <p class="text-[10px] text-emerald-300 font-semibold truncate">${spec.rol.split(',')[0]}</p>
+            </div>
+          </div>
+          <span class="text-stone-400 group-hover:text-emerald-300 text-xs transition">
+            <i class="fa-solid fa-arrow-right"></i>
+          </span>
+        `;
+        list.appendChild(btn);
+      });
+    }
+
+    function handleLandingCustomLogin(e) {
+      e.preventDefault();
+      const inp = document.getElementById("landingCustomEmail");
+      if (inp && inp.value.trim()) {
+        switchGoogleUser(inp.value.trim());
+      }
+    }
+
+    function toggleLandingClientIdConfig() {
+      const p = document.getElementById("landingClientIdPanel");
+      if (p) p.classList.toggle("hidden");
+    }
+
+    function saveLandingGoogleClientId() {
+      const inp = document.getElementById("landingInputClientId");
+      const lbl = document.getElementById("landingClientIdStatus");
+      if (!inp) return;
+      const val = inp.value.trim();
+      if (val && val.includes(".apps.googleusercontent.com") && !val.startsWith("252501165")) {
+        localStorage.setItem("chimay_google_client_id", val);
+        if (lbl) lbl.textContent = "✓ Client ID guardado exitosamente.";
+        initGoogleIdentity();
+      } else {
+        if (lbl) lbl.textContent = "⚠ Formato de Client ID inválido.";
+      }
+    }
+
     function switchGoogleUser(email) {
-      const spec = Object.values(TEAM_INFO).find(x => x.email === email);
+      const spec = Object.values(TEAM_INFO).find(x => x.email === email || x.name === email);
       if (spec) {
         currentUser = {
           name: spec.name,
@@ -1532,8 +1831,8 @@
         };
       } else {
         currentUser = {
-          name: email.split('@')[0],
-          email: email,
+          name: email.includes('@') ? email.split('@')[0] : email,
+          email: email.includes('@') ? email : `${email.toLowerCase().replace(/\s+/g, '')}@in2tech.mx`,
           rol: "Colaborador de Proyecto",
           avatarBg: "bg-emerald-700",
           initials: email.substring(0, 2).toUpperCase(),
@@ -1542,15 +1841,9 @@
       }
       localStorage.setItem("chimay_active_user", JSON.stringify(currentUser));
       closeGoogleAuthModal();
+      syncAppViewMode();
       renderUserAuth();
-      applyRoleBasedUI();
       initNotifications();
-
-      const container = document.getElementById("viewContainer");
-      if (container) {
-        if (currentView === "todos") renderGlobalView(container);
-        else renderSpecialistView(container, currentView);
-      }
     }
 
     function handleCustomGoogleLogin(e) {
@@ -1564,8 +1857,8 @@
     function logoutGoogleUser() {
       currentUser = null;
       localStorage.removeItem("chimay_active_user");
+      syncAppViewMode();
       renderUserAuth();
-      applyRoleBasedUI();
       renderNotifications();
       const drop = document.getElementById("userDropdown");
       if (drop) drop.classList.add("hidden");
@@ -1619,10 +1912,10 @@
         };
 
         localStorage.setItem("chimay_active_user", JSON.stringify(currentUser));
-        renderUserAuth();
-        applyRoleBasedUI();
-        initNotifications();
         closeGoogleAuthModal();
+        syncAppViewMode();
+        renderUserAuth();
+        initNotifications();
 
         alert(`👋 ¡Bienvenido ${currentUser.name}! Has iniciado sesión exitosamente con tu cuenta oficial de Google (${currentUser.email}).`);
       }
@@ -1630,12 +1923,16 @@
 
     function initGoogleIdentity() {
       renderGoogleAccountsList();
-      const container = document.getElementById("gsiButtonContainer");
-      if (!container) return;
+      renderLandingTeamList();
+
+      const modalContainer = document.getElementById("gsiButtonContainer");
+      const landingContainer = document.getElementById("landingGsiButtonContainer");
 
       const storedClientId = (localStorage.getItem("chimay_google_client_id") || "").trim();
       const inp = document.getElementById("inputGoogleClientId");
+      const landingInp = document.getElementById("landingInputClientId");
       if (inp) inp.value = storedClientId;
+      if (landingInp) landingInp.value = storedClientId;
 
       const hasValidClientId = storedClientId.length > 15 &&
         storedClientId.includes(".apps.googleusercontent.com") &&
@@ -1648,21 +1945,37 @@
             callback: handleGoogleCredentialResponse,
             auto_select: false
           });
-          container.innerHTML = "";
-          google.accounts.id.renderButton(container, {
-            theme: "outline",
-            size: "large",
-            text: "continue_with",
-            shape: "pill",
-            width: 320
+          [modalContainer, landingContainer].forEach(cnt => {
+            if (cnt) {
+              cnt.innerHTML = "";
+              google.accounts.id.renderButton(cnt, {
+                theme: "outline",
+                size: "large",
+                text: "continue_with",
+                shape: "pill",
+                width: 300
+              });
+            }
           });
         } catch (err) {
           console.warn("Google Identity init notice:", err);
-          renderFallbackGsiBanner(container);
+          if (modalContainer) renderFallbackGsiBanner(modalContainer);
+          if (landingContainer) renderLandingFallbackGsi(landingContainer);
         }
       } else {
-        renderFallbackGsiBanner(container);
+        if (modalContainer) renderFallbackGsiBanner(modalContainer);
+        if (landingContainer) renderLandingFallbackGsi(landingContainer);
       }
+    }
+
+    function renderLandingFallbackGsi(cnt) {
+      if (!cnt) return;
+      cnt.innerHTML = `
+        <button type="button" onclick="document.getElementById('landingTeamAccountsList')?.scrollIntoView({behavior:'smooth'})" class="w-full max-w-xs mx-auto py-2.5 px-4 rounded-full border border-emerald-400/40 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center justify-center gap-2.5 transition shadow-sm cursor-pointer">
+          <i class="fa-solid fa-users text-emerald-400"></i>
+          <span>Ingresar con Perfil del Equipo (1-clic)</span>
+        </button>
+      `;
     }
 
     function renderFallbackGsiBanner(container) {
