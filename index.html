@@ -202,37 +202,22 @@
         </p>
       </div>
 
-      <!-- Contenedor Oficial de Google Identity Services -->
-      <div class="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-center">
+      <!-- Contenedor Exclusivo de Autenticación Google -->
+      <div class="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3 text-center">
         <div id="landingGsiButtonContainer" class="flex justify-center my-1 min-h-[44px]">
           <div class="text-xs text-stone-400 flex items-center gap-2 py-2">
             <span class="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></span>
-            Cargando Google Identity Services...
+            Conectando con Google Identity Services...
           </div>
         </div>
-        <p class="text-[10px] text-stone-400">Acceso seguro con Google OAuth 2.0 &bull; Perfil verificado</p>
+        <p class="text-[10px] text-stone-400 font-medium">
+          Acceso exclusivo para cuentas de Google autorizadas en el proyecto
+        </p>
       </div>
 
-      <!-- Separador Visual Elegante -->
-      <div class="relative flex py-1 items-center">
-        <div class="flex-grow border-t border-white/10"></div>
-        <span class="flex-shrink mx-3 text-[10px] font-bold text-stone-400 uppercase tracking-widest">O con tu perfil del equipo</span>
-        <div class="flex-grow border-t border-white/10"></div>
-      </div>
-
-      <!-- Selector Rápido de Perfiles de Especialistas (1-clic) -->
-      <div class="space-y-2" id="landingTeamAccountsList">
-        <!-- Renderizado dinámico con renderLandingTeamList() -->
-      </div>
-
-      <!-- Ingreso discreto por correo manual -->
-      <form onsubmit="handleLandingCustomLogin(event)" class="pt-1 flex gap-2">
-        <input id="landingCustomEmail" type="text" required placeholder="tu.nombre@in2tech.mx o gmail" class="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 font-medium">
-        <button type="submit" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-sm cursor-pointer">
-          Ingresar
-        </button>
-      </form>
-
+      <!-- Alerta dinámica de Validación y Acceso Google -->
+      <div id="landingAuthAlert" class="hidden"></div>
+      
       <!-- Pie de Tarjeta: Configuración de Google Client ID y Soporte -->
       <div class="pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-stone-400">
         <button type="button" onclick="toggleLandingClientIdConfig()" class="hover:text-emerald-300 transition flex items-center gap-1 cursor-pointer">
@@ -1663,7 +1648,7 @@
           ops.style.display = "none";
         }
         initYucatanCarousel();
-        renderLandingTeamList();
+        
         initGoogleIdentity();
       }
     }
@@ -1897,49 +1882,178 @@
       }
     }
 
-    function handleGoogleCredentialResponse(response) {
-      if (!response || !response.credential) return;
-      const payload = parseJwt(response.credential);
-      if (payload) {
-        const emailLower = (payload.email || "").toLowerCase();
-        
-        // Buscar coincidencia en directorio del equipo o alias
-        let matched = Object.values(TEAM_INFO).find(x => 
-          (x.email && x.email.toLowerCase() === emailLower) ||
-          (x.aliasEmail && x.aliasEmail.toLowerCase() === emailLower)
-        );
 
-        // Si es arnaiz.art@gmail.com o in2techmx@gmail.com -> Arturo A. Web Master
-        if (!matched && (emailLower === "in2techmx@gmail.com" || emailLower === "arnaiz.art@gmail.com")) {
-          matched = TEAM_INFO["Arturo A."];
+    // ==========================================
+    // CONTROL DE ACCESO ESTRICTO: REGLA DE WHITELIST GOOGLE
+    // Solo permite el ingreso con Google si la dirección existe en un usuario registrado
+    // ==========================================
+    function findAuthorizedUserByEmail(email) {
+      if (!email) return null;
+      const clean = email.toLowerCase().trim();
+
+      // 1. Buscar en usersConfig (usuarios dinámicos y predeterminados)
+      if (typeof usersConfig === "object" && usersConfig !== null) {
+        for (const k in usersConfig) {
+          const u = usersConfig[k];
+          if (u && u.email && u.email.toLowerCase().trim() === clean) return u;
+          if (u && u.aliasEmail && u.aliasEmail.toLowerCase().trim() === clean) return u;
         }
+      }
 
-        const name = payload.name || payload.given_name || (payload.email ? payload.email.split('@')[0] : "Usuario Google");
-        const rol = matched ? matched.rol : "Especialista Autorizado Google";
+      // 2. Buscar en TEAM_INFO
+      if (typeof TEAM_INFO === "object" && TEAM_INFO !== null) {
+        for (const k in TEAM_INFO) {
+          const t = TEAM_INFO[k];
+          if (t && t.email && t.email.toLowerCase().trim() === clean) return t;
+          if (t && t.aliasEmail && t.aliasEmail.toLowerCase().trim() === clean) return t;
+        }
+      }
 
-        currentUser = {
-          name: matched ? matched.name : name,
-          email: payload.email || "",
-          picture: payload.picture || "",
-          rol: rol,
-          avatarBg: matched ? matched.avatarBg : "bg-emerald-700",
-          initials: (payload.given_name ? payload.given_name[0] : "") + (payload.family_name ? payload.family_name[0] : "") || "G",
-          isGoogleReal: true
+      // 3. Cuentas maestras autorizadas de Web Master
+      if (clean === "in2techmx@gmail.com" || clean === "arnaiz.art@gmail.com") {
+        return (usersConfig && usersConfig["Arturo A."]) || (TEAM_INFO && TEAM_INFO["Arturo A."]) || {
+          name: "Arturo A.",
+          email: "in2techmx@gmail.com",
+          aliasEmail: "arnaiz.art@gmail.com",
+          rol: "Web Master (Master Admon)",
+          canEditTasks: true,
+          editScope: "todas",
+          avatarBg: "bg-purple-600",
+          initials: "AA"
         };
+      }
 
-        sessionStorage.setItem("chimay_active_user", JSON.stringify(currentUser)); sessionStorage.removeItem("chimay_active_user"); localStorage.removeItem("chimay_active_user");
-        closeGoogleAuthModal();
+      return null;
+    }
+
+    function showLandingAuthAlert(htmlContent) {
+      const alertEl = document.getElementById("landingAuthAlert");
+      if (!alertEl) return;
+      alertEl.innerHTML = htmlContent;
+      alertEl.classList.remove("hidden");
+    }
+
+    function authenticateGoogleEmail(emailInput, picture = null) {
+      if (!emailInput) return;
+      const cleanEmail = emailInput.trim().toLowerCase();
+
+      if (!cleanEmail.includes("@")) {
+        showLandingAuthAlert(`
+          <div class="p-3 bg-amber-500/20 border border-amber-500/40 rounded-2xl text-left text-amber-200 text-xs font-semibold animate-in fade-in duration-200">
+            <i class="fa-solid fa-triangle-exclamation mr-1.5 text-amber-400"></i>
+            Por favor ingresa una dirección de correo de Google válida.
+          </div>
+        `);
+        return;
+      }
+
+      // 1. REGLA ESTRICTA: La cuenta DEBE existir en los usuarios registrados
+      const matched = findAuthorizedUserByEmail(cleanEmail);
+
+      if (!matched) {
+        // ACCESO DENEGADO: La dirección de Google no existe en ningún usuario
+        console.warn("⛔ ACCESO DENEGADO: Cuenta de Google no registrada:", cleanEmail);
+        showLandingAuthAlert(`
+          <div class="p-3.5 bg-rose-500/20 border border-rose-500/40 rounded-2xl text-left space-y-1.5 animate-in fade-in duration-200">
+            <div class="flex items-center gap-2 text-rose-300 font-bold text-xs">
+              <i class="fa-solid fa-circle-xmark text-rose-400 text-sm"></i>
+              <span>Acceso Denegado</span>
+            </div>
+            <p class="text-[11px] text-stone-200 leading-relaxed">
+              La cuenta de Google <strong class="text-white font-mono underline">${cleanEmail}</strong> no está registrada en el sistema del Proyecto Chimay.
+            </p>
+            <p class="text-[10px] text-stone-400">
+              Solo usuarios autorizados pueden ingresar. Si formas parte del equipo, solicita tu alta al Web Master (<a href="mailto:in2techmx@gmail.com" class="text-emerald-400 underline font-semibold">in2techmx@gmail.com</a>).
+            </p>
+          </div>
+        `);
+        currentUser = null;
+        sessionStorage.removeItem("chimay_active_user");
+        localStorage.removeItem("chimay_active_user");
+        return;
+      }
+
+      // 2. ACCESO CONCEDIDO: La cuenta de Google coincide con un usuario registrado
+      currentUser = {
+        name: matched.name,
+        email: matched.email || cleanEmail,
+        aliasEmail: matched.aliasEmail || "",
+        picture: picture || matched.picture || "",
+        rol: matched.rol || "Especialista de Proyecto",
+        avatarBg: matched.avatarBg || "bg-emerald-600",
+        initials: matched.initials || "US",
+        canEditTasks: matched.canEditTasks ?? true,
+        editScope: matched.editScope || "asignadas",
+        isGoogleReal: true
+      };
+
+      sessionStorage.setItem("chimay_active_user", JSON.stringify(currentUser));
+      localStorage.removeItem("chimay_active_user");
+
+      showLandingAuthAlert(`
+        <div class="p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-2xl text-left flex items-center gap-2 text-emerald-200 text-xs font-bold animate-in fade-in duration-200">
+          <i class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+          <span>Bienvenido ${currentUser.name} (${currentUser.rol}). Acceso concedido...</span>
+        </div>
+      `);
+
+      setTimeout(() => {
         syncAppViewMode();
         renderUserAuth();
         initNotifications();
+      }, 400);
+    }
 
-        alert(`👋 ¡Bienvenido ${currentUser.name}! Has iniciado sesión exitosamente con tu cuenta oficial de Google (${currentUser.email}).`);
+    function promptLandingGoogleLogin() {
+      const container = document.getElementById("landingGsiButtonContainer");
+      if (!container) return;
+      container.innerHTML = `
+        <form onsubmit="handleGoogleDirectVerify(event)" class="space-y-2.5 text-left w-full pt-1 animate-in fade-in duration-150">
+          <div class="flex items-center gap-2 text-white text-xs font-bold">
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            <span>Verificar Cuenta de Google:</span>
+          </div>
+          <div class="flex gap-2">
+            <input id="landingGoogleEmailInput" type="email" required placeholder="tu.correo@gmail.com" class="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 font-mono">
+            <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition shadow-sm cursor-pointer whitespace-nowrap">
+              Ingresar
+            </button>
+          </div>
+          <div class="flex items-center justify-between text-[10px] text-stone-400">
+            <span>Solo cuentas autorizadas en el proyecto.</span>
+            <button type="button" onclick="renderLandingFallbackGsi(document.getElementById('landingGsiButtonContainer'))" class="text-stone-400 hover:text-white underline cursor-pointer">Cancelar</button>
+          </div>
+        </form>
+      `;
+      const inp = document.getElementById("landingGoogleEmailInput");
+      if (inp) inp.focus();
+    }
+
+    function handleGoogleDirectVerify(e) {
+      e.preventDefault();
+      const inp = document.getElementById("landingGoogleEmailInput");
+      if (inp && inp.value) {
+        authenticateGoogleEmail(inp.value.trim());
+      }
+    }
+
+
+    function handleGoogleCredentialResponse(response) {
+      if (!response || !response.credential) return;
+      const payload = parseJwt(response.credential);
+      if (payload && payload.email) {
+        authenticateGoogleEmail(payload.email, payload.picture);
       }
     }
 
     function initGoogleIdentity() {
       renderGoogleAccountsList();
-      renderLandingTeamList();
+      
 
       const modalContainer = document.getElementById("gsiButtonContainer");
       const landingContainer = document.getElementById("landingGsiButtonContainer");
@@ -1987,9 +2101,14 @@
     function renderLandingFallbackGsi(cnt) {
       if (!cnt) return;
       cnt.innerHTML = `
-        <button type="button" onclick="document.getElementById('landingTeamAccountsList')?.scrollIntoView({behavior:'smooth'})" class="w-full max-w-xs mx-auto py-2.5 px-4 rounded-full border border-emerald-400/40 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center justify-center gap-2.5 transition shadow-sm cursor-pointer">
-          <i class="fa-solid fa-users text-emerald-400"></i>
-          <span>Ingresar con Perfil del Equipo (1-clic)</span>
+        <button type="button" onclick="promptLandingGoogleLogin()" class="w-full py-3 px-4 rounded-2xl border border-white/20 bg-white hover:bg-stone-100 text-stone-900 text-xs font-bold flex items-center justify-center gap-3 transition shadow-lg cursor-pointer">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>Acceder con Cuenta de Google</span>
         </button>
       `;
     }
