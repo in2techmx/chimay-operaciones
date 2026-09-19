@@ -2150,7 +2150,18 @@ Sincronizando con Google Sheets...`);
     }
 
     // Endpoint Maestro Google Apps Script (Sincronización en vivo y Webhook)
-    const webAppUrl = "https://script.google.com/macros/s/AKfycbynZidfAI_ADq9EQ7qwHhAEYvpqDgNJk2_n-bwmyKLWu4yLvFUwjhyot9lAgz9ZVmXA/exec";
+    let webAppUrl = localStorage.getItem("chimay_webapp_url") || "https://script.google.com/macros/s/AKfycbynZidfAI_ADq9EQ7qwHhAEYvpqDgNJk2_n-bwmyKLWu4yLvFUwjhyot9lAgz9ZVmXA/exec";
+
+    function configWebAppUrl() {
+      const current = webAppUrl;
+      const nuevo = prompt("URL de la Web App de Google Apps Script (Sincronización en vivo):", current);
+      if (nuevo && nuevo.trim().startsWith("http")) {
+        webAppUrl = nuevo.trim();
+        localStorage.setItem("chimay_webapp_url", webAppUrl);
+        fetchTasksFromSheets(true);
+        alert("✅ URL de Google Apps Script actualizada y sincronizando.");
+      }
+    }
 
     // Selector y Filtro de Tareas Activas (Intersección Etapa + Especialista)
     function getActiveTasks(specialist = null) {
@@ -4304,12 +4315,18 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
     }
 
     // Sincronización robusta y bidireccional desde Google Sheets (Apps Script)
-    async function fetchTasksFromSheets() {
+    async function fetchTasksFromSheets(forceRefresh = false) {
       if (!webAppUrl) return;
       const icon = document.getElementById("refreshIcon");
       if (icon) icon.classList.add("fa-spin");
       try {
-        const res = await fetch(webAppUrl);
+        if (forceRefresh) {
+          try {
+            localStorage.removeItem("chimay_cached_sheets_tasks");
+          } catch(e) {}
+        }
+        const fetchUrl = `${webAppUrl}${webAppUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+        const res = await fetch(fetchUrl, { cache: "no-store" });
         const json = await res.json();
 
         // 1. Si entrega tareas estructuradas en JSON
@@ -4356,7 +4373,7 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
           const lbl = document.getElementById("lastSyncLabel");
           if (lbl) {
             const now = new Date();
-            lbl.innerHTML = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 font-mono text-[11px] font-bold shadow-xs"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Google Sheets (${tasksData.length} tareas): ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>`;
+            lbl.innerHTML = `<span onclick="configWebAppUrl()" class="cursor-pointer inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono text-[11px] font-bold shadow-xs transition" title="Clic para ver o cambiar URL de sincronización"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Google Sheets (${tasksData.length} tareas): ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>`;
           }
         } else if (json && json.status === "online") {
           // Si entrega status online, también cargar las tareas creadas localmente
@@ -4371,14 +4388,14 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
 
           const lbl = document.getElementById("lastSyncLabel");
           if (lbl) {
-            lbl.innerHTML = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 font-mono text-[11px] font-bold shadow-xs"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Google Sheets Conectado (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>`;
+            lbl.innerHTML = `<span onclick="configWebAppUrl()" class="cursor-pointer inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono text-[11px] font-bold shadow-xs transition" title="Clic para ver o cambiar URL de sincronización"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Google Sheets Conectado (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>`;
           }
         }
       } catch (e) {
         console.warn("Sincronización fallback con datos locales:", e);
         const lbl = document.getElementById("lastSyncLabel");
         if (lbl) {
-          lbl.innerHTML = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 font-mono text-[11px] font-bold shadow-xs"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Google Sheets (${tasksData.length} tareas activas)</span>`;
+          lbl.innerHTML = `<span onclick="configWebAppUrl()" class="cursor-pointer inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono text-[11px] font-bold shadow-xs transition" title="Clic para ver o cambiar URL de sincronización"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Google Sheets (${tasksData.length} tareas activas)</span>`;
         }
       } finally {
         if (icon) icon.classList.remove("fa-spin");
@@ -4390,7 +4407,7 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
     document.getElementById("btnCompletarModal").onclick = marcarCompletada;
 
     document.getElementById("btnRefresh").onclick = () => {
-      fetchTasksFromSheets();
+      fetchTasksFromSheets(true);
       const container = document.getElementById("viewContainer");
       if (container) {
         if (currentView === "todos") renderGlobalView(container);
