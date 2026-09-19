@@ -19,12 +19,5 @@
     "rol": "Web Master (Master Admon)",
     "costoHora": 200,
     "email": "in2techmx@gmail.com"
-  },
-  "Don Chiyo": {
-    "id": "USR-004",
-    "nombre": "Don Chiyo",
-    "rol": "Encargado de Rancho",
-    "costoHora": 140,
-    "email": "chiyo.rancho@in2tech.mx"
   }
 }

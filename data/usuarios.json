@@ -32,16 +32,5 @@
     "alcanceEdicion": "asignadas",
     "avatarBg": "bg-emerald-600",
     "initials": "GR"
-  },
-  {
-    "id": "USR-004",
-    "nombre": "Don Chiyo",
-    "usuario": "don.chiyo",
-    "email": "chiyo.rancho@in2tech.mx",
-    "rol": "Encargado de Rancho",
-    "puedeEditar": false,
-    "alcanceEdicion": "asignadas",
-    "avatarBg": "bg-amber-600",
-    "initials": "DC"
   }
 ]
