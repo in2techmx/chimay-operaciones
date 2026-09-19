@@ -1,0 +1,13 @@
+{
+  "id": "ETAPA-01",
+  "slug": "ETAPA-01-propuesta",
+  "wbsCode": "1.0",
+  "nombre": "Propuesta",
+  "responsableLider": "Arturo B.",
+  "rolLider": "Gerente Operativo",
+  "fechaInicio": "2026-09-17",
+  "fechaFin": "2026-10-30",
+  "presupuestoObjetivo": 99200,
+  "color": "emerald",
+  "estado": "En Progreso"
+}

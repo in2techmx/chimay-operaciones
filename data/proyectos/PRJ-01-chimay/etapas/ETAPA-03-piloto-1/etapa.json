@@ -1,0 +1,13 @@
+{
+  "id": "ETAPA-03",
+  "slug": "ETAPA-03-piloto-1",
+  "wbsCode": "3.0",
+  "nombre": "Piloto - 1",
+  "responsableLider": "Arturo B.",
+  "rolLider": "Gerente Operativo",
+  "fechaInicio": "2026-11-08",
+  "fechaFin": "2026-12-10",
+  "presupuestoObjetivo": 50000,
+  "color": "amber",
+  "estado": "No Iniciada"
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "TSK-PIL-00",
+    "wbs": "2.1",
+    "etapaId": "ETAPA-02",
+    "etapa": "Proyecto",
+    "name": "Kick - Off de Proyecto / Plan de Trabajo Semanal",
+    "responsable": "Arturo A.",
+    "horas": 0,
+    "costoPersonal": 0.0,
+    "costoMateriales": 0.0,
+    "costoTerceros": 0.0,
+    "costoTotal": 0.0,
+    "start": "2026-11-01",
+    "end": "2026-11-07",
+    "progress": 0,
+    "estado": "No Iniciada",
+    "prioridad": "Media",
+    "projectId": "PRJ-01",
+    "dependencies": ""
+  }
+]

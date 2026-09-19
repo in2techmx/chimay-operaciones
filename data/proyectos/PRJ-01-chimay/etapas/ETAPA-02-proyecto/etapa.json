@@ -1,0 +1,13 @@
+{
+  "id": "ETAPA-02",
+  "slug": "ETAPA-02-proyecto",
+  "wbsCode": "2.0",
+  "nombre": "Proyecto",
+  "responsableLider": "Arturo A.",
+  "rolLider": "Web Master (Master Admon)",
+  "fechaInicio": "2026-11-01",
+  "fechaFin": "2026-11-07",
+  "presupuestoObjetivo": 15000,
+  "color": "blue",
+  "estado": "No Iniciada"
+}
