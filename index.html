@@ -330,9 +330,12 @@
             <p id="modalSubtitle" class="text-xs text-stone-400 font-medium mt-0.5">Espacio de Trabajo Operativo &bull; Bitácora Jira</p>
           </div>
         </div>
-        <button id="closeModal" class="text-stone-400 hover:text-stone-700 text-xl p-1.5 rounded-xl hover:bg-stone-100 transition">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+        <div class="flex items-center gap-2">
+          <div id="modalEditBtnContainer"></div>
+          <button id="closeModal" class="text-stone-400 hover:text-stone-700 text-xl p-1.5 rounded-xl hover:bg-stone-100 transition">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
       </div>
 
       <!-- Cuerpo del Modal Dividido en 2 Columnas -->
@@ -931,6 +934,7 @@
         tarifa: "$200.00 MXN/h (25h/sem)",
         costoHora: 200,
         email: "in2techmx@gmail.com",
+        aliasEmail: "arnaiz.art@gmail.com",
         avatarBg: "bg-purple-600",
         initials: "AA"
       },
@@ -948,6 +952,8 @@
 
     // Alias para compatibilidad de nombres con Google Sheets (sin punto o con punto)
     TEAM_INFO["Arturo A"] = TEAM_INFO["Arturo A."];
+    TEAM_INFO["arnaiz.art"] = TEAM_INFO["Arturo A."];
+    TEAM_INFO["arnaiz.art@gmail.com"] = TEAM_INFO["Arturo A."];
 
     // Base de datos maestra de tareas operativas sincronizada con los 4 recursos inamovibles
     let tasksData = [
@@ -1381,8 +1387,13 @@
     // ==========================================
     // 1.2 CREACIÓN DE TAREAS DESDE LA WEB (➕ NUEVA TAREA)
     // ==========================================
+    let backendEtapas = [];
     function getAllEtapas() {
       const etapasSet = new Set();
+      backendEtapas.forEach(e => {
+        const trimmed = (e || "").trim();
+        if (trimmed) etapasSet.add(trimmed);
+      });
       tasksData.forEach(t => {
         const e = (t.etapa || "").trim();
         if (e) etapasSet.add(e);
@@ -1620,7 +1631,260 @@ Sincronizando con Google Sheets...`);
     }
 
     // ==========================================
-    // 1.3 MODAL Y AYUDA DE WHATSAPP BOT
+    // 1.3 EDICIÓN DE TAREAS (EXCLUSIVO arnaiz.art)
+    // ==========================================
+    function isUserArnaiz() {
+      if (!currentUser) return false;
+      const email = (currentUser.email || "").toLowerCase();
+      const name = (currentUser.name || "").toLowerCase();
+      return email.includes("arnaiz.art") || email.includes("in2techmx") || name.includes("arnaiz.art") || name.includes("arturo a");
+    }
+
+    function openEditTaskModal(id) {
+      if (!isUserArnaiz()) {
+        alert("🔒 Acceso Restringido: Únicamente el usuario arnaiz.art cuenta con permisos para editar tareas del proyecto.");
+        return;
+      }
+
+      const t = tasksData.find(x => x.id === id);
+      if (!t) return;
+
+      // Ocultar modal de detalle para mostrar el modal de edición
+      const detailModal = document.getElementById("taskModal");
+      if (detailModal) detailModal.classList.add("hidden");
+
+      const modal = document.getElementById("editTaskModal");
+      if (!modal) return;
+
+      document.getElementById("editTaskId").value = t.id;
+      document.getElementById("editTaskName").value = t.name || "";
+
+      // Poblar Etapas activas
+      const selectEtapa = document.getElementById("editTaskEtapa");
+      if (selectEtapa) {
+        const etapas = getAllEtapas();
+        selectEtapa.innerHTML = "";
+        etapas.forEach(et => {
+          const opt = document.createElement("option");
+          opt.value = et;
+          opt.textContent = et;
+          if (et === t.etapa) opt.selected = true;
+          selectEtapa.appendChild(opt);
+        });
+
+        // Opción para nueva etapa
+        const optNueva = document.createElement("option");
+        optNueva.value = "__NUEVA__";
+        optNueva.textContent = "➕ Nueva Etapa personalizada...";
+        selectEtapa.appendChild(optNueva);
+
+        const divNueva = document.getElementById("divEditTaskEtapaNueva");
+        if (divNueva) divNueva.classList.add("hidden");
+        const inpNueva = document.getElementById("editTaskEtapaNueva");
+        if (inpNueva) inpNueva.value = "";
+      }
+
+      // Poblar Responsables con los 4 recursos inamovibles
+      const selectResp = document.getElementById("editTaskResp");
+      if (selectResp) {
+        selectResp.value = t.responsable || "Arturo B.";
+      }
+
+      document.getElementById("editTaskStart").value = t.start || "";
+      document.getElementById("editTaskEnd").value = t.end || "";
+      document.getElementById("editTaskEstado").value = t.estado || "No Iniciada";
+      document.getElementById("editTaskPrioridad").value = t.prioridad || "Media";
+      document.getElementById("editTaskHoras").value = t.horas !== undefined ? t.horas : 10;
+      document.getElementById("editTaskMat").value = t.costoMateriales !== undefined ? t.costoMateriales : 0;
+      document.getElementById("editTaskTerc").value = t.costoTerceros !== undefined ? t.costoTerceros : 0;
+
+      const inpNota = document.getElementById("editTaskNotaCambio");
+      if (inpNota) inpNota.value = "";
+
+      updateEditTaskCostPreview();
+      modal.classList.remove("hidden");
+    }
+
+    function handleEditEtapaChange(val) {
+      const divNueva = document.getElementById("divEditTaskEtapaNueva");
+      const inpNueva = document.getElementById("editTaskEtapaNueva");
+      if (val === "__NUEVA__") {
+        if (divNueva) divNueva.classList.remove("hidden");
+        if (inpNueva) inpNueva.focus();
+      } else {
+        if (divNueva) divNueva.classList.add("hidden");
+        if (inpNueva) inpNueva.value = "";
+      }
+    }
+
+    function closeEditTaskModal() {
+      const modal = document.getElementById("editTaskModal");
+      if (modal) modal.classList.add("hidden");
+      if (selectedTaskId) {
+        openTaskModal(selectedTaskId);
+      }
+    }
+
+    function updateEditTaskCostPreview() {
+      const selectResp = document.getElementById("editTaskResp");
+      const inpHoras = document.getElementById("editTaskHoras");
+      const inpMat = document.getElementById("editTaskMat");
+      const inpTerc = document.getElementById("editTaskTerc");
+      const lblPers = document.getElementById("lblEditPreviewCostoPers");
+      const lblTot = document.getElementById("lblEditPreviewCostoTot");
+
+      const resp = selectResp ? selectResp.value : "Arturo B.";
+      const tarifa = (resp.includes("Chiyo")) ? 140 : 200;
+      const horas = Number(inpHoras ? inpHoras.value : 10) || 0;
+      const mat = Number(inpMat ? inpMat.value : 0) || 0;
+      const terc = Number(inpTerc ? inpTerc.value : 0) || 0;
+
+      const costoPers = horas * tarifa;
+      const costoTot = costoPers + mat + terc;
+
+      if (lblPers) lblPers.textContent = `$${costoPers.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+      if (lblTot) lblTot.textContent = `$${costoTot.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`;
+    }
+
+    async function handleSaveEditedTask(e) {
+      e.preventDefault();
+      if (!isUserArnaiz()) {
+        alert("🔒 Acceso Restringido: Únicamente el usuario arnaiz.art cuenta con permisos para editar tareas.");
+        return;
+      }
+
+      const id = document.getElementById("editTaskId").value.trim().toUpperCase();
+      const name = document.getElementById("editTaskName").value.trim();
+      let etapa = document.getElementById("editTaskEtapa").value;
+      if (etapa === "__NUEVA__") {
+        const inpNueva = document.getElementById("editTaskEtapaNueva");
+        etapa = (inpNueva && inpNueva.value.trim()) ? inpNueva.value.trim() : "General";
+      }
+
+      const resp = document.getElementById("editTaskResp").value;
+      const start = document.getElementById("editTaskStart").value;
+      const end = document.getElementById("editTaskEnd").value;
+      const estado = document.getElementById("editTaskEstado").value;
+      const prioridad = document.getElementById("editTaskPrioridad").value;
+      const horas = Number(document.getElementById("editTaskHoras").value) || 0;
+      const mat = Number(document.getElementById("editTaskMat").value) || 0;
+      const terc = Number(document.getElementById("editTaskTerc").value) || 0;
+      const notaCambio = document.getElementById("editTaskNotaCambio") ? document.getElementById("editTaskNotaCambio").value.trim() : "";
+
+      const tarifa = resp.includes("Chiyo") ? 140 : 200;
+      const costoPers = horas * tarifa;
+      const costoTot = costoPers + mat + terc;
+      let progress = 0;
+      if (estado === "Completada") progress = 100;
+      else if (estado === "En Progreso") progress = 50;
+
+      // Actualizar en tasksData
+      const taskIdx = tasksData.findIndex(t => t.id === id);
+      if (taskIdx !== -1) {
+        tasksData[taskIdx] = {
+          ...tasksData[taskIdx],
+          name: name,
+          etapa: etapa,
+          responsable: resp,
+          horas: horas,
+          costoPersonal: costoPers,
+          costoMateriales: mat,
+          costoTerceros: terc,
+          costoTotal: costoTot,
+          start: start,
+          end: end,
+          progress: progress,
+          estado: estado,
+          prioridad: prioridad
+        };
+      }
+
+      // Guardar en bitácora si hay nota de cambio
+      if (notaCambio) {
+        if (!taskComments[id]) taskComments[id] = [];
+        const author = currentUser || { name: "Arturo A. (arnaiz.art)", email: "in2techmx@gmail.com", rol: "Project Manager", avatarBg: "bg-purple-600", initials: "AA" };
+        taskComments[id].push({
+          id: `cmt-edit-${Date.now()}`,
+          author: author.name,
+          email: author.email,
+          rol: author.rol,
+          avatarBg: author.avatarBg,
+          initials: author.initials,
+          timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+          text: `✏️ Modificación por arnaiz.art: ${notaCambio}`,
+          canal: "Web"
+        });
+        try {
+          localStorage.setItem("chimay_task_comments", JSON.stringify(taskComments));
+        } catch (err) {}
+      }
+
+      // Persistir en localStorage
+      try {
+        localStorage.setItem("chimay_cached_sheets_tasks", JSON.stringify(tasksData));
+        let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+        const cIdx = customTasks.findIndex(t => t.id === id);
+        if (cIdx !== -1) {
+          customTasks[cIdx] = tasksData[taskIdx];
+        } else {
+          customTasks.push(tasksData[taskIdx]);
+        }
+        localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
+      } catch (err) {}
+
+      // Actualizar vistas del portal
+      populateEtapasDropdown();
+      populateRecursosDropdown();
+      const container = document.getElementById("viewContainer");
+      if (container) {
+        if (currentView === "todos") renderGlobalView(container);
+        else renderSpecialistView(container, currentView);
+      }
+      updateEtapaBarInfo();
+
+      // Cerrar modal de edición y reabrir modal de detalle
+      const modal = document.getElementById("editTaskModal");
+      if (modal) modal.classList.add("hidden");
+      openTaskModal(id);
+
+      // Sincronizar vía POST a Google Apps Script
+      if (webAppUrl) {
+        try {
+          await fetch(webAppUrl, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              accion: "editar",
+              id: id,
+              nombre: name,
+              etapa: etapa,
+              responsable: resp,
+              horas: horas,
+              costoPersonal: costoPers,
+              costoMateriales: mat,
+              costoTerceros: terc,
+              costoTotal: costoTot,
+              fechaInicio: start,
+              fechaLimite: end,
+              estado: estado,
+              prioridad: prioridad,
+              notaCambio: notaCambio,
+              autor: currentUser ? currentUser.name : "arnaiz.art"
+            })
+          });
+          alert(`✅ Tarea ${id} actualizada y sincronizada con éxito en Google Sheets por arnaiz.art.`);
+        } catch (err) {
+          console.error("Error sincronizando edición con Google Sheets:", err);
+          alert(`⚠️ Tarea ${id} actualizada localmente. Se sincronizará en la próxima conexión con Google Sheets.`);
+        }
+      } else {
+        alert(`✅ Tarea ${id} actualizada localmente en el portal por arnaiz.art.`);
+      }
+    }
+
+    // ==========================================
+    // 1.4 MODAL Y AYUDA DE WHATSAPP BOT
     // ==========================================
     function openWhatsappModal() {
       const m = document.getElementById("whatsappModal");
@@ -4281,6 +4545,24 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
       renderModalImpediments(id);
       populateModalDependencies(id);
 
+      // Renderizar botón de edición condicional (Exclusivo arnaiz.art)
+      const editBtnContainer = document.getElementById("modalEditBtnContainer");
+      if (editBtnContainer) {
+        if (isUserArnaiz()) {
+          editBtnContainer.innerHTML = `
+            <button onclick="openEditTaskModal('${t.id}')" class="px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 font-bold text-xs flex items-center gap-1.5 transition shadow-2xs cursor-pointer" title="Editar tarea (Permiso de arnaiz.art)">
+              <i class="fa-solid fa-pen-to-square"></i> <span>Editar Tarea</span>
+            </button>
+          `;
+        } else {
+          editBtnContainer.innerHTML = `
+            <span class="px-2.5 py-1 rounded-xl bg-stone-100 text-stone-400 border border-stone-200 text-[11px] font-semibold flex items-center gap-1 cursor-not-allowed" title="Solo el usuario arnaiz.art tiene permisos de edición">
+              <i class="fa-solid fa-lock text-[10px]"></i> Solo lectura (arnaiz.art)
+            </span>
+          `;
+        }
+      }
+
       document.getElementById("taskModal").classList.remove("hidden");
     }
 
@@ -4331,6 +4613,9 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
 
         // 1. Si entrega tareas estructuradas en JSON
         if (json && json.success && json.tareas && Array.isArray(json.tareas) && json.tareas.length > 0) {
+          if (json.etapas && Array.isArray(json.etapas)) {
+            backendEtapas = json.etapas;
+          }
           // Normalizar responsables a los 4 miembros inamovibles del proyecto
           json.tareas.forEach(t => {
             if (t.responsable === "Arturo A") t.responsable = "Arturo A.";
@@ -4570,6 +4855,135 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
           <button type="submit" id="btnSubmitNewTask" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm flex items-center gap-2">
             <i class="fa-solid fa-cloud-arrow-up"></i> Guardar y Sincronizar Tarea
           </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Editar Tarea (Web Interface - Exclusivo arnaiz.art) -->
+  <div id="editTaskModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center text-sm font-bold shadow-2xs">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </span>
+          <div>
+            <h3 class="text-base font-black text-stone-900 leading-tight">Editar Tarea Operativa</h3>
+            <p class="text-[11px] text-purple-700 font-semibold flex items-center gap-1">
+              <i class="fa-solid fa-shield-halved text-[10px]"></i> Modo Edición Autorizada &bull; arnaiz.art
+            </p>
+          </div>
+        </div>
+        <button onclick="closeEditTaskModal()" class="text-stone-400 hover:text-stone-700 text-lg p-1 rounded-lg hover:bg-stone-100 transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleSaveEditedTask(event)" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">ID Tarea (Fijo):</label>
+            <input id="editTaskId" type="text" readonly class="w-full bg-stone-100 border border-stone-200 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-purple-900 cursor-not-allowed">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Nombre de la Tarea:</label>
+            <input id="editTaskName" type="text" required class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Etapa de Trabajo:</label>
+            <select id="editTaskEtapa" onchange="handleEditEtapaChange(this.value)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+              <!-- Opciones dinámicas de etapas -->
+            </select>
+            <div id="divEditTaskEtapaNueva" class="hidden mt-2">
+              <input id="editTaskEtapaNueva" type="text" placeholder="Nombre de la nueva etapa..." class="w-full bg-purple-50/60 border border-purple-300 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+            </div>
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Responsable Principal:</label>
+            <select id="editTaskResp" onchange="updateEditTaskCostPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+              <option value="Arturo B.">Arturo B. (Líder Operativo de Proyecto - $200/h)</option>
+              <option value="Gema R.">Gema R. (Dirección Legal & IMSS - $200/h)</option>
+              <option value="Arturo A.">Arturo A. (Project Manager / Líder Comercial - $200/h)</option>
+              <option value="Don Chiyo">Don Chiyo (Almacén e Instalaciones Rancho Gema - $140/h)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Fecha de Inicio:</label>
+            <input id="editTaskStart" type="date" required class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Fecha Límite:</label>
+            <input id="editTaskEnd" type="date" required class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Estado:</label>
+            <select id="editTaskEstado" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+              <option value="No Iniciada">No Iniciada</option>
+              <option value="En Progreso">En Progreso</option>
+              <option value="Bloqueada">Bloqueada</option>
+              <option value="Completada">Completada</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Prioridad:</label>
+            <select id="editTaskPrioridad" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20">
+              <option value="Media">Media</option>
+              <option value="Alta">Alta</option>
+              <option value="Crítica">Crítica</option>
+              <option value="Baja">Baja</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Calculadora de Presupuesto -->
+        <div class="p-3.5 rounded-2xl bg-purple-50/60 border border-purple-200/70 space-y-2">
+          <span class="text-xs font-black text-purple-950 flex items-center gap-1.5">
+            <i class="fa-solid fa-calculator text-purple-700"></i> Desglose de Presupuesto Estimado:
+          </span>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="text-[11px] font-bold text-stone-600 block mb-1">Horas Estimadas:</label>
+              <input id="editTaskHoras" type="number" min="0" oninput="updateEditTaskCostPreview()" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold">
+            </div>
+            <div>
+              <label class="text-[11px] font-bold text-stone-600 block mb-1">Materiales / Insumos ($):</label>
+              <input id="editTaskMat" type="number" min="0" oninput="updateEditTaskCostPreview()" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold">
+            </div>
+            <div>
+              <label class="text-[11px] font-bold text-stone-600 block mb-1">Servicios Terceros ($):</label>
+              <input id="editTaskTerc" type="number" min="0" oninput="updateEditTaskCostPreview()" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold">
+            </div>
+          </div>
+          <div class="pt-2 border-t border-purple-200/50 flex items-center justify-between text-xs">
+            <span class="text-stone-600 font-medium">Personal: <strong id="lblEditPreviewCostoPers" class="text-stone-900">$0.00</strong></span>
+            <span class="text-purple-950 font-black text-sm">Costo Total: <strong id="lblEditPreviewCostoTot" class="text-purple-900">$0.00 MXN</strong></span>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-bold text-stone-600 block mb-1">Nota de Modificación / Bitácora (Opcional):</label>
+          <textarea id="editTaskNotaCambio" rows="2" placeholder="Motivo o detalle del cambio realizado por arnaiz.art..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20"></textarea>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-stone-100">
+          <span class="text-[11px] text-stone-400 font-medium flex items-center gap-1">
+            <i class="fa-solid fa-lock text-stone-400"></i> Solo editable por arnaiz.art
+          </span>
+          <div class="flex items-center gap-2.5">
+            <button type="button" onclick="closeEditTaskModal()" class="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 text-xs font-bold hover:bg-stone-50 transition">
+              Cancelar
+            </button>
+            <button type="submit" id="btnSubmitEditTask" class="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition shadow-sm flex items-center gap-2">
+              <i class="fa-solid fa-check"></i> Guardar Cambios
+            </button>
+          </div>
         </div>
       </form>
     </div>
