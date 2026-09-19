@@ -1,0 +1,82 @@
+{
+  "TSK-PIL-01": [
+    {
+      "id": "cmt-p1",
+      "author": "Arturo B.",
+      "email": "arturo.dlb.r@gmail.com",
+      "rol": "Gerente Operativo",
+      "avatarBg": "bg-blue-600",
+      "initials": "AB",
+      "timestamp": "2026-09-17 10:00",
+      "text": "Delimitación en campo de los primeros 2,500 m2 para la zona piloto de brotes y microgreens."
+    },
+    {
+      "id": "cmt-p2",
+      "author": "Gema R.",
+      "email": "gemaromerom22@gmail.com",
+      "rol": "Gerente Legal",
+      "avatarBg": "bg-emerald-600",
+      "initials": "GR",
+      "timestamp": "2026-09-18 12:30",
+      "text": "Validado el trazo con curvas de nivel para el escurrimiento pluvial."
+    }
+  ],
+  "TSK-PIL-02": [
+    {
+      "id": "cmt-p3",
+      "author": "Arturo A.",
+      "email": "in2techmx@gmail.com",
+      "rol": "Web Master (Master Admon)",
+      "avatarBg": "bg-purple-600",
+      "initials": "AA",
+      "timestamp": "2026-09-17 11:15",
+      "text": "Expediente de concesión de pozo ingresado ante CONAGUA Mérida con folio 2026-MER-CONAGUA-044."
+    },
+    {
+      "id": "cmt-p4",
+      "author": "Gema R.",
+      "email": "gemaromerom22@gmail.com",
+      "rol": "Gerente Legal",
+      "avatarBg": "bg-emerald-600",
+      "initials": "GR",
+      "timestamp": "2026-09-19 09:00",
+      "text": "Título formalizado y asignado para explotación agroecológica."
+    }
+  ],
+  "TSK-PIL-03": [
+    {
+      "id": "cmt-p5",
+      "author": "Arturo B.",
+      "email": "arturo.dlb.r@gmail.com",
+      "rol": "Gerente Operativo",
+      "avatarBg": "bg-blue-600",
+      "initials": "AB",
+      "timestamp": "2026-09-18 16:45",
+      "text": "Calculada la bomba sumergible y los sectores de microaspersión con presión constante de 2.5 bar."
+    }
+  ],
+  "TSK-PIL-04": [
+    {
+      "id": "cmt-p6",
+      "author": "Don Chiyo",
+      "email": "chiyo.rancho@in2tech.mx",
+      "rol": "Encargado de Rancho",
+      "avatarBg": "bg-amber-600",
+      "initials": "DC",
+      "timestamp": "2026-09-18 08:30",
+      "text": "Recibidos postes y malla sombra 70% térmica bicolor en rancho."
+    }
+  ],
+  "TSK-PIL-05": [
+    {
+      "id": "cmt-p7",
+      "author": "Gema R.",
+      "email": "gemaromerom22@gmail.com",
+      "rol": "Gerente Legal",
+      "avatarBg": "bg-emerald-600",
+      "initials": "GR",
+      "timestamp": "2026-09-19 14:00",
+      "text": "Programadas 800 charolas sin suelo con sustrato orgánico y bioestimulante."
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "USR-AAA",
+    "nombre": "Arturo A.",
+    "usuario": "arnaiz.art",
+    "email": "in2techmx@gmail.com",
+    "aliasEmail": "arnaiz.art@gmail.com",
+    "rol": "Web Master (Master Admon)",
+    "puedeEditar": true,
+    "alcanceEdicion": "todas",
+    "avatarBg": "bg-purple-600",
+    "initials": "AA"
+  },
+  {
+    "id": "USR-ABR",
+    "nombre": "Arturo B.",
+    "usuario": "arturo.b",
+    "email": "arturo.dlb.r@gmail.com",
+    "rol": "Gerente Operativo",
+    "puedeEditar": true,
+    "alcanceEdicion": "asignadas",
+    "avatarBg": "bg-blue-600",
+    "initials": "AB"
+  },
+  {
+    "id": "USR-GR",
+    "nombre": "Gema R.",
+    "usuario": "gema.r",
+    "email": "gemaromerom22@gmail.com",
+    "rol": "Gerente Legal",
+    "puedeEditar": true,
+    "alcanceEdicion": "asignadas",
+    "avatarBg": "bg-emerald-600",
+    "initials": "GR"
+  },
+  {
+    "id": "USR-004",
+    "nombre": "Don Chiyo",
+    "usuario": "don.chiyo",
+    "email": "chiyo.rancho@in2tech.mx",
+    "rol": "Encargado de Rancho",
+    "puedeEditar": false,
+    "alcanceEdicion": "asignadas",
+    "avatarBg": "bg-amber-600",
+    "initials": "DC"
+  }
+]

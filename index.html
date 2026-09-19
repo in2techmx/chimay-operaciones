@@ -172,6 +172,9 @@
         <button id="btnCrearTarea" onclick="openCreateTaskModal()" class="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Crear nueva tarea en el cronograma">
           <i class="fa-solid fa-plus-circle text-sm"></i> <span class="hidden sm:inline">Nueva Tarea</span>
         </button>
+        <button id="btnCrearEtapa" onclick="openCreateStageModal()" class="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Agregar nueva etapa y generar plantilla WBS">
+          <i class="fa-solid fa-folder-plus text-sm"></i> <span class="hidden sm:inline">Nueva Etapa</span>
+        </button>
         <button id="btnWhatsappInfo" onclick="openWhatsappModal()" class="px-2.5 py-1.5 rounded-xl bg-emerald-800/80 hover:bg-emerald-700 text-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition border border-emerald-600/40 shadow-sm cursor-pointer" title="Comandos y Guía de WhatsApp Bot">
           <i class="fa-brands fa-whatsapp text-green-400 text-sm"></i> <span class="hidden md:inline">WhatsApp Bot</span>
         </button>
@@ -2167,6 +2170,409 @@ Sincronizando con Google Sheets...`);
       if (m) m.classList.add("hidden");
     }
 
+
+
+    // ==========================================
+    // 1.6 GESTOR MODULAR DE ETAPAS & DATOS EN GITHUB (GIT-AS-A-DATABASE)
+    // ==========================================
+    let githubProjectsCatalog = [];
+
+    // Cargar datos modulares de GitHub (./data/proyectos.json -> etapas -> tareas)
+    async function fetchProjectDataFromGithub() {
+      try {
+        const res = await fetch("./data/proyectos.json?t=" + Date.now());
+        if (!res.ok) return;
+        const catalog = await res.json();
+        if (Array.isArray(catalog) && catalog.length > 0) {
+          githubProjectsCatalog = catalog;
+          
+          // Sincronizar selector de portafolio
+          const pSel = document.getElementById("portfolioSelect");
+          if (pSel) {
+            const curVal = currentPortfolioProject;
+            pSel.innerHTML = `<option value="all">📁 Portafolio Consolidado (Todos los Proyectos)</option>` +
+              catalog.map(p => `<option value="${p.id}" ${p.id === curVal ? 'selected' : ''}>${p.id === 'PRJ-01' ? '🌱' : (p.id === 'PRJ-02' ? '⚡' : '🍄')} ${p.id}: ${p.nombre}</option>`).join('');
+          }
+
+          // Cargar usuarios de GitHub si están disponibles
+          try {
+            const usrRes = await fetch("./data/usuarios.json?t=" + Date.now());
+            if (usrRes.ok) {
+              const usrs = await usrRes.json();
+              if (Array.isArray(usrs)) {
+                usrs.forEach(u => {
+                  if (usersConfig[u.nombre]) {
+                    usersConfig[u.nombre].rol = u.rol;
+                    usersConfig[u.nombre].canEditTasks = u.puedeEditar;
+                    usersConfig[u.nombre].editScope = u.alcanceEdicion;
+                  }
+                });
+                syncTeamInfoWithUsersConfig();
+                renderUserAuth();
+              }
+            }
+          } catch(e) {}
+
+          // Cargar todas las tareas modulares por etapa de los proyectos
+          const allTasksFromStages = [];
+          for (const proj of catalog) {
+            if (proj.etapas && Array.isArray(proj.etapas)) {
+              for (const etapaRef of proj.etapas) {
+                try {
+                  const tskRes = await fetch(`./data/${etapaRef.path}/tareas.json?t=` + Date.now());
+                  if (tskRes.ok) {
+                    const stTasks = await tskRes.json();
+                    if (Array.isArray(stTasks)) {
+                      stTasks.forEach(st => {
+                        st.projectId = proj.id;
+                        allTasksFromStages.push(st);
+                      });
+                    }
+                  }
+                } catch(e) {}
+              }
+            }
+          }
+
+          if (allTasksFromStages.length > 0) {
+            const existingIds = new Set();
+            tasksData = allTasksFromStages;
+            tasksData.forEach(t => existingIds.add(t.id));
+
+            // Agregar custom tasks de localStorage que no estén en los JSONs
+            try {
+              const customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+              customTasks.forEach(ct => {
+                if (!existingIds.has(ct.id)) {
+                  tasksData.push(ct);
+                  existingIds.add(ct.id);
+                }
+              });
+            } catch(e) {}
+
+            populateEtapasDropdown();
+            populateRecursosDropdown();
+            refreshActiveViews();
+
+            const initialSyncLbl = document.getElementById("lastSyncLabel");
+            if (initialSyncLbl) {
+              initialSyncLbl.innerHTML = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 font-mono text-[11px] font-bold shadow-xs"><i class="fa-brands fa-github text-white text-xs"></i> Git-as-a-Database (${tasksData.length} tareas cargadas)</span>`;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Carga de datos GitHub local/remoto no disponible, usando fallback local:", err);
+      }
+    }
+
+    // Modal de Nueva Etapa
+    function openCreateStageModal() {
+      const modal = document.getElementById("createStageModal");
+      if (!modal) return;
+
+      // Calcular próximo número de etapa WBS
+      const currentProjId = (currentPortfolioProject && currentPortfolioProject !== "all") ? currentPortfolioProject : "PRJ-01";
+      const selProj = document.getElementById("newStageProject");
+      if (selProj) selProj.value = currentProjId;
+
+      let maxWbs = 0;
+      tasksData.forEach(t => {
+        if (!t.projectId || t.projectId === currentProjId) {
+          if (t.wbs) {
+            const m = String(t.wbs).match(/^(\d+)/);
+            if (m) {
+              const n = parseInt(m[1], 10);
+              if (n > maxWbs) maxWbs = n;
+            }
+          }
+          if (t.etapa) {
+            const m = String(t.etapa).match(/Etapa\s+(\d+)/i);
+            if (m) {
+              const n = parseInt(m[1], 10);
+              if (n > maxWbs) maxWbs = n;
+            }
+          }
+        }
+      });
+      const nextWbsNum = maxWbs + 1;
+      const nextWbsCode = `${nextWbsNum}.0`;
+
+      const inpWbs = document.getElementById("newStageWbsCode");
+      if (inpWbs) inpWbs.value = nextWbsCode;
+
+      const inpName = document.getElementById("newStageName");
+      if (inpName) inpName.value = `Etapa ${nextWbsNum}: `;
+
+      const inpSlug = document.getElementById("newStageSlug");
+      if (inpSlug) inpSlug.value = `ETAPA-${String(nextWbsNum).padStart(2, '0')}-nueva-etapa`;
+
+      // Fechas por defecto
+      const hoy = new Date();
+      const en20Dias = new Date(hoy.getTime() + 20 * 86400000);
+      const inpStart = document.getElementById("newStageStart");
+      const inpEnd = document.getElementById("newStageEnd");
+      if (inpStart) inpStart.value = hoy.toISOString().split('T')[0];
+      if (inpEnd) inpEnd.value = en20Dias.toISOString().split('T')[0];
+
+      // Actualizar preview de plantilla WBS
+      updateWbsTemplateLabels(nextWbsNum);
+
+      modal.classList.remove("hidden");
+      if (inpName) {
+        inpName.focus();
+        inpName.setSelectionRange(inpName.value.length, inpName.value.length);
+      }
+    }
+
+    function closeCreateStageModal() {
+      const modal = document.getElementById("createStageModal");
+      if (modal) modal.classList.add("hidden");
+    }
+
+    function handleStageNameInput(val) {
+      const m = val.match(/Etapa\s+(\d+)/i);
+      let wbsNum = 6;
+      if (m) {
+        wbsNum = parseInt(m[1], 10);
+        const inpWbs = document.getElementById("newStageWbsCode");
+        if (inpWbs) inpWbs.value = `${wbsNum}.0`;
+      } else {
+        const inpWbs = document.getElementById("newStageWbsCode");
+        if (inpWbs && inpWbs.value) {
+          wbsNum = parseInt(inpWbs.value.split('.')[0], 10) || 6;
+        }
+      }
+
+      // Slugify name
+      const cleanName = val.replace(/Etapa\s+\d+[:\s-]*/i, '').trim().toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      const slug = `ETAPA-${String(wbsNum).padStart(2, '0')}-${cleanName || 'general'}`;
+      const inpSlug = document.getElementById("newStageSlug");
+      if (inpSlug) inpSlug.value = slug;
+
+      updateWbsTemplateLabels(wbsNum);
+    }
+
+    function updateWbsTemplateLabels(wbsNum) {
+      const lbl1 = document.getElementById("lblPreviewWbs1");
+      const lbl2 = document.getElementById("lblPreviewWbs2");
+      if (lbl1) lbl1.innerText = `${wbsNum}.1`;
+      if (lbl2) lbl2.innerText = `${wbsNum}.2`;
+    }
+
+    function handleStageRespChange(resp) {
+      // Ajustar preview si aplica
+    }
+
+    // Guardar la nueva etapa y sus tareas de plantilla en el sistema
+    function handleSaveNewStage(e) {
+      e.preventDefault();
+      const projId = document.getElementById("newStageProject").value;
+      const wbsCode = document.getElementById("newStageWbsCode").value.trim();
+      const stageName = document.getElementById("newStageName").value.trim();
+      const slug = document.getElementById("newStageSlug").value.trim();
+      const color = document.getElementById("newStageColor").value;
+      const resp = document.getElementById("newStageResp").value;
+      const start = document.getElementById("newStageStart").value;
+      const end = document.getElementById("newStageEnd").value;
+      const presupuesto = Number(document.getElementById("newStagePresupuesto").value) || 35000;
+      const autoWbs = document.getElementById("chkAutoWbsTemplate").checked;
+
+      const wbsMajor = wbsCode.split('.')[0];
+
+      // 1. Objeto Etapa
+      const newStageObj = {
+        id: `ETAPA-${wbsMajor.padStart(2, '0')}`,
+        slug: slug,
+        wbsCode: wbsCode,
+        nombre: stageName,
+        responsableLider: resp,
+        rolLider: (TEAM_INFO[resp] && TEAM_INFO[resp].rol) ? TEAM_INFO[resp].rol : "Líder de Etapa",
+        fechaInicio: start,
+        fechaFin: end,
+        presupuestoObjetivo: presupuesto,
+        color: color,
+        estado: "Planificada"
+      };
+
+      // 2. Generar tareas plantilla si está activo
+      const generatedTasks = [];
+      if (autoWbs) {
+        const rate = (TEAM_INFO[resp] && TEAM_INFO[resp].costoHora) ? TEAM_INFO[resp].costoHora : 200;
+        const midDateObj = new Date(new Date(start).getTime() + 7 * 86400000);
+        const midDate = midDateObj.toISOString().split('T')[0];
+
+        // Tarea 1: Planificación WBS .1
+        const t1Id = `TSK-WBS-${wbsMajor}-1`;
+        const t1 = {
+          id: t1Id,
+          wbs: `${wbsMajor}.1`,
+          etapaId: newStageObj.id,
+          etapa: stageName,
+          name: `Planificación y Especificaciones Técnicas (${stageName})`,
+          responsable: resp,
+          horas: 15,
+          costoPersonal: 15 * rate,
+          costoMateriales: 0,
+          costoTerceros: 0,
+          costoTotal: 15 * rate,
+          start: start,
+          end: midDate,
+          progress: 0,
+          estado: "No Iniciada",
+          prioridad: "Alta",
+          projectId: projId,
+          dependencies: ""
+        };
+        generatedTasks.push(t1);
+
+        // Tarea 2: Ejecución WBS .2
+        const t2Id = `TSK-WBS-${wbsMajor}-2`;
+        const matCost = Math.round(presupuesto * 0.4);
+        const t2 = {
+          id: t2Id,
+          wbs: `${wbsMajor}.2`,
+          etapaId: newStageObj.id,
+          etapa: stageName,
+          name: `Ejecución y Puesta en Marcha en Campo (${stageName})`,
+          responsable: resp,
+          horas: 25,
+          costoPersonal: 25 * rate,
+          costoMateriales: matCost,
+          costoTerceros: 0,
+          costoTotal: (25 * rate) + matCost,
+          start: midDate,
+          end: end,
+          progress: 0,
+          estado: "No Iniciada",
+          prioridad: "Media",
+          projectId: projId,
+          dependencies: t1Id
+        };
+        generatedTasks.push(t2);
+      }
+
+      // Guardar etapa en Custom Stages (localStorage)
+      try {
+        let customStages = JSON.parse(localStorage.getItem("chimay_custom_stages") || "[]");
+        customStages.push(newStageObj);
+        localStorage.setItem("chimay_custom_stages", JSON.stringify(customStages));
+      } catch(err) {}
+
+      // Inyectar tareas a tasksData y customTasks
+      tasksData.push(...generatedTasks);
+      try {
+        let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+        customTasks.push(...generatedTasks);
+        localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
+      } catch(err) {}
+
+      closeCreateStageModal();
+
+      // Cambiar a la etapa recién creada para verla de inmediato
+      populateEtapasDropdown();
+      currentEtapa = stageName;
+      const selEtapa = document.getElementById("selectEtapa");
+      if (selEtapa) selEtapa.value = stageName;
+      refreshActiveViews();
+
+      alert(`✅ ¡Etapa creada exitosamente!
+
+• Nombre: ${stageName}
+• WBS Base: ${wbsCode}
+• Carpeta GitHub: data/proyectos/${projId.toLowerCase()}/etapas/${slug}/
+• Tareas generadas: ${generatedTasks.length}
+
+Los archivos JSON han sido preparados.`);
+    }
+
+    // Descargar archivos JSON de la etapa actual para persistirlos en GitHub
+    function downloadCurrentStageJsonPreview() {
+      const projId = document.getElementById("newStageProject").value;
+      const wbsCode = document.getElementById("newStageWbsCode").value.trim() || "6.0";
+      const stageName = document.getElementById("newStageName").value.trim() || "Etapa 6: Nueva Etapa";
+      const slug = document.getElementById("newStageSlug").value.trim() || `ETAPA-06-nueva-etapa`;
+      const color = document.getElementById("newStageColor").value;
+      const resp = document.getElementById("newStageResp").value;
+      const start = document.getElementById("newStageStart").value || new Date().toISOString().split('T')[0];
+      const end = document.getElementById("newStageEnd").value || new Date().toISOString().split('T')[0];
+      const presupuesto = Number(document.getElementById("newStagePresupuesto").value) || 35000;
+
+      const wbsMajor = wbsCode.split('.')[0];
+      const etapaJson = {
+        id: `ETAPA-${wbsMajor.padStart(2, '0')}`,
+        slug: slug,
+        wbsCode: wbsCode,
+        nombre: stageName,
+        responsableLider: resp,
+        rolLider: (TEAM_INFO[resp] && TEAM_INFO[resp].rol) ? TEAM_INFO[resp].rol : "Líder de Etapa",
+        fechaInicio: start,
+        fechaFin: end,
+        presupuestoObjetivo: presupuesto,
+        color: color,
+        estado: "Planificada"
+      };
+
+      const rate = (TEAM_INFO[resp] && TEAM_INFO[resp].costoHora) ? TEAM_INFO[resp].costoHora : 200;
+      const tareasJson = [
+        {
+          id: `TSK-WBS-${wbsMajor}-1`,
+          wbs: `${wbsMajor}.1`,
+          etapaId: etapaJson.id,
+          etapa: stageName,
+          name: `Planificación y Especificaciones Técnicas (${stageName})`,
+          responsable: resp,
+          horas: 15,
+          costoPersonal: 15 * rate,
+          costoMateriales: 0,
+          costoTerceros: 0,
+          costoTotal: 15 * rate,
+          start: start,
+          end: end,
+          progress: 0,
+          estado: "No Iniciada",
+          prioridad: "Alta",
+          projectId: projId
+        },
+        {
+          id: `TSK-WBS-${wbsMajor}-2`,
+          wbs: `${wbsMajor}.2`,
+          etapaId: etapaJson.id,
+          etapa: stageName,
+          name: `Ejecución y Puesta en Marcha en Campo (${stageName})`,
+          responsable: resp,
+          horas: 25,
+          costoPersonal: 25 * rate,
+          costoMateriales: Math.round(presupuesto * 0.4),
+          costoTerceros: 0,
+          costoTotal: (25 * rate) + Math.round(presupuesto * 0.4),
+          start: start,
+          end: end,
+          progress: 0,
+          estado: "No Iniciada",
+          prioridad: "Media",
+          projectId: projId,
+          dependencies: `TSK-WBS-${wbsMajor}-1`
+        }
+      ];
+
+      // Disparar descarga de etapa.json
+      const blobEtapa = new Blob([JSON.stringify(etapaJson, null, 2)], { type: "application/json" });
+      const a1 = document.createElement("a");
+      a1.href = URL.createObjectURL(blobEtapa);
+      a1.download = `etapa_${slug}.json`;
+      a1.click();
+
+      // Disparar descarga de tareas.json
+      setTimeout(() => {
+        const blobTareas = new Blob([JSON.stringify(tareasJson, null, 2)], { type: "application/json" });
+        const a2 = document.createElement("a");
+        a2.href = URL.createObjectURL(blobTareas);
+        a2.download = `tareas_${slug}.json`;
+        a2.click();
+      }, 300);
+    }
 
     // ==========================================
     // 2. SISTEMA DE BITÁCORA / CHAT ESTILO JIRA
@@ -4250,6 +4656,9 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
                 <button onclick="openCreateTaskModal()" class="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Crear nueva tarea en el cronograma">
                   <i class="fa-solid fa-plus-circle text-xs"></i> <span>Nueva Tarea</span>
                 </button>
+                <button onclick="openCreateStageModal()" class="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Agregar nueva etapa y generar plantilla WBS">
+                  <i class="fa-solid fa-folder-plus text-xs"></i> <span>Nueva Etapa</span>
+                </button>
               </div>
               <p class="text-xs text-stone-400 mt-0.5">Panel WBS a la izquierda sincronizado 1:1 con la línea de tiempo temporal a la derecha.</p>
             </div>
@@ -4429,6 +4838,9 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
                 </h3>
                 <button onclick="openCreateTaskModal()" class="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Crear nueva tarea en el cronograma">
                   <i class="fa-solid fa-plus-circle text-xs"></i> <span>Nueva Tarea</span>
+                </button>
+                <button onclick="openCreateStageModal()" class="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Agregar nueva etapa y generar plantilla WBS">
+                  <i class="fa-solid fa-folder-plus text-xs"></i> <span>Nueva Etapa</span>
                 </button>
               </div>
               <p class="text-xs text-stone-400 mt-0.5">Panel WBS a la izquierda alineado 1:1 con las barras temporales.</p>
@@ -4984,6 +5396,7 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
     initGoogleIdentity();
     initCommentsData();
     initNotifications();
+    fetchProjectDataFromGithub();
     populateEtapasDropdown();
     populateRecursosDropdown();
     selectRecurso('todos');
@@ -5470,6 +5883,124 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+
+  <!-- Modal Agregar Nueva Etapa & Generar Plantilla WBS (GitHub Data Structure) -->
+  <div id="createStageModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center text-sm font-bold shadow-2xs">
+            <i class="fa-solid fa-folder-plus"></i>
+          </span>
+          <div>
+            <h3 class="text-base font-black text-stone-900 leading-tight">Agregar Nueva Etapa de Proyecto</h3>
+            <p class="text-[11px] text-stone-400">Estructura modular en GitHub &bull; Subcarpeta física con plantilla WBS</p>
+          </div>
+        </div>
+        <button onclick="closeCreateStageModal()" class="text-stone-400 hover:text-stone-700 text-lg p-1 rounded-lg hover:bg-stone-100">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleSaveNewStage(event)" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Proyecto:</label>
+            <select id="newStageProject" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs font-bold text-stone-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20">
+              <option value="PRJ-01">🌱 PRJ-01: Chimay Agroecología</option>
+              <option value="PRJ-02">⚡ PRJ-02: Parque Solar 15kW</option>
+              <option value="PRJ-03">🍄 PRJ-03: Fúngicos & Biofábrica</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Código WBS Base:</label>
+            <input id="newStageWbsCode" type="text" required placeholder="Ej: 6.0" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-teal-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Color de Acento:</label>
+            <select id="newStageColor" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20">
+              <option value="teal">Teal (Verde Azulado)</option>
+              <option value="emerald">Emerald (Verde Esmeralda)</option>
+              <option value="blue">Blue (Azul Operativo)</option>
+              <option value="purple">Purple (Púrpura Comercial)</option>
+              <option value="amber">Amber (Ámbar Estructuras)</option>
+              <option value="rose">Rose (Rosa / Alerta)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Nombre de la Etapa:</label>
+            <input id="newStageName" type="text" required oninput="handleStageNameInput(this.value)" placeholder="Ej: Etapa 6: Empaque y Logística" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Slug de Subcarpeta (en GitHub):</label>
+            <input id="newStageSlug" type="text" required placeholder="ETAPA-06-empaque-y-logistica" class="w-full bg-stone-100 border border-stone-200 rounded-xl px-3 py-1.5 text-xs font-mono text-stone-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Responsable Líder:</label>
+            <select id="newStageResp" onchange="handleStageRespChange(this.value)" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20">
+              <option value="Arturo B.">Arturo B. (Gerente Operativo)</option>
+              <option value="Gema R.">Gema R. (Gerente Legal)</option>
+              <option value="Arturo A.">Arturo A. (Web Master / Master Admon)</option>
+              <option value="Don Chiyo">Don Chiyo (Encargado de Rancho)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Fecha de Inicio:</label>
+            <input id="newStageStart" type="date" required class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Fecha de Finalización:</label>
+            <input id="newStageEnd" type="date" required class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20">
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-200/80 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-black text-teal-950 flex items-center gap-1.5">
+              <i class="fa-solid fa-sitemap text-teal-700"></i> Generador de Plantilla WBS Automática:
+            </span>
+            <label class="flex items-center gap-1.5 text-xs font-bold text-teal-900 cursor-pointer">
+              <input type="checkbox" id="chkAutoWbsTemplate" checked class="rounded text-teal-600">
+              <span>Crear tareas plantilla (WBS .1 y .2)</span>
+            </label>
+          </div>
+          <div id="wbsTemplatePreview" class="text-[11px] text-teal-800 space-y-1 bg-white/80 p-2.5 rounded-xl border border-teal-200">
+            <p><strong class="font-mono text-teal-900" id="lblPreviewWbs1">6.1</strong> Planificación y Especificaciones Técnicas (15h &bull; $3,000 MXN)</p>
+            <p><strong class="font-mono text-teal-900" id="lblPreviewWbs2">6.2</strong> Ejecución y Puesta en Marcha en Campo (25h &bull; $5,000 MXN)</p>
+          </div>
+          <div class="flex items-center justify-between text-xs pt-1">
+            <span class="text-stone-600 font-medium">Presupuesto Objetivo Etapa:</span>
+            <div class="flex items-center gap-1">
+              <span class="text-stone-400 font-bold">$</span>
+              <input id="newStagePresupuesto" type="number" min="0" value="35000" class="w-32 bg-white border border-teal-300 rounded-lg px-2 py-1 text-xs font-bold text-teal-950 text-right">
+              <span class="text-[10px] text-stone-400 font-bold">MXN</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-stone-100">
+          <button type="button" onclick="downloadCurrentStageJsonPreview()" class="px-3 py-1.5 rounded-xl border border-teal-300 bg-teal-50 text-teal-800 text-xs font-bold hover:bg-teal-100 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-download"></i> Descargar JSONs para GitHub
+          </button>
+          <div class="flex items-center gap-2.5">
+            <button type="button" onclick="closeCreateStageModal()" class="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 text-xs font-bold hover:bg-stone-50 transition">
+              Cancelar
+            </button>
+            <button type="submit" id="btnSubmitNewStage" class="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition shadow-sm flex items-center gap-2 cursor-pointer">
+              <i class="fa-solid fa-check"></i> Crear Etapa y Plantilla WBS
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
 

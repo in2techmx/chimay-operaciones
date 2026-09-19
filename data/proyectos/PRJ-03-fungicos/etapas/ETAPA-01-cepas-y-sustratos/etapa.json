@@ -1,0 +1,13 @@
+{
+  "id": "ETAPA-01",
+  "slug": "ETAPA-01-cepas-y-sustratos",
+  "wbsCode": "1.0",
+  "nombre": "Etapa 1: Aislamiento de Cepas y Sustratos",
+  "responsableLider": "Arturo B.",
+  "rolLider": "Gerente Operativo",
+  "fechaInicio": "2026-11-15",
+  "fechaFin": "2026-12-15",
+  "presupuestoObjetivo": 35000,
+  "color": "purple",
+  "estado": "Planificada"
+}

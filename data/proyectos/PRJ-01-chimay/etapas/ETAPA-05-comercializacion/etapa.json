@@ -1,0 +1,13 @@
+{
+  "id": "ETAPA-05",
+  "slug": "ETAPA-05-comercializacion",
+  "wbsCode": "5.0",
+  "nombre": "Etapa 5: Comercialización y Distribución",
+  "responsableLider": "Arturo A.",
+  "rolLider": "Web Master (Master Admon)",
+  "fechaInicio": "2026-10-15",
+  "fechaFin": "2026-11-15",
+  "presupuestoObjetivo": 35000,
+  "color": "purple",
+  "estado": "Planificada"
+}

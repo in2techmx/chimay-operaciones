@@ -1,0 +1,13 @@
+{
+  "id": "ETAPA-03",
+  "slug": "ETAPA-03-estructuras-malla-sombra",
+  "wbsCode": "3.0",
+  "nombre": "Etapa 3: Estructuras Malla Sombra",
+  "responsableLider": "Don Chiyo",
+  "rolLider": "Encargado de Rancho",
+  "fechaInicio": "2026-09-24",
+  "fechaFin": "2026-10-10",
+  "presupuestoObjetivo": 70000,
+  "color": "amber",
+  "estado": "Planificada"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "PRJ-02",
+  "codigo": "SOLAR-2026",
+  "nombre": "Proyecto Parque Solar 15kW",
+  "ubicacion": "Rancho San Pedro Chimay, Sector B",
+  "fechaInicio": "2026-11-01",
+  "fechaFinEstimada": "2027-02-28",
+  "presupuestoTotal": 280000,
+  "moneda": "MXN",
+  "estado": "En Planificación",
+  "directorProyecto": "Arturo A."
+}

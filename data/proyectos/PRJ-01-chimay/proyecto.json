@@ -1,0 +1,12 @@
+{
+  "id": "PRJ-01",
+  "codigo": "CHIMAY-2026",
+  "nombre": "Proyecto Agroecológico Chimay",
+  "ubicacion": "Rancho San Pedro Chimay, Mérida, Yucatán, México",
+  "fechaInicio": "2026-09-17",
+  "fechaFinEstimada": "2027-03-31",
+  "presupuestoTotal": 450000,
+  "moneda": "MXN",
+  "estado": "En Ejecución",
+  "directorProyecto": "Arturo B."
+}

@@ -1,0 +1,13 @@
+{
+  "id": "ETAPA-02",
+  "slug": "ETAPA-02-infraestructura-hidraulica",
+  "wbsCode": "2.0",
+  "nombre": "Etapa 2: Infraestructura Hidráulica",
+  "responsableLider": "Arturo B.",
+  "rolLider": "Gerente Operativo",
+  "fechaInicio": "2026-09-20",
+  "fechaFin": "2026-10-05",
+  "presupuestoObjetivo": 50000,
+  "color": "blue",
+  "estado": "En Progreso"
+}

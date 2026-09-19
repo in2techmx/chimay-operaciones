@@ -1,0 +1,13 @@
+{
+  "id": "ETAPA-01",
+  "slug": "ETAPA-01-ingenieria-y-permisos",
+  "wbsCode": "1.0",
+  "nombre": "Etapa 1: Ingeniería y Permisos CFE",
+  "responsableLider": "Arturo A.",
+  "rolLider": "Web Master (Master Admon)",
+  "fechaInicio": "2026-11-01",
+  "fechaFin": "2026-11-30",
+  "presupuestoObjetivo": 45000,
+  "color": "amber",
+  "estado": "Planificada"
+}

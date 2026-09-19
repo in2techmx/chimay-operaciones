@@ -1,0 +1,30 @@
+{
+  "Arturo B.": {
+    "id": "USR-ABR",
+    "nombre": "Arturo B.",
+    "rol": "Gerente Operativo",
+    "costoHora": 200,
+    "email": "arturo.dlb.r@gmail.com"
+  },
+  "Gema R.": {
+    "id": "USR-GR",
+    "nombre": "Gema R.",
+    "rol": "Gerente Legal",
+    "costoHora": 200,
+    "email": "gemaromerom22@gmail.com"
+  },
+  "Arturo A.": {
+    "id": "USR-AAA",
+    "nombre": "Arturo A.",
+    "rol": "Web Master (Master Admon)",
+    "costoHora": 200,
+    "email": "in2techmx@gmail.com"
+  },
+  "Don Chiyo": {
+    "id": "USR-004",
+    "nombre": "Don Chiyo",
+    "rol": "Encargado de Rancho",
+    "costoHora": 140,
+    "email": "chiyo.rancho@in2tech.mx"
+  }
+}

@@ -1,0 +1,94 @@
+[
+  {
+    "id": "PRJ-01",
+    "slug": "PRJ-01-chimay",
+    "nombre": "Proyecto Agroecológico Chimay",
+    "descripcion": "Establecimiento de policultivos de alta densidad, microgreens y biofábrica agroecológica.",
+    "path": "proyectos/PRJ-01-chimay",
+    "estado": "Activo",
+    "color": "emerald",
+    "directorProyecto": "Arturo B.",
+    "etapas": [
+      {
+        "id": "ETAPA-01",
+        "slug": "ETAPA-01-legal-y-gobernanza",
+        "wbsCode": "1.0",
+        "nombre": "Etapa 1: Legal y Gobernanza",
+        "path": "proyectos/PRJ-01-chimay/etapas/ETAPA-01-legal-y-gobernanza"
+      },
+      {
+        "id": "ETAPA-02",
+        "slug": "ETAPA-02-infraestructura-hidraulica",
+        "wbsCode": "2.0",
+        "nombre": "Etapa 2: Infraestructura Hidráulica",
+        "path": "proyectos/PRJ-01-chimay/etapas/ETAPA-02-infraestructura-hidraulica"
+      },
+      {
+        "id": "ETAPA-03",
+        "slug": "ETAPA-03-estructuras-malla-sombra",
+        "wbsCode": "3.0",
+        "nombre": "Etapa 3: Estructuras Malla Sombra",
+        "path": "proyectos/PRJ-01-chimay/etapas/ETAPA-03-estructuras-malla-sombra"
+      },
+      {
+        "id": "ETAPA-04",
+        "slug": "ETAPA-04-siembra-y-produccion",
+        "wbsCode": "4.0",
+        "nombre": "Etapa 4: Siembra y Producción",
+        "path": "proyectos/PRJ-01-chimay/etapas/ETAPA-04-siembra-y-produccion"
+      },
+      {
+        "id": "ETAPA-05",
+        "slug": "ETAPA-05-comercializacion",
+        "wbsCode": "5.0",
+        "nombre": "Etapa 5: Comercialización y Distribución",
+        "path": "proyectos/PRJ-01-chimay/etapas/ETAPA-05-comercializacion"
+      }
+    ]
+  },
+  {
+    "id": "PRJ-02",
+    "slug": "PRJ-02-solar",
+    "nombre": "Proyecto Parque Solar 15kW",
+    "descripcion": "Generación fotovoltaica distribuida para autonomía energética de bombeo e instalaciones.",
+    "path": "proyectos/PRJ-02-solar",
+    "estado": "En Planificación",
+    "color": "amber",
+    "directorProyecto": "Arturo A.",
+    "etapas": [
+      {
+        "id": "ETAPA-01",
+        "slug": "ETAPA-01-ingenieria-y-permisos",
+        "wbsCode": "1.0",
+        "nombre": "Etapa 1: Ingeniería y Permisos CFE",
+        "path": "proyectos/PRJ-02-solar/etapas/ETAPA-01-ingenieria-y-permisos"
+      },
+      {
+        "id": "ETAPA-02",
+        "slug": "ETAPA-02-suministro-e-instalacion",
+        "wbsCode": "2.0",
+        "nombre": "Etapa 2: Suministro y Montaje de Paneles",
+        "path": "proyectos/PRJ-02-solar/etapas/ETAPA-02-suministro-e-instalacion"
+      }
+    ]
+  },
+  {
+    "id": "PRJ-03",
+    "slug": "PRJ-03-fungicos",
+    "nombre": "Proyecto Fúngicos & Biofábrica",
+    "descripcion": "Producción controlada de hongos comestibles, medicinales y bioinsumos microbianos.",
+    "path": "proyectos/PRJ-03-fungicos",
+    "estado": "En Planificación",
+    "color": "purple",
+    "directorProyecto": "Arturo B.",
+    "etapas": [
+      {
+        "id": "ETAPA-01",
+        "slug": "ETAPA-01-cepas-y-sustratos",
+        "wbsCode": "1.0",
+        "nombre": "Etapa 1: Aislamiento de Cepas y Sustratos",
+        "path": "proyectos/PRJ-03-fungicos/etapas/ETAPA-01-cepas-y-sustratos"
+      }
+    ]
+  }
+]

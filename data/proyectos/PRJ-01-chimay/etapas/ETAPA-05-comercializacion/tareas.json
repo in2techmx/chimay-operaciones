@@ -1,0 +1,20 @@
+[
+  {
+    "id": "TSK-PIL-06",
+    "wbs": "5.1",
+    "etapaId": "ETAPA-05",
+    "etapa": "Etapa 5: Comercialización y Distribución",
+    "name": "Acuerdos Comerciales con Restaurantes y Tiendas Gourmet",
+    "responsable": "Arturo A.",
+    "horas": 25,
+    "costoPersonal": 5000,
+    "costoMateriales": 1500,
+    "costoTerceros": 0,
+    "costoTotal": 6500,
+    "start": "2026-10-15",
+    "end": "2026-10-30",
+    "progress": 0,
+    "estado": "No Iniciada",
+    "prioridad": "Alta"
+  }
+]

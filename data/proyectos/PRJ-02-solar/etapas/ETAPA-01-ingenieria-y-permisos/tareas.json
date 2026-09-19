@@ -1,0 +1,20 @@
+[
+  {
+    "id": "TSK-SOL-01",
+    "wbs": "1.1",
+    "etapaId": "ETAPA-01",
+    "etapa": "Etapa 1: Ingeniería y Permisos CFE",
+    "name": "Dimensionamiento y Memoria Técnica Fotovoltaica 15kW",
+    "responsable": "Arturo A.",
+    "horas": 30,
+    "costoPersonal": 6000,
+    "costoMateriales": 0,
+    "costoTerceros": 5000,
+    "costoTotal": 11000,
+    "start": "2026-11-01",
+    "end": "2026-11-15",
+    "progress": 0,
+    "estado": "No Iniciada",
+    "prioridad": "Alta"
+  }
+]
