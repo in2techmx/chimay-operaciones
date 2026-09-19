@@ -1762,44 +1762,6 @@
       }
     }
 
-    function renderLandingTeamList() {
-      const list = document.getElementById("landingTeamAccountsList");
-      if (!list) return;
-
-      const teamArray = Object.values(TEAM_INFO);
-      list.innerHTML = "";
-
-      teamArray.forEach(spec => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.onclick = () => switchGoogleUser(spec.email);
-        btn.className = "w-full p-2.5 rounded-2xl border border-white/15 bg-white/5 hover:bg-white/15 flex items-center justify-between gap-3 text-left transition group cursor-pointer shadow-xs";
-        btn.innerHTML = `
-          <div class="flex items-center gap-3 min-w-0">
-            <span class="w-9 h-9 rounded-xl ${spec.avatarBg} text-white font-black text-xs flex items-center justify-center shadow-sm shrink-0">
-              ${spec.initials}
-            </span>
-            <div class="min-w-0">
-              <p class="text-xs font-black text-white leading-tight">${spec.name}</p>
-              <p class="text-[10px] text-emerald-300 font-semibold truncate">${spec.rol.split(',')[0]}</p>
-            </div>
-          </div>
-          <span class="text-stone-400 group-hover:text-emerald-300 text-xs transition">
-            <i class="fa-solid fa-arrow-right"></i>
-          </span>
-        `;
-        list.appendChild(btn);
-      });
-    }
-
-    function handleLandingCustomLogin(e) {
-      e.preventDefault();
-      const inp = document.getElementById("landingCustomEmail");
-      if (inp && inp.value.trim()) {
-        switchGoogleUser(inp.value.trim());
-      }
-    }
-
     function toggleLandingClientIdConfig() {
       const p = document.getElementById("landingClientIdPanel");
       if (p) p.classList.toggle("hidden");
