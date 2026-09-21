@@ -1,7 +1,16 @@
 {
   "version": 2,
+  "crons": [
+    {
+      "path": "/api/standup",
+      "schedule": "30 14 * * 1-5"
+    }
+  ],
   "functions": {
     "api/telegram.js": {
+      "includeFiles": "data/**"
+    },
+    "api/standup.js": {
       "includeFiles": "data/**"
     }
   },
@@ -9,6 +18,10 @@
     {
       "src": "/api/telegram",
       "dest": "/api/telegram.js"
+    },
+    {
+      "src": "/api/standup",
+      "dest": "/api/standup.js"
     },
     {
       "src": "/(.*)",

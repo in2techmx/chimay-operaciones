@@ -105,7 +105,7 @@ module.exports = async function handler(req, res) {
   // Health check para monitoreo en navegador o pingers
   if (req.method === 'GET') {
     const matchingEnv = Object.keys(process.env).filter(k => 
-      k.toUpperCase().includes('TELEGRAM') || k.toUpperCase().includes('TOKEN') || k.toUpperCase().includes('BOT')
+      k.toUpperCase().includes('TELEGRAM') || k.toUpperCase().includes('TOKEN') || k.toUpperCase().includes('BOT') || k.toUpperCase().includes('GEMINI')
     );
 
     return res.status(200).json({
@@ -115,6 +115,7 @@ module.exports = async function handler(req, res) {
       repo: "in2techmx/chimay-operaciones",
       hasToken: !!botToken,
       tokenLength: botToken ? botToken.length : 0,
+      hasGemini: !!(process.env.GEMINI_API_KEY || process.env.GEMINI_KEY || process.env.GOOGLE_API_KEY),
       detectedEnvVars: matchingEnv
     });
   }
@@ -154,8 +155,8 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, note: "Update without message" });
     }
 
-    // Procesar mensaje con todas las reglas de negocio y motor Crossref
-    const reply = botModule.processTelegramMessage(message.from, message.text, message, botToken);
+    // Procesar mensaje con todas las reglas de negocio, motor Crossref y Scrum Master IA
+    const reply = await botModule.processTelegramMessage(message.from, message.text, message, botToken);
 
     if (reply && message.chat && message.chat.id) {
       if (botToken) {

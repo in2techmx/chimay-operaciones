@@ -23,6 +23,7 @@ const DATA_DIR = path.join(REPO_ROOT, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'usuarios.json');
 const PROJECTS_FILE = path.join(DATA_DIR, 'proyectos.json');
 const ATTACHMENTS_FILE = path.join(DATA_DIR, 'adjuntos.json');
+const scrumMaster = require('./scrum_master_ai.js');
 
 // Cargar variables de entorno locales desde .env si existe (sin dependencias npm)
 try {
@@ -208,6 +209,103 @@ function updateTaskStatus(task, newStatus, newProgress) {
   return false;
 }
 
+// Recalcular progreso y estado de la tarea padre en base a sus subtareas (Rollup Automático)
+function recalculateParentTaskProgress(task) {
+  if (!task || !task.subtareas || !Array.isArray(task.subtareas) || task.subtareas.length === 0) {
+    return task;
+  }
+  const total = task.subtareas.length;
+  const completed = task.subtareas.filter(s => s.estado === "Completada").length;
+  const inProgress = task.subtareas.filter(s => s.estado === "En Progreso").length;
+
+  task.progress = Math.round((completed / total) * 100);
+
+  if (completed === total) {
+    task.estado = "Completada";
+  } else if (inProgress > 0 || completed > 0) {
+    task.estado = "En Progreso";
+  } else {
+    task.estado = "No Iniciada";
+  }
+  task.fechaCambioEstado = new Date().toISOString();
+  return task;
+}
+
+// Buscar subtarea por su ID en todo el proyecto
+function findSubtaskById(subtaskId) {
+  const cleanId = String(subtaskId || "").trim().toUpperCase();
+  const allTasks = getAllProjectTasks();
+
+  for (const t of allTasks) {
+    if (t.subtareas && Array.isArray(t.subtareas)) {
+      const found = t.subtareas.find(s => String(s.id).toUpperCase() === cleanId);
+      if (found) {
+        return { subtask: found, parentTask: t };
+      }
+    }
+  }
+  return null;
+}
+
+// Agregar nueva subtarea a una tarea existente
+function addSubtask(parentTaskId, subtaskName, assignee, hours = 4) {
+  const parentTask = findTaskById(parentTaskId);
+  if (!parentTask) return null;
+
+  const tasksInStage = loadJson(parentTask._tareasFilePath, []);
+  const taskIdx = tasksInStage.findIndex(t => String(t.id).toUpperCase() === String(parentTask.id).toUpperCase());
+  if (taskIdx === -1) return null;
+
+  const currentTask = tasksInStage[taskIdx];
+  if (!currentTask.subtareas || !Array.isArray(currentTask.subtareas)) {
+    currentTask.subtareas = [];
+  }
+
+  const subNum = currentTask.subtareas.length + 1;
+  const cleanParentNum = parentTask.id.replace(/^TSK-/, '');
+  const subId = `SUB-${cleanParentNum}-${String(subNum).padStart(2, '0')}`;
+  const hoy = new Date().toISOString().split('T')[0];
+
+  const newSubtask = {
+    id: subId,
+    name: subtaskName,
+    responsable: assignee || currentTask.responsable,
+    estado: "No Iniciada",
+    horas: Number(hours) || 4,
+    fecha: hoy
+  };
+
+  currentTask.subtareas.push(newSubtask);
+  recalculateParentTaskProgress(currentTask);
+  saveJson(parentTask._tareasFilePath, tasksInStage);
+
+  return { subtask: newSubtask, parentTask: currentTask };
+}
+
+// Actualizar estado de una subtarea y recalcular tarea padre
+function updateSubtaskStatus(subtaskId, newStatus) {
+  const hit = findSubtaskById(subtaskId);
+  if (!hit) return null;
+
+  const { parentTask } = hit;
+  const tasksInStage = loadJson(parentTask._tareasFilePath, []);
+  const taskIdx = tasksInStage.findIndex(t => String(t.id).toUpperCase() === String(parentTask.id).toUpperCase());
+  if (taskIdx === -1) return null;
+
+  const currentTask = tasksInStage[taskIdx];
+  const subIdx = (currentTask.subtareas || []).findIndex(s => String(s.id).toUpperCase() === String(subtaskId).toUpperCase());
+  if (subIdx === -1) return null;
+
+  currentTask.subtareas[subIdx].estado = newStatus;
+  if (newStatus === "Completada") {
+    currentTask.subtareas[subIdx].fechaTermino = new Date().toISOString();
+  }
+  recalculateParentTaskProgress(currentTask);
+  saveJson(parentTask._tareasFilePath, tasksInStage);
+
+  return { subtask: currentTask.subtareas[subIdx], parentTask: currentTask };
+}
+
 // Crear nueva tarea en la etapa activa
 function createNewTask(taskName, authorName) {
   const projects = loadJson(PROJECTS_FILE, []);
@@ -339,7 +437,50 @@ function detectIntent(rawText) {
     return { type: "SALIR_TAREA" };
   }
 
-  // 2. Mis Tareas / Pendientes / Actividades asignadas
+  // 2. Daily Standup matutino / Scrum
+  const standupKeywords = ["standup", "daily", "daily standup", "junta matutina", "cmd standup", "ver standup", "sprint standup", "resumen diario"];
+  if (standupKeywords.includes(norm) || norm.includes("standup") || norm.includes("daily")) {
+    return { type: "STANDUP" };
+  }
+
+  // 3. Crear Subtarea: subtarea [TSK-ID]: [nombre] @[responsable] o sub [TSK-ID]: [nombre]
+  const subMatch = raw.match(/^(?:subtarea|sub)\s+(tsk-[a-z0-9\-]+)[:\s]+(.+)$/i);
+  if (subMatch) {
+    const parentTaskId = subMatch[1].toUpperCase();
+    let subtaskName = subMatch[2].trim();
+    let assignee = null;
+    const respMatch = subtaskName.match(/@([a-zA-Z0-9_\. ]+)$/);
+    if (respMatch) {
+      assignee = respMatch[1].trim();
+      subtaskName = subtaskName.replace(/@([a-zA-Z0-9_\. ]+)$/, '').trim();
+    }
+    return {
+      type: "CREAR_SUBTAREA",
+      parentTaskId,
+      subtaskName,
+      assignee
+    };
+  }
+
+  // 4. Completar Subtarea: completar [SUB-ID] o listo [SUB-ID]
+  const compSubMatch = norm.match(/^(?:completar|finalizar|listo|done)\s+(sub-[a-z0-9\-]+)$/i);
+  if (compSubMatch) {
+    return { type: "COMPLETAR_SUBTAREA", subtaskId: compSubMatch[1].toUpperCase() };
+  }
+
+  // 5. Iniciar Subtarea: iniciar [SUB-ID] o arrancar [SUB-ID]
+  const iniSubMatch = norm.match(/^(?:iniciar|arrancar|empezar)\s+(sub-[a-z0-9\-]+)$/i);
+  if (iniSubMatch) {
+    return { type: "INICIAR_SUBTAREA", subtaskId: iniSubMatch[1].toUpperCase() };
+  }
+
+  // 6. Consulta explícita a Scrum Master (/scrum [pregunta])
+  const scrumCmdMatch = raw.match(/^\/scrum(?:\s+(.+))?$/i);
+  if (scrumCmdMatch) {
+    return { type: "SCRUM_QUERY", question: (scrumCmdMatch[1] || "").trim() };
+  }
+
+  // 7. Mis Tareas / Pendientes / Actividades asignadas
   const misTareasKeywords = [
     "mis tareas", "tareas", "pendientes", "mis pendientes", "actividades", 
     "mis actividades", "ver tareas", "ver mis tareas", "consultar tareas", 
@@ -350,7 +491,7 @@ function detectIntent(rawText) {
     return { type: "MIS_TAREAS" };
   }
 
-  // 3. Reporte de Avance / Estado / KPIs / Presupuesto
+  // 8. Reporte de Avance / Estado / KPIs / Presupuesto
   const reporteKeywords = [
     "reporte", "informe", "estado", "avance", "balance", "costos", 
     "presupuesto", "kpi", "kpis", "salud", "status", "resumen", "dashboard"
@@ -359,7 +500,7 @@ function detectIntent(rawText) {
     return { type: "REPORTE" };
   }
 
-  // 4. Ayuda / Start / Menú / Saludo inicial
+  // 9. Ayuda / Start / Menú / Saludo inicial
   const ayudaKeywords = [
     "start", "ayuda", "menu", "inicio", "hola", "comandos", "help", "opciones", "buenos dias", "buenas tardes"
   ];
@@ -367,7 +508,7 @@ function detectIntent(rawText) {
     return { type: "AYUDA" };
   }
 
-  // 5. Modo Tarea Enfocada (/start task_[ID], /tarea [ID], tarea [ID], hilo [ID], ver [ID])
+  // 10. Modo Tarea Enfocada (/start task_[ID], /tarea [ID], tarea [ID], hilo [ID], ver [ID])
   const deepLinkMatch = raw.match(/^\/start\s+task_([a-z0-9\-]+)/i);
   if (deepLinkMatch) {
     return { type: "ENTRAR_TAREA", taskId: deepLinkMatch[1].toUpperCase() };
@@ -382,19 +523,19 @@ function detectIntent(rawText) {
     return { type: "ENTRAR_TAREA", taskId: soloIdMatch[1].toUpperCase() };
   }
 
-  // 6. Completar tarea (completar [ID], finalizar [ID], terminar [ID], cerrar [ID], listo [ID])
+  // 11. Completar tarea (completar [ID], finalizar [ID], terminar [ID], cerrar [ID], listo [ID])
   const compMatch = norm.match(/^(?:completar|finalizar|terminar|cerrar|concluir|listo|done)\s+([a-z0-9\-]+)$/i);
   if (compMatch) {
     return { type: "COMPLETAR_TAREA", taskId: compMatch[1].toUpperCase() };
   }
 
-  // 7. Iniciar tarea (iniciar [ID], arrancar [ID], empezar [ID], comenzar [ID], progreso [ID])
+  // 12. Iniciar tarea (iniciar [ID], arrancar [ID], empezar [ID], comenzar [ID], progreso [ID])
   const iniMatch = norm.match(/^(?:iniciar|arrancar|empezar|comenzar|progreso)\s+([a-z0-9\-]+)$/i);
   if (iniMatch) {
     return { type: "INICIAR_TAREA", taskId: iniMatch[1].toUpperCase() };
   }
 
-  // 8. Crear nueva tarea (crear [nombre], nueva tarea [nombre], agregar [nombre])
+  // 13. Crear nueva tarea (crear [nombre], nueva tarea [nombre], agregar [nombre])
   const crearMatch = norm.match(/^(?:crear(?:\s+tarea)?|nueva(?:\s+tarea)?|agregar(?:\s+tarea)?|anadir(?:\s+tarea)?|registrar(?:\s+tarea)?)\s+(.+)$/i);
   if (crearMatch) {
     const rawMatch = raw.match(/^(?:crear(?:\s+tarea)?|nueva(?:\s+tarea)?|agregar(?:\s+tarea)?|añadir(?:\s+tarea)?|registrar(?:\s+tarea)?)\s+(.+)$/i);
@@ -402,7 +543,7 @@ function detectIntent(rawText) {
     return { type: "CREAR_TAREA", taskName };
   }
 
-  // 9. Comentar en tarea: [ID]: [comentario] o comentar [ID] [comentario]
+  // 14. Comentar en tarea: [ID]: [comentario] o comentar [ID] [comentario]
   const comentarMatch = raw.match(/^(?:comentar\s+)?(tsk-[a-z0-9\-]+)[:\s]+(.+)$/i);
   if (comentarMatch) {
     return {
@@ -415,8 +556,8 @@ function detectIntent(rawText) {
   return { type: "DESCONOCIDO", raw, norm };
 }
 
-// Procesador Central de Mensajes de Telegram con Crossref Universal
-function processTelegramMessage(from, text, messageObj = null, botToken = null) {
+// Procesador Central de Mensajes de Telegram con Crossref Universal y Scrum Master IA
+async function processTelegramMessage(from, text, messageObj = null, botToken = null) {
   const rawText = (text || "").trim();
 
   // 1. Verificación de Autenticación (Whitelist RBAC)
@@ -546,9 +687,10 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
       delete userSessions[from.id];
       return {
         authorized: true,
-        text: `🔙 *Has salido del hilo de ${prevTask}.*\nAhora estás en el menú principal.\n\nEscribe *mis tareas*, *reporte* o *ayuda*.`,
+        text: `🔙 *Has salido del hilo de ${prevTask}.*\nAhora estás en el menú principal.\n\nEscribe *mis tareas*, *reporte* o *standup*.`,
         keyboard: [
-          [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "📊 Reporte", callback_data: "cmd_reporte" }]
+          [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "☀️ Daily Standup", callback_data: "cmd_standup" }],
+          [{ text: "📊 Reporte", callback_data: "cmd_reporte" }]
         ]
       };
     }
@@ -576,19 +718,123 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
 
   // 5. Ejecutar la intención detectada
 
-  // A. Salir cuando no estaba en sesión de tarea
-  if (intent.type === "SALIR_TAREA") {
+  // A. Daily Standup (Scrum Master)
+  if (intent.type === "STANDUP") {
+    const standupText = await scrumMaster.generateDailyStandup();
     return {
       authorized: true,
-      text: `ℹ️ Ya estás en el menú principal.\n\nEscribe *mis tareas*, *reporte* o pulsa los botones de abajo:`,
+      text: standupText,
       keyboard: [
-        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "📊 Reporte", callback_data: "cmd_reporte" }],
+        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "📊 Reporte de Costos", callback_data: "cmd_reporte" }],
         [{ text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
       ]
     };
   }
 
-  // B. Entrar a modo tarea enfocada
+  // B. Crear Subtarea Pulverizada
+  if (intent.type === "CREAR_SUBTAREA") {
+    const result = addSubtask(intent.parentTaskId, intent.subtaskName, intent.assignee);
+    if (!result) {
+      return {
+        authorized: true,
+        text: `⚠️ No se encontró la tarea padre *${intent.parentTaskId}* para asignarle esta subtarea.`
+      };
+    }
+
+    tryGitCommit(`feat(data): pulverizar ${result.parentTask.id} con subtarea ${result.subtask.id} [${user.nombre}]`, user);
+
+    return {
+      authorized: true,
+      text: `🧩 *¡Subtarea pulverizada y registrada con éxito!*\n\n` +
+            `📌 *ID Subtarea:* \`${result.subtask.id}\`\n` +
+            `📝 *Nombre:* ${result.subtask.name}\n` +
+            `👤 *Responsable:* *${result.subtask.responsable}*\n` +
+            `📦 *Tarea Principal:* \`${result.parentTask.id}\` (${result.parentTask.name})\n` +
+            `📊 *Nuevo Progreso Padre:* *${result.parentTask.progress}%* (${result.parentTask.estado})\n\n` +
+            `_🐙 Guardada en Git-as-a-Database y sincronizada en el Centro de Operaciones._`,
+      keyboard: [
+        [{ text: `✅ Completar ${result.subtask.id}`, callback_data: `completar_${result.subtask.id}` }, { text: `💬 Abrir ${result.parentTask.id}`, callback_data: `tarea_${result.parentTask.id}` }],
+        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }]
+      ]
+    };
+  }
+
+  // C. Completar Subtarea
+  if (intent.type === "COMPLETAR_SUBTAREA") {
+    const result = updateSubtaskStatus(intent.subtaskId, "Completada");
+    if (!result) {
+      return {
+        authorized: true,
+        text: `⚠️ No se encontró la subtarea *${intent.subtaskId}*.`
+      };
+    }
+
+    tryGitCommit(`chore(data): completar subtarea ${result.subtask.id} de ${result.parentTask.id} [${user.nombre}]`, user);
+
+    return {
+      authorized: true,
+      text: `✅ *¡Subtarea completada!*\n\n` +
+            `🧩 *ID:* \`${result.subtask.id}\` — ${result.subtask.name}\n` +
+            `📦 *Tarea Padre:* \`${result.parentTask.id}\`\n` +
+            `📊 *Progreso Recalculado:* *${result.parentTask.progress}%* (${result.parentTask.estado})\n` +
+            `👤 *Completado por:* ${user.nombre}`,
+      keyboard: [
+        [{ text: `💬 Abrir ${result.parentTask.id}`, callback_data: `tarea_${result.parentTask.id}` }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }]
+      ]
+    };
+  }
+
+  // D. Iniciar Subtarea
+  if (intent.type === "INICIAR_SUBTAREA") {
+    const result = updateSubtaskStatus(intent.subtaskId, "En Progreso");
+    if (!result) {
+      return {
+        authorized: true,
+        text: `⚠️ No se encontró la subtarea *${intent.subtaskId}*.`
+      };
+    }
+
+    tryGitCommit(`chore(data): iniciar subtarea ${result.subtask.id} de ${result.parentTask.id} [${user.nombre}]`, user);
+
+    return {
+      authorized: true,
+      text: `⚡ *Subtarea puesta en progreso:*\n\n` +
+            `🧩 *ID:* \`${result.subtask.id}\` — ${result.subtask.name}\n` +
+            `📦 *Tarea Padre:* \`${result.parentTask.id}\` (${result.parentTask.estado})\n` +
+            `👤 *Responsable:* ${result.subtask.responsable}`,
+      keyboard: [
+        [{ text: `✅ Completar ${result.subtask.id}`, callback_data: `completar_${result.subtask.id}` }],
+        [{ text: `💬 Abrir ${result.parentTask.id}`, callback_data: `tarea_${result.parentTask.id}` }]
+      ]
+    };
+  }
+
+  // E. Consulta de IA a Scrum Master
+  if (intent.type === "SCRUM_QUERY") {
+    const q = intent.question || rawText;
+    const answer = await scrumMaster.askScrumMaster(q, user.nombre);
+    return {
+      authorized: true,
+      text: `🧠 *Scrum Master Chimay:*\n\n${answer}`,
+      keyboard: [
+        [{ text: "☀️ Daily Standup", callback_data: "cmd_standup" }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }]
+      ]
+    };
+  }
+
+  // F. Salir cuando no estaba en sesión de tarea
+  if (intent.type === "SALIR_TAREA") {
+    return {
+      authorized: true,
+      text: `ℹ️ Ya estás en el menú principal.\n\nEscribe *mis tareas*, *standup*, *reporte* o pulsa los botones de abajo:`,
+      keyboard: [
+        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "☀️ Daily Standup", callback_data: "cmd_standup" }],
+        [{ text: "📊 Reporte", callback_data: "cmd_reporte" }, { text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
+      ]
+    };
+  }
+
+  // G. Entrar a modo tarea enfocada (con detalle de subtareas)
   if (intent.type === "ENTRAR_TAREA") {
     const task = findTaskById(intent.taskId);
     if (!task) {
@@ -598,28 +844,51 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
       };
     }
     userSessions[from.id] = { activeTaskId: task.id };
+
+    let subtasksSection = "";
+    const keyboard = [];
+
+    if (task.subtareas && Array.isArray(task.subtareas) && task.subtareas.length > 0) {
+      subtasksSection += `\n🧩 *Subtareas Pulverizadas (${task.subtareas.length}):*\n`;
+      task.subtareas.forEach(s => {
+        const icon = s.estado === "Completada" ? "✅" : (s.estado === "En Progreso" ? "⚡" : "⏳");
+        subtasksSection += `   ${icon} \`${s.id}\`: ${s.name}\n      👤 *${s.responsable}* | ${s.horas}h | Estado: *${s.estado}*\n`;
+        if (s.estado !== "Completada") {
+          keyboard.push([{ text: `✅ Completar ${s.id}`, callback_data: `completar_${s.id}` }]);
+        }
+      });
+    } else {
+      subtasksSection += `\n🧩 *Subtareas:* Ninguna registrada.\nPuedes pulverizarla escribiendo:\n\`subtarea ${task.id}: [nombre] @[responsable]\`\n`;
+    }
+
+    keyboard.push([
+      { text: "✅ Completar Tarea", callback_data: `completar_${task.id}` },
+      { text: "🚀 Iniciar Tarea", callback_data: `iniciar_${task.id}` }
+    ]);
+    keyboard.push([
+      { text: "🔙 Salir del Hilo", callback_data: "cmd_salir_tarea" },
+      { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }
+    ]);
+
     return {
       authorized: true,
       text: `💬 *Modo Conversación Activo: ${task.id}*\n` +
             `📝 *${task.name}*\n` +
             `👤 *Responsable:* ${task.responsable}\n` +
-            `📊 *Estado:* ${task.estado} (${task.progress || 0}%)\n\n` +
-            `Todos los mensajes o documentos de soporte (PDFs, facturas, remisiones) que envíes ahora se vincularán directamente a esta tarea.\n\n` +
-            `👉 Escribe tu mensaje o envía una foto/archivo de soporte.\n` +
+            `📊 *Estado:* ${task.estado} (${task.progress || 0}%)\n` +
+            `📅 *Límite:* \`${task.end || "Sin fecha"}\` | 💰 *Costo:* $${Number(task.costoTotal || 0).toLocaleString('es-MX')} MXN\n` +
+            subtasksSection + `\n` +
+            `Todos los mensajes o documentos de soporte (PDFs, facturas, fotos) que envíes ahora se vincularán a esta tarea.\n\n` +
             `_(Para salir de este hilo, envía /salir o pulsa el botón abajo)_`,
-      keyboard: [
-        [{ text: "✅ Completar Tarea", callback_data: `completar_${task.id}` }, { text: "🚀 Iniciar Tarea", callback_data: `iniciar_${task.id}` }],
-        [{ text: "🔙 Salir del Hilo", callback_data: "cmd_salir_tarea" }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }]
-      ]
+      keyboard: keyboard
     };
   }
 
-  // C. Mis Tareas
+  // H. Mis Tareas
   if (intent.type === "MIS_TAREAS") {
     const allTasks = getAllProjectTasks();
     const isMaster = user.alcanceEdicion === "todas";
     
-    // Si es Web Master y no tiene tareas asignadas a su nombre exacto, mostrar todas las tareas activas
     let myTasks = allTasks.filter(t => {
       const resp = (t.responsable || "").toLowerCase();
       const uName = (user.nombre || "").toLowerCase();
@@ -635,7 +904,8 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
         authorized: true,
         text: `📋 *Tus Tareas Asignadas (${user.nombre})*\n\nActualmente no tienes tareas pendientes asignadas.\nPuedes crear una nueva escribiendo:\n*crear [nombre de la tarea]*`,
         keyboard: [
-          [{ text: "📊 Reporte", callback_data: "cmd_reporte" }, { text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
+          [{ text: "☀️ Daily Standup", callback_data: "cmd_standup" }, { text: "📊 Reporte", callback_data: "cmd_reporte" }],
+          [{ text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
         ]
       };
     }
@@ -645,7 +915,8 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
 
     myTasks.forEach((t) => {
       const icon = t.estado === "Completada" ? "✅" : (t.estado === "En Progreso" ? "⚡" : "⏳");
-      response += `${icon} *${t.id}:* ${t.name}\n`;
+      const subsInfo = (t.subtareas && t.subtareas.length > 0) ? ` [${t.subtareas.filter(s=>s.estado==='Completada').length}/${t.subtareas.length} subs]` : '';
+      response += `${icon} *${t.id}:* ${t.name}${subsInfo}\n`;
       response += `   👤 ${t.responsable} | 📅 Límite: \`${t.end || "Sin fecha"}\`\n`;
       response += `   📊 Estado: *${t.estado}* (${t.progress || 0}%)\n\n`;
 
@@ -658,7 +929,10 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
       keyboard.push(row);
     });
 
-    keyboard.push([{ text: "📊 Reporte General", callback_data: "cmd_reporte" }]);
+    keyboard.push([
+      { text: "☀️ Daily Standup", callback_data: "cmd_standup" },
+      { text: "📊 Reporte General", callback_data: "cmd_reporte" }
+    ]);
 
     return {
       authorized: true,
@@ -667,7 +941,7 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
     };
   }
 
-  // D. Completar Tarea (Regla de Propiedad Estricta)
+  // I. Completar Tarea (Regla de Propiedad Estricta)
   if (intent.type === "COMPLETAR_TAREA") {
     const task = findTaskById(intent.taskId);
     if (!task) {
@@ -699,12 +973,12 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
             `📊 *Estado:* Completada (100%)\n` +
             `🐙 *Registro:* Guardado en Git-as-a-Database y sincronizado con el Centro de Operaciones.`,
       keyboard: [
-        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "📊 Reporte", callback_data: "cmd_reporte" }]
+        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "☀️ Daily Standup", callback_data: "cmd_standup" }]
       ]
     };
   }
 
-  // E. Iniciar Tarea (Regla de Propiedad Estricta)
+  // J. Iniciar Tarea (Regla de Propiedad Estricta)
   if (intent.type === "INICIAR_TAREA") {
     const task = findTaskById(intent.taskId);
     if (!task) {
@@ -742,7 +1016,7 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
     };
   }
 
-  // F. Crear Nueva Tarea (Creación Universal & Auto-Asignación)
+  // K. Crear Nueva Tarea (Creación Universal & Auto-Asignación)
   if (intent.type === "CREAR_TAREA") {
     if (!intent.taskName) {
       return {
@@ -777,7 +1051,7 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
     };
   }
 
-  // G. Comentar en Tarea
+  // L. Comentar en Tarea
   if (intent.type === "COMENTAR_TAREA") {
     const task = findTaskById(intent.taskId);
     if (!task) {
@@ -802,7 +1076,7 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
     };
   }
 
-  // H. Reporte de Salud y Costos
+  // M. Reporte de Salud y Costos
   if (intent.type === "REPORTE") {
     const allTasks = getAllProjectTasks();
     const total = allTasks.length;
@@ -821,43 +1095,63 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
             `💰 *Presupuesto Total Comprometido:* $${inversionTotal.toLocaleString('es-MX')} MXN\n\n` +
             `🌐 Para ver el desglose jerárquico completo, abre el Centro de Operaciones Web.`,
       keyboard: [
-        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
-      ]
-    };
-  }
-
-  // I. Menú Principal / Ayuda
-  if (intent.type === "AYUDA") {
-    return {
-      authorized: true,
-      text: `🤖 *Centro de Operaciones Chimay (Telegram)*\n` +
-            `¡Hola *${user.nombre}*! (${user.rol})\n\n` +
-            `Puedes gestionar tareas con los siguientes comandos:\n\n` +
-            `📋 *mis tareas* ➔ Ver tus actividades asignadas y fechas límite.\n` +
-            `✅ *completar [ID]* ➔ Marcar tu tarea como finalizada (ej. \`completar TSK-01\`).\n` +
-            `🚀 *iniciar [ID]* ➔ Poner tu tarea en progreso (ej. \`iniciar TSK-01\`).\n` +
-            `💬 *[ID]: [mensaje]* ➔ Chatear en cualquier tarea (ej. \`TSK-01: Ya instalamos los goteros\`).\n` +
-            `➕ *crear [nombre]* ➔ Crear una nueva tarea (quedas asignado como responsable).\n` +
-            `📊 *reporte* ➔ Resumen de estado de salud del proyecto.\n\n` +
-            `_🔒 Regla de propiedad: Solo puedes modificar tareas asignadas a ti. Cualquier usuario puede chatear y crear tareas._`,
-      keyboard: [
-        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "📊 Reporte", callback_data: "cmd_reporte" }],
+        [{ text: "☀️ Daily Standup", callback_data: "cmd_standup" }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }],
         [{ text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
       ]
     };
   }
 
-  // J. Mensaje por defecto si no reconoció el comando
+  // N. Menú Principal / Ayuda
+  if (intent.type === "AYUDA") {
+    return {
+      authorized: true,
+      text: `🤖 *Centro de Operaciones Chimay (Telegram)*\n` +
+            `¡Hola *${user.nombre}*! (${user.rol})\n\n` +
+            `*Comandos de Gestión Operativa:*\n` +
+            `📋 *mis tareas* ➔ Ver tus entregables y fechas límite.\n` +
+            `☀️ *standup* ➔ Daily Standup matutino con análisis de riesgos y cuellos de botella.\n` +
+            `🧩 *subtarea [ID]: [nombre] @[responsable]* ➔ Pulverizar tarea en subtareas.\n` +
+            `✅ *completar [ID o SUB-ID]* ➔ Finalizar tarea o subtarea.\n` +
+            `🚀 *iniciar [ID]* ➔ Poner en progreso una tarea.\n` +
+            `💬 *[ID]: [mensaje]* ➔ Comentar en cualquier tarea.\n` +
+            `➕ *crear [nombre]* ➔ Crear nueva tarea (auto-asignada).\n` +
+            `🧠 */scrum [pregunta]* ➔ Consultar cualquier duda al Scrum Master IA.\n` +
+            `📊 *reporte* ➔ Balance de costos y avance general.`,
+      keyboard: [
+        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "☀️ Daily Standup", callback_data: "cmd_standup" }],
+        [{ text: "📊 Reporte", callback_data: "cmd_reporte" }, { text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
+      ]
+    };
+  }
+
+  // O. Si el usuario hace una pregunta abierta en lenguaje natural, enviarla al Scrum Master IA
+  const isQuestion = rawText.includes("?") || rawText.includes("¿") || 
+                     intent.norm.includes("como vamos") || intent.norm.includes("quien") || 
+                     intent.norm.includes("cuando") || intent.norm.includes("cuanto") || 
+                     intent.norm.includes("riesgo") || intent.norm.includes("cuello") || 
+                     intent.norm.includes("atras") || intent.norm.includes("presupuesto");
+  if (isQuestion) {
+    const aiReply = await scrumMaster.askScrumMaster(rawText, user.nombre);
+    return {
+      authorized: true,
+      text: `🧠 *Scrum Master Chimay:*\n\n${aiReply}`,
+      keyboard: [
+        [{ text: "☀️ Daily Standup", callback_data: "cmd_standup" }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }]
+      ]
+    };
+  }
+
+  // P. Mensaje por defecto
   return {
     authorized: true,
     text: `🤖 No reconocí esa instrucción, *${user.nombre}*.\n\n` +
           `Pulsa un botón de abajo o escribe:\n` +
+          `• *standup* para el informe matutino del Scrum Master.\n` +
           `• *mis tareas* para ver tus entregables.\n` +
-          `• *reporte* para el balance operativo.\n` +
           `• *ayuda* para la lista completa de comandos.`,
     keyboard: [
-      [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "📊 Reporte", callback_data: "cmd_reporte" }],
-      [{ text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
+      [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "☀️ Daily Standup", callback_data: "cmd_standup" }],
+      [{ text: "📊 Reporte", callback_data: "cmd_reporte" }, { text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
     ]
   };
 }

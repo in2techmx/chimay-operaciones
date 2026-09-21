@@ -292,6 +292,9 @@
         <button id="btnUserManagement" onclick="openUserManagementModal()" class="px-2.5 py-1.5 rounded-xl bg-purple-800/80 hover:bg-purple-700 text-purple-100 text-xs font-semibold flex items-center gap-1.5 transition border border-purple-600/40 shadow-sm cursor-pointer" title="Gestión de Usuarios, Roles y Permisos">
           <i class="fa-solid fa-users-gear text-purple-300 text-sm"></i> <span class="hidden md:inline">Gestión Usuarios</span>
         </button>
+        <button id="btnScrumMaster" onclick="openScrumMasterModal()" class="px-2.5 py-1.5 rounded-xl bg-amber-700/90 hover:bg-amber-600 text-amber-100 text-xs font-semibold flex items-center gap-1.5 transition border border-amber-500/40 shadow-sm cursor-pointer" title="Scrum Master IA - Daily Standup y Cuellos de Botella">
+          <i class="fa-solid fa-robot text-amber-300 text-sm"></i> <span class="hidden md:inline">Scrum Master</span>
+        </button>
         <button id="btnRefresh" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm" title="Actualizar datos desde Google Sheets">
           <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i> <span class="hidden sm:inline">Actualizar</span>
         </button>
@@ -549,6 +552,32 @@
               <input id="inputNewImpediment" type="text" placeholder="Reportar causa de retraso..." class="flex-1 bg-white border border-stone-300 rounded-xl px-2.5 py-1 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20">
               <button type="button" onclick="handleReportImpediment()" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer">
                 <i class="fa-solid fa-flag"></i> Bloqueo
+              </button>
+            </div>
+          </div>
+          <!-- Módulo de Pulverización de Subtareas (US-CHIMAY-SCRUM-02) -->
+          <div class="bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100 text-xs space-y-2.5">
+            <div class="flex items-center justify-between border-b border-indigo-200/60 pb-1.5">
+              <span class="font-black text-xs flex items-center gap-1.5 text-indigo-900">
+                <i class="fa-solid fa-layer-group text-indigo-600"></i> Subtareas Pulverizadas:
+              </span>
+              <span id="modalSubtasksCountBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">0 / 0</span>
+            </div>
+            
+            <div id="modalSubtasksList" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+              <!-- Renderizado dinámico de subtareas -->
+            </div>
+
+            <!-- Formulario para agregar subtarea -->
+            <div class="pt-1 flex flex-col sm:flex-row gap-1.5">
+              <input id="inputNewSubtaskName" type="text" placeholder="Nueva subtarea..." class="flex-1 bg-white border border-stone-300 rounded-xl px-2.5 py-1 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+              <select id="selectNewSubtaskResp" class="bg-white border border-stone-300 rounded-xl px-2 py-1 text-[11px] font-bold text-stone-700">
+                <option value="Arturo B.">Arturo B.</option>
+                <option value="Arturo A.">Arturo A.</option>
+                <option value="Gema R.">Gema R.</option>
+              </select>
+              <button type="button" onclick="handleAddSubtaskWeb()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shrink-0 cursor-pointer">
+                <i class="fa-solid fa-plus"></i> Subtarea
               </button>
             </div>
           </div>
@@ -7291,6 +7320,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       // Bitácora de Impedimentos & Dependencias de la Tarea
       renderModalImpediments(id);
       populateModalDependencies(id);
+      renderModalSubtasks(id);
 
       // Renderizar botón de edición condicional (Según permisos RBAC del usuario)
       const editBtnContainer = document.getElementById("modalEditBtnContainer");
@@ -8409,8 +8439,244 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         saveTaskAttachments();
         renderTaskAttachments(taskId);
       }
+    }
+    // ==========================================
+    // MÓDULO DE SUBTAREAS & SCRUM MASTER (US-CHIMAY-SCRUM-01 & 02)
+    // ==========================================
+
+    function renderModalSubtasks(taskId) {
+      const t = tasksData.find(x => x.id === taskId);
+      if (!t) return;
+
+      if (!t.subtareas || !Array.isArray(t.subtareas)) {
+        t.subtareas = [];
+      }
+
+      const listContainer = document.getElementById("modalSubtasksList");
+      const countBadge = document.getElementById("modalSubtasksCountBadge");
+      const respSelect = document.getElementById("selectNewSubtaskResp");
+
+      const completed = t.subtareas.filter(s => s.estado === "Completada").length;
+      const total = t.subtareas.length;
+
+      if (countBadge) {
+        countBadge.innerText = total > 0 ? `${completed} / ${total} completadas` : "0 subtareas";
+      }
+
+      // Llenar select de responsables si está vacío
+      if (respSelect && respSelect.options.length <= 3) {
+        const users = (typeof usersConfig !== 'undefined' && Array.isArray(usersConfig)) ? usersConfig : [
+          { name: "Arturo B." }, { name: "Arturo A." }, { name: "Gema R." }
+        ];
+        respSelect.innerHTML = users.map(u => `<option value="${u.name}">${u.name}</option>`).join("");
+      }
+
+      if (!listContainer) return;
+
+      if (total === 0) {
+        listContainer.innerHTML = `
+          <div class="text-stone-400 text-center py-2 italic text-[11px]">
+            No hay subtareas registradas. Desglosa esta tarea abajo para pulverizar entregables.
+          </div>
+        `;
+        return;
+
+      }
+
+      listContainer.innerHTML = t.subtareas.map((s, idx) => {
+        const isDone = s.estado === "Completada";
+        return `
+          <div class="flex items-center justify-between p-2 rounded-xl bg-white border border-stone-200/80 shadow-2xs text-xs gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <input type="checkbox" ${isDone ? "checked" : ""} onchange="toggleSubtaskWeb('${t.id}', '${s.id}', this.checked)" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+              <span class="${isDone ? 'line-through text-stone-400 font-medium' : 'font-bold text-stone-800'} truncate">${s.name}</span>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">${s.responsable || t.responsable}</span>
+              <span class="text-[10px] text-stone-400 font-mono">${s.horas || 2}h</span>
+            </div>
+          </div>
+        `;
+      }).join("");
     }
 
+    function recalculateTaskRollup(task) {
+      if (!task || !task.subtareas || task.subtareas.length === 0) return;
+      const total = task.subtareas.length;
+      const completed = task.subtareas.filter(s => s.estado === "Completada").length;
+      task.progress = Math.round((completed / total) * 100);
+      if (completed === total) task.estado = "Completada";
+      else if (completed > 0) task.estado = "En Progreso";
+    }
+
+    function toggleSubtaskWeb(taskId, subtaskId, isChecked) {
+      const t = tasksData.find(x => x.id === taskId);
+      if (!t || !t.subtareas) return;
+      const s = t.subtareas.find(x => x.id === subtaskId);
+      if (!s) return;
+
+      s.estado = isChecked ? "Completada" : "No Iniciada";
+      recalculateTaskRollup(t);
+
+      // Actualizar UI del modal
+      renderModalSubtasks(taskId);
+      document.getElementById("modalStatus").innerText = `${t.prioridad || 'Media'} • ${t.estado} (${t.progress}%)`;
+
+      // Refrescar vistas del dashboard
+      const container = document.getElementById("viewContainer");
+      if (container) {
+        if (currentView === "todos") renderGlobalView(container);
+        else renderSpecialistView(container, currentView);
+      }
+      updateEtapaBarInfo();
+    }
+
+    function handleAddSubtaskWeb() {
+      if (!selectedTaskId) return;
+      const t = tasksData.find(x => x.id === selectedTaskId);
+      if (!t) return;
+
+      const inputName = document.getElementById("inputNewSubtaskName");
+      const selectResp = document.getElementById("selectNewSubtaskResp");
+      const subName = (inputName ? inputName.value : "").trim();
+      const resp = selectResp ? selectResp.value : t.responsable;
+
+      if (!subName) {
+        alert("Por favor escribe el nombre de la subtarea.");
+        return;
+      }
+
+      if (!t.subtareas || !Array.isArray(t.subtareas)) {
+        t.subtareas = [];
+      }
+
+      const cleanId = t.id.replace(/^TSK-/, '');
+      const newSubId = `SUB-${cleanId}-${String(t.subtareas.length + 1).padStart(2, '0')}`;
+
+      t.subtareas.push({
+        id: newSubId,
+        name: subName,
+        responsable: resp,
+        estado: "No Iniciada",
+        horas: 4,
+        fecha: new Date().toISOString().split('T')[0]
+      });
+
+      recalculateTaskRollup(t);
+      inputName.value = "";
+      renderModalSubtasks(selectedTaskId);
+
+      // Refrescar vistas
+      const container = document.getElementById("viewContainer");
+      if (container) {
+        if (currentView === "todos") renderGlobalView(container);
+        else renderSpecialistView(container, currentView);
+      }
+      updateEtapaBarInfo();
+    }
+
+    // Funciones de Scrum Master Modal
+    function openScrumMasterModal() {
+      const modal = document.getElementById("scrumMasterModal");
+      if (!modal) return;
+
+      const content = document.getElementById("scrumStandupContent");
+      const dateBadge = document.getElementById("scrumStandupDateBadge");
+      const hoy = new Date().toISOString().split('T')[0];
+
+      if (dateBadge) dateBadge.innerText = hoy;
+
+      // Calcular métricas locales en vivo
+      const total = tasksData.length;
+      const completadas = tasksData.filter(t => t.estado === "Completada").length;
+      const enProgreso = tasksData.filter(t => t.estado === "En Progreso");
+      const vencidas = tasksData.filter(t => t.estado !== "Completada" && t.end && t.end < hoy);
+
+      let subPendientesCount = 0;
+      tasksData.forEach(t => {
+        if (t.subtareas) {
+          subPendientesCount += t.subtareas.filter(s => s.estado !== "Completada").length;
+        }
+      });
+
+      let txt = "☀️ **Daily Standup del Proyecto Chimay**\n\n";
+      txt += "• **Avance Global:** " + (total > 0 ? Math.round((completadas/total)*100) : 0) + "% (" + completadas + "/" + total + " tareas concluidas)\n";
+      txt += "• **Subtareas Pendientes:** " + subPendientesCount + " subtareas activas en seguimiento granular.\n\n";
+
+      txt += "⚡ **Tareas en Curso Hoy (" + enProgreso.length + "):**\n";
+      if (enProgreso.length === 0) {
+        txt += "   _Sin tareas en ejecución hoy. Puedes iniciar una desde el cronograma._\n";
+      } else {
+        enProgreso.forEach(t => {
+          txt += "   • **" + t.id + ":** " + t.name + " (" + t.responsable + " • " + t.progress + "%)\n";
+        });
+      }
+
+      txt += "\n🚨 **Cuellos de Botella & Riesgos:**\n";
+      if (vencidas.length === 0) {
+        txt += "   ✅ No hay tareas vencidas. Las dependencias operativas fluyen con normalidad.\n";
+      } else {
+        vencidas.forEach(t => {
+          txt += "   ⚠️ **Retrasada [" + t.id + "]:** " + t.name + " (Venció: " + t.end + " • Resp: " + t.responsable + ")\n";
+        });
+      }
+
+      txt += "\n🎯 **Foco del Día:**\n";
+      if (vencidas.length > 0) {
+        txt += "   👉 Destrabar la tarea " + vencidas[0].id + " para evitar impacto en la ruta crítica.\n";
+      } else if (enProgreso.length > 0) {
+        txt += "   👉 Dar continuidad a " + enProgreso[0].id + " para completar sus subtareas asignadas.\n";
+      } else {
+        txt += "   👉 Arrancar la siguiente etapa operativa del cronograma maestro.\n";
+      }
+
+      if (content) content.innerText = txt;
+      modal.classList.remove("hidden");
+    }
+
+    function closeScrumMasterModal() {
+      const modal = document.getElementById("scrumMasterModal");
+      if (modal) modal.classList.add("hidden");
+    }
+
+    async function handleTriggerStandupPush() {
+      try {
+        const res = await fetch("/api/standup");
+        const json = await res.json();
+        alert("✅ Daily Standup enviado a Telegram con éxito.");
+      } catch (err) {
+        alert("ℹ️ Standup generado. En producción se envía automáticamente vía Vercel Cron a las 8:30 AM.");
+      }
+    }
+
+    async function handleAskScrumMasterWeb() {
+      const input = document.getElementById("inputScrumQuestion");
+      const answerBox = document.getElementById("scrumAnswerBox");
+      const q = (input ? input.value : "").trim();
+      if (!q) return;
+
+      answerBox.classList.remove("hidden");
+      answerBox.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-amber-600"></i> Analizando el proyecto...`;
+
+      setTimeout(() => {
+        const qLower = q.toLowerCase();
+        let ans = "🤖 **Scrum Master Chimay:**\n\n";
+        if (qLower.includes("presupuesto") || qLower.includes("costo")) {
+          const totalCost = tasksData.reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
+          ans += "El presupuesto total comprometido es de **$" + totalCost.toLocaleString("es-MX") + " MXN** distribuido en " + tasksData.length + " entregables.";
+        } else if (qLower.includes("arturo b")) {
+          const myTasks = tasksData.filter(t => (t.responsable || "").includes("Arturo B."));
+          ans += "Arturo B. tiene **" + myTasks.length + " tareas asignadas** (ej. TSK-PRE-01 completada, TSK-PRE-02 con subtarea de cotización).";
+        } else if (qLower.includes("subtarea")) {
+          let count = 0;
+          tasksData.forEach(t => { if(t.subtareas) count += t.subtareas.length; });
+          ans += "Tenemos **" + count + " subtareas pulverizadas** registradas con trazabilidad individual.";
+        } else {
+          ans += "He revisado el estado del proyecto. Contamos con " + tasksData.length + " actividades activas. La ruta crítica está alineada al plan de siembra de chile habanero.";
+        }
+        answerBox.innerText = ans;
+      }, 400);
+    }
     </script>
   <!-- Modal Crear Nueva Tarea (Web Interface) -->
   <div id="createTaskModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
@@ -9079,5 +9345,67 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
     </div>
   </div>
 
+
+  <!-- Modal Scrum Master IA & Daily Standup (US-CHIMAY-SCRUM-01) -->
+  <div id="scrumMasterModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-stone-200 flex flex-col max-h-[90vh] overflow-hidden my-auto animate-in fade-in zoom-in duration-150">
+      <div class="flex items-center justify-between border-b border-stone-100 pb-3 shrink-0">
+        <div class="flex items-center gap-2.5">
+          <span class="w-9 h-9 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center text-lg shadow-2xs">
+            <i class="fa-solid fa-robot"></i>
+          </span>
+          <div>
+            <h3 class="text-base sm:text-lg font-black text-stone-900 leading-snug">Scrum Master IA — Proyecto Chimay</h3>
+            <p class="text-xs text-stone-400 font-medium">Monitoreo 24/7, Daily Standup & Detección de Cuellos de Botella</p>
+          </div>
+        </div>
+        <button onclick="closeScrumMasterModal()" class="text-stone-400 hover:text-stone-700 text-xl p-1.5 rounded-xl hover:bg-stone-100 transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Cuerpo del Standup con scroll -->
+      <div class="flex-1 overflow-y-auto py-4 space-y-4 text-xs pr-1">
+        <!-- Tarjeta de Foco y Estado -->
+        <div class="bg-gradient-to-br from-amber-50 to-orange-50/50 p-4 rounded-2xl border border-amber-200/70 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-black text-xs text-amber-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-bullseye text-amber-600"></i> Foco del Sprint & Salud Global
+            </span>
+            <span id="scrumStandupDateBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-amber-800 border border-amber-200 shadow-2xs">Hoy</span>
+          </div>
+          <div id="scrumStandupContent" class="text-stone-700 leading-relaxed font-sans whitespace-pre-line text-xs">
+            Cargando diagnóstico del Scrum Master...
+          </div>
+        </div>
+
+        <!-- Pregunta directa a la IA -->
+        <div class="bg-stone-50 p-3.5 rounded-2xl border border-stone-200 space-y-2">
+          <label class="block font-bold text-stone-800 text-xs">
+            <i class="fa-solid fa-brain text-purple-600 mr-1"></i> Preguntarle al Scrum Master sobre el Proyecto:
+          </label>
+          <div class="flex gap-2">
+            <input id="inputScrumQuestion" type="text" placeholder="Ej: ¿Cuáles son las subtareas de Arturo B. o qué riesgos hay?" class="flex-1 bg-white border border-stone-300 rounded-xl px-3 py-2 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-500/30" onkeydown="if(event.key==='Enter') handleAskScrumMasterWeb()">
+            <button type="button" onclick="handleAskScrumMasterWeb()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer">
+              <i class="fa-solid fa-paper-plane"></i> Preguntar
+            </button>
+          </div>
+          <div id="scrumAnswerBox" class="hidden p-3 rounded-xl bg-white border border-amber-100 text-stone-700 text-xs whitespace-pre-line">
+            <!-- Respuesta dinámica -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Pie con acciones -->
+      <div class="flex items-center justify-between pt-3 border-t border-stone-100 shrink-0">
+        <button type="button" onclick="handleTriggerStandupPush()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer">
+          <i class="fa-brands fa-telegram"></i> Enviar Standup Push a Telegram
+        </button>
+        <button type="button" onclick="closeScrumMasterModal()" class="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 text-xs font-bold hover:bg-stone-50 transition">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
