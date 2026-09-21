@@ -73,11 +73,19 @@ function downloadTelegramFile(botToken, fileId, destPath) {
   } catch (err) {}
 }
 
-// Utilidades de Archivos JSON
+// Utilidades de Archivos JSON con soporte para Serverless y CWD
 function loadJson(filePath, defaultValue = null) {
   try {
-    if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    let target = filePath;
+    if (!fs.existsSync(target)) {
+      const rel = path.relative(REPO_ROOT, filePath);
+      const cwdTarget = path.join(process.cwd(), rel);
+      if (fs.existsSync(cwdTarget)) {
+        target = cwdTarget;
+      }
+    }
+    if (fs.existsSync(target)) {
+      return JSON.parse(fs.readFileSync(target, 'utf8'));
     }
   } catch (err) {
     console.error(`[Error leyendo ${filePath}]:`, err.message);
@@ -86,12 +94,22 @@ function loadJson(filePath, defaultValue = null) {
 }
 
 function saveJson(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {
+    console.error(`[Error guardando ${filePath}]:`, err.message);
+  }
 }
 
-// Cargar Catálogo de Usuarios
+// Cargar Catálogo de Usuarios con fallback serverless
 function getAuthorizedUsers() {
-  return loadJson(USERS_FILE, []);
+  const loaded = loadJson(USERS_FILE, []);
+  if (loaded && Array.isArray(loaded) && loaded.length > 0) return loaded;
+  return [
+    { id: "USR-01", nombre: "Arturo A.", email: "arnaiz.art@gmail.com", usuario: "arnaiz.art", rol: "Web Master (Master Admon)", puedeEditar: true, alcanceEdicion: "todas", telegramUser: "in2techmx" },
+    { id: "USR-02", nombre: "Arturo B.", email: "arturo.b@in2tech.mx", usuario: "arturo.b", rol: "Gerente Operativo", puedeEditar: true, alcanceEdicion: "todas", telegramUser: "arturo_b" },
+    { id: "USR-03", nombre: "Gema R.", email: "gema.r@in2tech.mx", usuario: "gema.r", rol: "Coordinadora de Proyectos", puedeEditar: true, alcanceEdicion: "todas", telegramUser: "gema_r" }
+  ];
 }
 
 // Autenticar Usuario de Telegram

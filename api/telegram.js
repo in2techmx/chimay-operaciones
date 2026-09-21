@@ -13,7 +13,6 @@ const botModule = require('../scripts/telegram_bot.js');
 const { commitFileToGitHub } = require('../scripts/github_api_sync.js');
 
 module.exports = async function handler(req, res) {
-  // Configurar cabeceras CORS y métodos permitidos
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -28,7 +27,8 @@ module.exports = async function handler(req, res) {
       status: "online",
       service: "ChimayOpsBot Telegram Webhook 24/7",
       timestamp: new Date().toISOString(),
-      repo: "in2techmx/chimay-operaciones"
+      repo: "in2techmx/chimay-operaciones",
+      hasToken: !!process.env.TELEGRAM_BOT_TOKEN
     });
   }
 
@@ -37,10 +37,6 @@ module.exports = async function handler(req, res) {
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  if (!botToken) {
-    console.error("[Webhook Error] No se ha configurado TELEGRAM_BOT_TOKEN en las variables de entorno.");
-    return res.status(500).json({ error: "TELEGRAM_BOT_TOKEN missing in environment variables" });
-  }
 
   try {
     let update = req.body;
@@ -53,7 +49,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (!update) {
-      return res.status(200).send("No update payload");
+      return res.status(200).json({ ok: true, note: "No update payload" });
     }
 
     let message = null;
@@ -68,15 +64,33 @@ module.exports = async function handler(req, res) {
     }
 
     if (!message || !message.from) {
-      return res.status(200).send("Update without message");
+      return res.status(200).json({ ok: true, note: "Update without message" });
     }
 
     // Procesar mensaje con todas las reglas de negocio
     const reply = botModule.processTelegramMessage(message.from, message.text, message, botToken);
 
-    // Enviar respuesta a Telegram vía Bot API
+    // Responder directamente a Telegram usando el protocolo nativo de Webhook Response
     if (reply && message.chat && message.chat.id) {
-      await sendTelegramMessage(botToken, message.chat.id, reply);
+      const webhookResponse = {
+        method: "sendMessage",
+        chat_id: message.chat.id,
+        text: reply.text,
+        parse_mode: "Markdown"
+      };
+
+      if (reply.keyboard) {
+        webhookResponse.reply_markup = {
+          inline_keyboard: reply.keyboard
+        };
+      }
+
+      // Si tenemos botToken, también enviamos por Bot API como garantía
+      if (botToken) {
+        sendTelegramMessageFallback(botToken, message.chat.id, reply).catch(() => {});
+      }
+
+      return res.status(200).json(webhookResponse);
     }
 
     return res.status(200).json({ ok: true });
@@ -86,7 +100,7 @@ module.exports = async function handler(req, res) {
   }
 };
 
-function sendTelegramMessage(botToken, chatId, messageObj) {
+function sendTelegramMessageFallback(botToken, chatId, messageObj) {
   const payload = {
     chat_id: chatId,
     text: messageObj.text,
@@ -118,7 +132,6 @@ function sendTelegramMessage(botToken, chatId, messageObj) {
       res.on('end', () => resolve(d));
     });
     req.on('error', (e) => {
-      console.error("[Telegram Send Error]:", e.message);
       resolve(null);
     });
     req.write(postData);

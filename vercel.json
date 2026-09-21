@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/telegram.js": {
+      "includeFiles": "data/**"
+    }
+  },
   "routes": [
     {
       "src": "/api/telegram",
