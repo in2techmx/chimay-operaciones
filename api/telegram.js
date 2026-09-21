@@ -138,13 +138,15 @@ module.exports = async function handler(req, res) {
     }
 
     let message = null;
+    let callbackQueryId = null;
     if (update.message) {
       message = update.message;
     } else if (update.callback_query) {
+      callbackQueryId = update.callback_query.id;
       message = {
         from: update.callback_query.from,
         chat: update.callback_query.message ? update.callback_query.message.chat : { id: update.callback_query.from.id },
-        text: update.callback_query.data.replace(/_/g, ' ')
+        text: update.callback_query.data
       };
     }
 
@@ -152,11 +154,16 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, note: "Update without message" });
     }
 
-    // Procesar mensaje con todas las reglas de negocio
+    // Procesar mensaje con todas las reglas de negocio y motor Crossref
     const reply = botModule.processTelegramMessage(message.from, message.text, message, botToken);
 
     if (reply && message.chat && message.chat.id) {
       if (botToken) {
+        // Responder a la interacción del botón para quitar el spinner en la app de Telegram
+        if (callbackQueryId) {
+          callTelegramApi(botToken, 'answerCallbackQuery', { callback_query_id: callbackQueryId }).catch(() => {});
+        }
+
         // Enviar explícitamente y esperar (await) para asegurar que el contenedor no se congele
         const apiResult = await sendTelegramMessage(botToken, message.chat.id, reply);
         return res.status(200).json({ ok: true, apiResult: apiResult });

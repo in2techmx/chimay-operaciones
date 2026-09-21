@@ -306,12 +306,120 @@ function tryGitCommit(commitMessage, authorUser) {
   }
 }
 
-// Procesador Central de Mensajes de Telegram
+// Normalizador Universal de Instrucciones (Cross-Reference Engine)
+function normalizeInstruction(input) {
+  if (!input) return "";
+  let s = String(input);
+  // 1. Descomponer acentos y diacríticos (ej. Menú -> Menu, iniciación -> iniciacion)
+  s = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  // 2. Eliminar pictogramas y emojis extendidos sin tocar números 0-9 ni letras
+  s = s.replace(/[\p{Extended_Pictographic}\uFE0F\u200d\u203C\u2049\u2139\u2194-\u21aa\u231a-\u23fa\u24c2\u25aa-\u27bf\u2934\u2935\u2b05-\u2b55]/gu, ' ');
+  // 3. Pasar a minúsculas
+  s = s.toLowerCase();
+  // 4. Limpiar barras diagonales iniciales (/start -> start) y guiones bajos (callback_data)
+  s = s.replace(/^[\/\\]+/, '');
+  s = s.replace(/[_]/g, ' ');
+  // 5. Limpiar prefijos de sistema comunes
+  s = s.replace(/\bcmd\s+/g, '');
+  // 6. Colapsar espacios y recortar
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+}
+
+// Diccionario y Detector de Intenciones Cross-Reference
+function detectIntent(rawText) {
+  const raw = (rawText || "").trim();
+  const norm = normalizeInstruction(raw);
+
+  if (!norm && !raw) return { type: "VACIO" };
+
+  // 1. Salir / Cancelar modo conversación de tarea
+  const salirList = ["salir", "salir tarea", "cancelar", "volver", "atras", "cerrar", "cerrar hilo", "terminar hilo", "menu principal"];
+  if (salirList.includes(norm) || norm.startsWith("salir")) {
+    return { type: "SALIR_TAREA" };
+  }
+
+  // 2. Mis Tareas / Pendientes / Actividades asignadas
+  const misTareasKeywords = [
+    "mis tareas", "tareas", "pendientes", "mis pendientes", "actividades", 
+    "mis actividades", "ver tareas", "ver mis tareas", "consultar tareas", 
+    "lista tareas", "lista de tareas", "listar tareas", "tareas asignadas", 
+    "que tengo que hacer", "que hago", "mis entregables"
+  ];
+  if (misTareasKeywords.includes(norm) || norm.includes("mis tareas") || norm.includes("mis pendientes") || norm === "tareas") {
+    return { type: "MIS_TAREAS" };
+  }
+
+  // 3. Reporte de Avance / Estado / KPIs / Presupuesto
+  const reporteKeywords = [
+    "reporte", "informe", "estado", "avance", "balance", "costos", 
+    "presupuesto", "kpi", "kpis", "salud", "status", "resumen", "dashboard"
+  ];
+  if (reporteKeywords.includes(norm) || norm.includes("reporte") || norm.includes("avance") || norm.includes("balance") || norm.includes("costos")) {
+    return { type: "REPORTE" };
+  }
+
+  // 4. Ayuda / Start / Menú / Saludo inicial
+  const ayudaKeywords = [
+    "start", "ayuda", "menu", "inicio", "hola", "comandos", "help", "opciones", "buenos dias", "buenas tardes"
+  ];
+  if (ayudaKeywords.includes(norm)) {
+    return { type: "AYUDA" };
+  }
+
+  // 5. Modo Tarea Enfocada (/start task_[ID], /tarea [ID], tarea [ID], hilo [ID], ver [ID])
+  const deepLinkMatch = raw.match(/^\/start\s+task_([a-z0-9\-]+)/i);
+  if (deepLinkMatch) {
+    return { type: "ENTRAR_TAREA", taskId: deepLinkMatch[1].toUpperCase() };
+  }
+  const tareaCmdMatch = norm.match(/^(?:tarea|hilo|abrir|ver|entrar|consultar)\s+([a-z0-9\-]+)$/i);
+  if (tareaCmdMatch) {
+    return { type: "ENTRAR_TAREA", taskId: tareaCmdMatch[1].toUpperCase() };
+  }
+  // Si el usuario envía directamente el identificador de tarea aislado (ej. "TSK-PRE-01" o "TSK-01")
+  const soloIdMatch = norm.match(/^(tsk-[a-z0-9\-]+)$/i);
+  if (soloIdMatch) {
+    return { type: "ENTRAR_TAREA", taskId: soloIdMatch[1].toUpperCase() };
+  }
+
+  // 6. Completar tarea (completar [ID], finalizar [ID], terminar [ID], cerrar [ID], listo [ID])
+  const compMatch = norm.match(/^(?:completar|finalizar|terminar|cerrar|concluir|listo|done)\s+([a-z0-9\-]+)$/i);
+  if (compMatch) {
+    return { type: "COMPLETAR_TAREA", taskId: compMatch[1].toUpperCase() };
+  }
+
+  // 7. Iniciar tarea (iniciar [ID], arrancar [ID], empezar [ID], comenzar [ID], progreso [ID])
+  const iniMatch = norm.match(/^(?:iniciar|arrancar|empezar|comenzar|progreso)\s+([a-z0-9\-]+)$/i);
+  if (iniMatch) {
+    return { type: "INICIAR_TAREA", taskId: iniMatch[1].toUpperCase() };
+  }
+
+  // 8. Crear nueva tarea (crear [nombre], nueva tarea [nombre], agregar [nombre])
+  const crearMatch = norm.match(/^(?:crear(?:\s+tarea)?|nueva(?:\s+tarea)?|agregar(?:\s+tarea)?|anadir(?:\s+tarea)?|registrar(?:\s+tarea)?)\s+(.+)$/i);
+  if (crearMatch) {
+    const rawMatch = raw.match(/^(?:crear(?:\s+tarea)?|nueva(?:\s+tarea)?|agregar(?:\s+tarea)?|añadir(?:\s+tarea)?|registrar(?:\s+tarea)?)\s+(.+)$/i);
+    const taskName = (rawMatch ? rawMatch[1] : crearMatch[1]).trim();
+    return { type: "CREAR_TAREA", taskName };
+  }
+
+  // 9. Comentar en tarea: [ID]: [comentario] o comentar [ID] [comentario]
+  const comentarMatch = raw.match(/^(?:comentar\s+)?(tsk-[a-z0-9\-]+)[:\s]+(.+)$/i);
+  if (comentarMatch) {
+    return {
+      type: "COMENTAR_TAREA",
+      taskId: comentarMatch[1].toUpperCase(),
+      comment: comentarMatch[2].trim()
+    };
+  }
+
+  return { type: "DESCONOCIDO", raw, norm };
+}
+
+// Procesador Central de Mensajes de Telegram con Crossref Universal
 function processTelegramMessage(from, text, messageObj = null, botToken = null) {
   const rawText = (text || "").trim();
-  const lower = rawText.toLowerCase();
 
-  // 1. Verificación de Autenticación
+  // 1. Verificación de Autenticación (Whitelist RBAC)
   const user = authenticateTelegramUser(from);
   if (!user) {
     // REGLA ESTRICTA DE SEGURIDAD (Gate 2 AS): Zero Info Disclosure. Sin nombres de personal ni detalles de proyecto.
@@ -321,49 +429,7 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
     };
   }
 
-  // 2. Modo Tarea Enfocada: /start task_[ID] o /tarea [ID]
-  const matchDeepLink = rawText.match(/^\/start\s+task_([a-z0-9\-]+)/i);
-  const matchTareaCmd = rawText.match(/^\/tarea(?:\s+([a-z0-9\-]+))?$/i);
-
-  if (matchDeepLink || (matchTareaCmd && matchTareaCmd[1])) {
-    const targetId = (matchDeepLink ? matchDeepLink[1] : matchTareaCmd[1]).toUpperCase();
-    const task = findTaskById(targetId);
-    if (!task) {
-      return {
-        authorized: true,
-        text: `⚠️ No se encontró la tarea *${targetId}*. Escribe *mis tareas* para consultar tus entregables disponibles.`
-      };
-    }
-    userSessions[from.id] = { activeTaskId: task.id };
-    return {
-      authorized: true,
-      text: `💬 *Modo Conversación Activo: ${task.id}*\n` +
-            `📝 *${task.name}*\n` +
-            `👤 *Responsable:* ${task.responsable}\n` +
-            `📊 *Estado:* ${task.estado} (${task.progress || 0}%)\n\n` +
-            `Todos los mensajes o documentos de soporte (PDFs, fotos de remisiones, facturas) que envíes ahora se vincularán directamente a esta tarea.\n\n` +
-            `👉 Escribe tu mensaje o envía una foto/archivo de soporte.\n` +
-            `_(Para salir de este hilo, envía /salir o /menu)_`,
-      keyboard: [
-        [{ text: "✅ Completar Tarea", callback_data: `completar_${task.id}` }, { text: "🚀 Iniciar Tarea", callback_data: `iniciar_${task.id}` }],
-        [{ text: "🔙 Salir del Hilo", callback_data: "cmd_salir_tarea" }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }]
-      ]
-    };
-  }
-
-  // 3. Salir del hilo enfocado: /salir o cmd_salir_tarea
-  if (lower === "/salir" || lower === "/salir_tarea" || lower === "salir" || lower === "cmd_salir_tarea") {
-    if (userSessions[from.id]) {
-      const prevTask = userSessions[from.id].activeTaskId;
-      delete userSessions[from.id];
-      return {
-        authorized: true,
-        text: `🔙 *Has salido del hilo de ${prevTask}.*\nAhora estás en el menú principal.\n\nEscribe *mis tareas*, *reporte* o *ayuda*.`
-      };
-    }
-  }
-
-  // 4. Recepción de Archivos de Soporte (Documentos / Fotos)
+  // 2. Recepción de Archivos de Soporte (Documentos / Fotos)
   if (messageObj && (messageObj.document || (messageObj.photo && messageObj.photo.length > 0))) {
     let targetId = userSessions[from.id] ? userSessions[from.id].activeTaskId : null;
     let captionText = (messageObj.caption || "").trim();
@@ -469,37 +535,52 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
     };
   }
 
-  // 5. Si está en sesión activa de tarea y envió texto normal (sin ser comando reservado)
-  const isCommand = lower.startsWith("/") || lower === "mis tareas" || lower === "reporte" || lower === "ayuda" || lower === "menu" || lower.startsWith("crear ") || lower.startsWith("completar ") || lower.startsWith("iniciar ");
-  if (userSessions[from.id] && !isCommand) {
-    const activeTaskId = userSessions[from.id].activeTaskId;
-    const task = findTaskById(activeTaskId);
-    if (task) {
-      addProjectComment(task._projId, task.id, user.nombre, rawText);
-      tryGitCommit(`feat(data): nuevo comentario en ${task.id} por ${user.nombre} via Telegram`, user);
+  // 3. Detección Inteligente de Intención (Crossref Engine)
+  const intent = detectIntent(rawText);
+
+  // 4. Si el usuario está en hilo activo de tarea:
+  if (userSessions[from.id]) {
+    // Si la intención es salir del hilo:
+    if (intent.type === "SALIR_TAREA") {
+      const prevTask = userSessions[from.id].activeTaskId;
+      delete userSessions[from.id];
       return {
         authorized: true,
-        text: `💬 *Comentario publicado en ${task.id}:*\n\n"${rawText}"\n\n` +
-              `👤 *Autor:* ${user.nombre}\n` +
-              `_(Sigues en el hilo de ${task.id}. Envía /salir para terminar)_`
+        text: `🔙 *Has salido del hilo de ${prevTask}.*\nAhora estás en el menú principal.\n\nEscribe *mis tareas*, *reporte* o *ayuda*.`,
+        keyboard: [
+          [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "📊 Reporte", callback_data: "cmd_reporte" }]
+        ]
       };
+    }
+
+    // Si escribió texto libre ordinario que no es ningún comando del sistema -> comentar en la tarea
+    if (intent.type === "DESCONOCIDO") {
+      const activeTaskId = userSessions[from.id].activeTaskId;
+      const task = findTaskById(activeTaskId);
+      if (task) {
+        addProjectComment(task._projId, task.id, user.nombre, rawText);
+        tryGitCommit(`feat(data): nuevo comentario en ${task.id} por ${user.nombre} via Telegram`, user);
+        return {
+          authorized: true,
+          text: `💬 *Comentario publicado en ${task.id}:*\n\n"${rawText}"\n\n` +
+                `👤 *Autor:* ${user.nombre}\n` +
+                `_(Sigues en el hilo de ${task.id}. Envía /salir para terminar)_`,
+          keyboard: [
+            [{ text: "✅ Completar Tarea", callback_data: `completar_${task.id}` }, { text: "🚀 Iniciar Tarea", callback_data: `iniciar_${task.id}` }],
+            [{ text: "🔙 Salir del Hilo", callback_data: "cmd_salir_tarea" }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }]
+          ]
+        };
+      }
     }
   }
 
-  // 6. Comando: /start, ayuda, menu
-  if (lower === "/start" || lower === "ayuda" || lower === "/ayuda" || lower === "menu") {
+  // 5. Ejecutar la intención detectada
+
+  // A. Salir cuando no estaba en sesión de tarea
+  if (intent.type === "SALIR_TAREA") {
     return {
       authorized: true,
-      text: `🤖 *Centro de Operaciones Chimay (Telegram)*\n` +
-            `¡Hola *${user.nombre}*! (${user.rol})\n\n` +
-            `Puedes gestionar tareas con los siguientes comandos:\n\n` +
-            `📋 *mis tareas* ➔ Ver tus actividades asignadas y fechas límite.\n` +
-            `✅ *completar [ID]* ➔ Marcar tu tarea como finalizada (ej. \`completar TSK-01\`).\n` +
-            `🚀 *iniciar [ID]* ➔ Poner tu tarea en progreso (ej. \`iniciar TSK-01\`).\n` +
-            `💬 *[ID]: [mensaje]* ➔ Chatear en cualquier tarea (ej. \`TSK-01: Ya instalamos los goteros\`).\n` +
-            `➕ *crear [nombre]* ➔ Crear una nueva tarea (quedas asignado como responsable).\n` +
-            `📊 *reporte* ➔ Resumen de estado de salud del proyecto.\n\n` +
-            `_🔒 Regla de propiedad: Solo puedes modificar tareas asignadas a ti. Cualquier usuario puede chatear y crear tareas._`,
+      text: `ℹ️ Ya estás en el menú principal.\n\nEscribe *mis tareas*, *reporte* o pulsa los botones de abajo:`,
       keyboard: [
         [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "📊 Reporte", callback_data: "cmd_reporte" }],
         [{ text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
@@ -507,37 +588,77 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
     };
   }
 
-  // 3. Comando: mis tareas / pendientes / /tareas
-  if (lower === "mis tareas" || lower === "tareas" || lower === "pendientes" || lower === "/tareas") {
+  // B. Entrar a modo tarea enfocada
+  if (intent.type === "ENTRAR_TAREA") {
+    const task = findTaskById(intent.taskId);
+    if (!task) {
+      return {
+        authorized: true,
+        text: `⚠️ No se encontró la tarea *${intent.taskId}*. Escribe *mis tareas* para consultar tus entregables disponibles.`
+      };
+    }
+    userSessions[from.id] = { activeTaskId: task.id };
+    return {
+      authorized: true,
+      text: `💬 *Modo Conversación Activo: ${task.id}*\n` +
+            `📝 *${task.name}*\n` +
+            `👤 *Responsable:* ${task.responsable}\n` +
+            `📊 *Estado:* ${task.estado} (${task.progress || 0}%)\n\n` +
+            `Todos los mensajes o documentos de soporte (PDFs, facturas, remisiones) que envíes ahora se vincularán directamente a esta tarea.\n\n` +
+            `👉 Escribe tu mensaje o envía una foto/archivo de soporte.\n` +
+            `_(Para salir de este hilo, envía /salir o pulsa el botón abajo)_`,
+      keyboard: [
+        [{ text: "✅ Completar Tarea", callback_data: `completar_${task.id}` }, { text: "🚀 Iniciar Tarea", callback_data: `iniciar_${task.id}` }],
+        [{ text: "🔙 Salir del Hilo", callback_data: "cmd_salir_tarea" }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }]
+      ]
+    };
+  }
+
+  // C. Mis Tareas
+  if (intent.type === "MIS_TAREAS") {
     const allTasks = getAllProjectTasks();
-    const myTasks = allTasks.filter(t => {
+    const isMaster = user.alcanceEdicion === "todas";
+    
+    // Si es Web Master y no tiene tareas asignadas a su nombre exacto, mostrar todas las tareas activas
+    let myTasks = allTasks.filter(t => {
       const resp = (t.responsable || "").toLowerCase();
       const uName = (user.nombre || "").toLowerCase();
       return resp.includes(uName) || uName.includes(resp);
     });
 
+    if (myTasks.length === 0 && isMaster) {
+      myTasks = allTasks.filter(t => t.estado !== "Completada");
+    }
+
     if (myTasks.length === 0) {
       return {
         authorized: true,
-        text: `📋 *Tus Tareas Asignadas (${user.nombre})*\n\nActualmente no tienes tareas pendientes asignadas.\nPuedes crear una nueva escribiendo:\n*crear [nombre de la tarea]*`
+        text: `📋 *Tus Tareas Asignadas (${user.nombre})*\n\nActualmente no tienes tareas pendientes asignadas.\nPuedes crear una nueva escribiendo:\n*crear [nombre de la tarea]*`,
+        keyboard: [
+          [{ text: "📊 Reporte", callback_data: "cmd_reporte" }, { text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
+        ]
       };
     }
 
-    let response = `📋 *Tareas Asignadas a ${user.nombre} (${myTasks.length}):*\n\n`;
+    let response = `📋 *Tareas Asignadas (${myTasks.length}):*\n\n`;
     const keyboard = [];
 
-    myTasks.forEach((t, idx) => {
+    myTasks.forEach((t) => {
       const icon = t.estado === "Completada" ? "✅" : (t.estado === "En Progreso" ? "⚡" : "⏳");
       response += `${icon} *${t.id}:* ${t.name}\n`;
-      response += `   📅 Límite: \`${t.end || "Sin fecha"}\` | Estado: *${t.estado}* | Avance: ${t.progress || 0}%\n\n`;
+      response += `   👤 ${t.responsable} | 📅 Límite: \`${t.end || "Sin fecha"}\`\n`;
+      response += `   📊 Estado: *${t.estado}* (${t.progress || 0}%)\n\n`;
 
+      const row = [];
       if (t.estado !== "Completada") {
-        keyboard.push([
-          { text: `✅ Completar ${t.id}`, callback_data: `completar_${t.id}` },
-          { text: `🚀 Iniciar ${t.id}`, callback_data: `iniciar_${t.id}` }
-        ]);
+        row.push({ text: `✅ Completar ${t.id}`, callback_data: `completar_${t.id}` });
+        row.push({ text: `🚀 Iniciar ${t.id}`, callback_data: `iniciar_${t.id}` });
       }
+      row.push({ text: `💬 Abrir ${t.id}`, callback_data: `tarea_${t.id}` });
+      keyboard.push(row);
     });
+
+    keyboard.push([{ text: "📊 Reporte General", callback_data: "cmd_reporte" }]);
 
     return {
       authorized: true,
@@ -546,31 +667,26 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
     };
   }
 
-  // 4. Comando: completar [ID] (REGLA DE PROPIEDAD ESTRICTA)
-  const matchCompletar = lower.match(/^(?:completar|finalizar|terminar|cerrar)\s+([a-z0-9\-]+)$/i);
-  if (matchCompletar) {
-    const targetId = matchCompletar[1].toUpperCase();
-    const task = findTaskById(targetId);
-
+  // D. Completar Tarea (Regla de Propiedad Estricta)
+  if (intent.type === "COMPLETAR_TAREA") {
+    const task = findTaskById(intent.taskId);
     if (!task) {
       return {
         authorized: true,
-        text: `⚠️ No se encontró la tarea *${targetId}*. Escribe *mis tareas* para ver tus entregables disponibles.`
+        text: `⚠️ No se encontró la tarea *${intent.taskId}*. Escribe *mis tareas* para consultar los identificadores disponibles.`
       };
     }
 
-    // Comprobación de Propiedad
     const isOwner = (task.responsable || "").toLowerCase().includes((user.nombre || "").toLowerCase()) ||
                     (user.alcanceEdicion === "todas");
 
     if (!isOwner) {
       return {
         authorized: true,
-        text: `⚠️ *Permiso denegado:*\nSolo el responsable asignado (*${task.responsable}*) puede modificar o cambiar el estado de esta tarea.`
+        text: `⚠️ *Permiso denegado:*\nSolo el responsable asignado (*${task.responsable}*) puede modificar o completar esta tarea.`
       };
     }
 
-    // Actualizar estado
     updateTaskStatus(task, "Completada", 100);
     tryGitCommit(`chore(data): completar ${task.id} via Telegram [${user.nombre}]`, user);
 
@@ -581,20 +697,20 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
             `📝 *Nombre:* ${task.name}\n` +
             `👤 *Responsable:* ${user.nombre}\n` +
             `📊 *Estado:* Completada (100%)\n` +
-            `🐙 *Registro:* Guardado en Git-as-a-Database y sincronizado con el Centro de Operaciones.`
+            `🐙 *Registro:* Guardado en Git-as-a-Database y sincronizado con el Centro de Operaciones.`,
+      keyboard: [
+        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "📊 Reporte", callback_data: "cmd_reporte" }]
+      ]
     };
   }
 
-  // 5. Comando: iniciar [ID] (REGLA DE PROPIEDAD ESTRICTA)
-  const matchIniciar = lower.match(/^(?:iniciar|arrancar|comenzar|empezar)\s+([a-z0-9\-]+)$/i);
-  if (matchIniciar) {
-    const targetId = matchIniciar[1].toUpperCase();
-    const task = findTaskById(targetId);
-
+  // E. Iniciar Tarea (Regla de Propiedad Estricta)
+  if (intent.type === "INICIAR_TAREA") {
+    const task = findTaskById(intent.taskId);
     if (!task) {
       return {
         authorized: true,
-        text: `⚠️ No se encontró la tarea *${targetId}*. Escribe *mis tareas* para verificar tus IDs.`
+        text: `⚠️ No se encontró la tarea *${intent.taskId}*. Escribe *mis tareas* para verificar tus IDs.`
       };
     }
 
@@ -618,50 +734,24 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
             `📝 *Nombre:* ${task.name}\n` +
             `👤 *Responsable:* ${user.nombre}\n` +
             `📊 *Estado:* En Progreso (50%)\n` +
-            `🐙 *Registro:* Sincronizado en GitHub.`
+            `🐙 *Registro:* Sincronizado en GitHub.`,
+      keyboard: [
+        [{ text: `✅ Completar ${task.id}`, callback_data: `completar_${task.id}` }, { text: `💬 Abrir ${task.id}`, callback_data: `tarea_${task.id}` }],
+        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }]
+      ]
     };
   }
 
-  // 6. Comando: [ID]: [comentario] (CHAT UNIVERSAL: CUALQUIERA PUEDE CHATEAR)
-  const matchComentar = rawText.match(/^(?:comentar\s+)?(tsk-[a-z0-9\-]+)[:\s]+(.+)$/i);
-  if (matchComentar) {
-    const targetId = matchComentar[1].toUpperCase();
-    const commentText = matchComentar[2].trim();
-    const task = findTaskById(targetId);
-
-    if (!task) {
-      return {
-        authorized: true,
-        text: `⚠️ No se encontró la tarea *${targetId}* para registrar el comentario.`
-      };
-    }
-
-    // Regla: Cualquier usuario autorizado puede chatear en cualquier tarea
-    addProjectComment(task._projId, task.id, user.nombre, commentText);
-    tryGitCommit(`feat(data): nuevo comentario en ${task.id} por ${user.nombre} via Telegram`, user);
-
-    return {
-      authorized: true,
-      text: `💬 *Comentario publicado en ${task.id}:*\n\n` +
-            `"${commentText}"\n\n` +
-            `👤 *Autor:* ${user.nombre} (${user.rol})\n` +
-            `🌐 *Visibilidad:* Disponible de inmediato en el Centro de Operaciones Web y bitácora del proyecto.`
-    };
-  }
-
-  // 7. Comando: crear [nombre] (CREACIÓN UNIVERSAL Y AUTO-ASIGNACIÓN)
-  if (lower.startsWith("crear ") || lower.startsWith("nueva tarea ")) {
-    const taskName = rawText.replace(/^(?:crear\s+tarea\s+|crear\s+|nueva\s+tarea\s+)/i, "").trim();
-
-    if (!taskName) {
+  // F. Crear Nueva Tarea (Creación Universal & Auto-Asignación)
+  if (intent.type === "CREAR_TAREA") {
+    if (!intent.taskName) {
       return {
         authorized: true,
         text: `⚠️ Por favor especifica el nombre de la tarea.\nEjemplo: \`crear Instalar válvula de paso sector 2\``
       };
     }
 
-    // Quien la crea queda como dueño
-    const result = createNewTask(taskName, user.nombre);
+    const result = createNewTask(intent.taskName, user.nombre);
     if (!result) {
       return {
         authorized: true,
@@ -679,12 +769,41 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
             `👤 *Responsable:* *${user.nombre}* (Auto-asignada al creador)\n` +
             `📅 *Fecha Límite:* \`${result.task.end}\`\n` +
             `📊 *Estado:* No Iniciada\n\n` +
-            `_🐙 Registrada en Git-as-a-Database y visible en el Centro de Operaciones._`
+            `_🐙 Registrada en Git-as-a-Database y visible en el Centro de Operaciones._`,
+      keyboard: [
+        [{ text: `🚀 Iniciar ${result.task.id}`, callback_data: `iniciar_${result.task.id}` }, { text: `💬 Abrir ${result.task.id}`, callback_data: `tarea_${result.task.id}` }],
+        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }]
+      ]
     };
   }
 
-  // 8. Comando: reporte / costos
-  if (lower.includes("reporte") || lower.includes("costos") || lower.includes("balance")) {
+  // G. Comentar en Tarea
+  if (intent.type === "COMENTAR_TAREA") {
+    const task = findTaskById(intent.taskId);
+    if (!task) {
+      return {
+        authorized: true,
+        text: `⚠️ No se encontró la tarea *${intent.taskId}* para registrar el comentario.`
+      };
+    }
+
+    addProjectComment(task._projId, task.id, user.nombre, intent.comment);
+    tryGitCommit(`feat(data): nuevo comentario en ${task.id} por ${user.nombre} via Telegram`, user);
+
+    return {
+      authorized: true,
+      text: `💬 *Comentario publicado en ${task.id}:*\n\n` +
+            `"${intent.comment}"\n\n` +
+            `👤 *Autor:* ${user.nombre} (${user.rol})\n` +
+            `🌐 *Visibilidad:* Disponible de inmediato en el Centro de Operaciones Web y bitácora del proyecto.`,
+      keyboard: [
+        [{ text: `💬 Entrar a ${task.id}`, callback_data: `tarea_${task.id}` }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }]
+      ]
+    };
+  }
+
+  // H. Reporte de Salud y Costos
+  if (intent.type === "REPORTE") {
     const allTasks = getAllProjectTasks();
     const total = allTasks.length;
     const completadas = allTasks.filter(t => t.estado === "Completada").length;
@@ -700,15 +819,46 @@ function processTelegramMessage(from, text, messageObj = null, botToken = null) 
             `⚡ *En Progreso:* ${progreso}\n` +
             `⏳ *Por Iniciar:* ${pendientes}\n` +
             `💰 *Presupuesto Total Comprometido:* $${inversionTotal.toLocaleString('es-MX')} MXN\n\n` +
-            `🌐 Para ver el desglose jerárquico completo, abre el Centro de Operaciones.`
+            `🌐 Para ver el desglose jerárquico completo, abre el Centro de Operaciones Web.`,
+      keyboard: [
+        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
+      ]
     };
   }
 
-  // 9. Mensaje por defecto / ayuda rápida
+  // I. Menú Principal / Ayuda
+  if (intent.type === "AYUDA") {
+    return {
+      authorized: true,
+      text: `🤖 *Centro de Operaciones Chimay (Telegram)*\n` +
+            `¡Hola *${user.nombre}*! (${user.rol})\n\n` +
+            `Puedes gestionar tareas con los siguientes comandos:\n\n` +
+            `📋 *mis tareas* ➔ Ver tus actividades asignadas y fechas límite.\n` +
+            `✅ *completar [ID]* ➔ Marcar tu tarea como finalizada (ej. \`completar TSK-01\`).\n` +
+            `🚀 *iniciar [ID]* ➔ Poner tu tarea en progreso (ej. \`iniciar TSK-01\`).\n` +
+            `💬 *[ID]: [mensaje]* ➔ Chatear en cualquier tarea (ej. \`TSK-01: Ya instalamos los goteros\`).\n` +
+            `➕ *crear [nombre]* ➔ Crear una nueva tarea (quedas asignado como responsable).\n` +
+            `📊 *reporte* ➔ Resumen de estado de salud del proyecto.\n\n` +
+            `_🔒 Regla de propiedad: Solo puedes modificar tareas asignadas a ti. Cualquier usuario puede chatear y crear tareas._`,
+      keyboard: [
+        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "📊 Reporte", callback_data: "cmd_reporte" }],
+        [{ text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
+      ]
+    };
+  }
+
+  // J. Mensaje por defecto si no reconoció el comando
   return {
     authorized: true,
     text: `🤖 No reconocí esa instrucción, *${user.nombre}*.\n\n` +
-          `Escribe *mis tareas* para ver tus pendientes o *ayuda* para conocer los comandos disponibles.`
+          `Pulsa un botón de abajo o escribe:\n` +
+          `• *mis tareas* para ver tus entregables.\n` +
+          `• *reporte* para el balance operativo.\n` +
+          `• *ayuda* para la lista completa de comandos.`,
+    keyboard: [
+      [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "📊 Reporte", callback_data: "cmd_reporte" }],
+      [{ text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
+    ]
   };
 }
 
