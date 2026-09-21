@@ -313,10 +313,10 @@
   <!-- ========================================================================= -->
   <!-- VISTA 2: CENTRO DE OPERACIONES DEL PROYECTO (CHIMAY OPS DASHBOARD) -->
   <!-- ========================================================================= -->
-  <div id="projectOperationsPage" style="display: none;" class="hidden flex-1 flex flex-col min-h-screen">
+  <div id="projectOperationsPage" style="display: none;" class="hidden h-screen max-h-screen flex flex-col overflow-hidden bg-stone-100">
 
   <!-- Header -->
-  <header class="bg-gradient-to-r from-emerald-900 via-emerald-800 to-green-950 text-white shadow-lg sticky top-0 z-40">
+  <header class="bg-gradient-to-r from-emerald-900 via-emerald-800 to-green-950 text-white shadow-lg shrink-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
       <div class="flex items-center space-x-3">
         <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 text-xl font-bold shadow-inner">
@@ -423,7 +423,7 @@
   </header>
 
   <!-- Barra de Navegación de Vistas y Menú de Recursos (Filtro Dinámico y Escalable) -->
-  <nav class="bg-white border-b border-stone-200 shadow-2xs sticky top-[57px] sm:top-[64px] z-30">
+  <nav class="bg-white border-b border-stone-200 shadow-2xs shrink-0 z-30">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
         <!-- Botón Directo Vista Global -->
@@ -476,7 +476,7 @@
   </nav>
 
   <!-- Sub-barra de Filtro Dinámico por Etapa & Consolidación -->
-  <section class="bg-stone-100/90 border-b border-stone-200/80 backdrop-blur-xs py-2.5 px-4 sm:px-6">
+  <section class="bg-stone-100/90 border-b border-stone-200/80 backdrop-blur-xs py-2 px-4 sm:px-6 shrink-0">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
       <div class="flex items-center gap-2.5 flex-wrap w-full sm:w-auto">
         <label for="selectEtapa" class="flex items-center gap-1.5 text-xs font-bold text-stone-700 whitespace-nowrap">
@@ -509,8 +509,8 @@
   </section>
 
   <!-- Contenedor Único y Dinámico de la Vista Activa (NUNCA ANIDADAS) -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
-    <div id="viewContainer" class="space-y-6">
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 py-3 flex-1 min-h-0 w-full flex flex-col overflow-hidden">
+    <div id="viewContainer" class="flex-1 min-h-0 flex flex-col space-y-3">
       <!-- Se genera e inyecta dinámicamente: Vista Global O Vista Especialista -->
     </div>
   </main>
@@ -1108,10 +1108,19 @@
     function refreshActiveViews() {
       const container = document.getElementById("viewContainer");
       if (!container) return;
-      if (currentView === "todos") renderGlobalView(container);
-      else if (currentView === "agentico") renderAgenticoView(container);
-      else if (currentView === "reporting") renderReportingView(container);
-      else renderSpecialistView(container, currentView);
+      if (currentView === "todos") {
+        container.className = "flex-1 min-h-0 flex flex-col space-y-3";
+        renderGlobalView(container);
+      } else if (currentView === "agentico") {
+        container.className = "flex-1 min-h-0 flex flex-col space-y-3 overflow-y-auto custom-scrollbar";
+        renderAgenticoView(container);
+      } else if (currentView === "reporting") {
+        container.className = "flex-1 min-h-0 flex flex-col space-y-3 overflow-y-auto custom-scrollbar";
+        renderReportingView(container);
+      } else {
+        container.className = "flex-1 min-h-0 flex flex-col space-y-3 overflow-y-auto custom-scrollbar";
+        renderSpecialistView(container, currentView);
+      }
       updateEtapaBarInfo();
     }
 
@@ -1854,6 +1863,8 @@
       const landing = document.getElementById("landingAuthPage");
       const ops = document.getElementById("projectOperationsPage");
       if (currentUser) {
+        document.documentElement.classList.add("overflow-hidden");
+        document.body.classList.add("overflow-hidden");
         if (landing) {
           landing.classList.add("hidden");
           landing.style.display = "none";
@@ -1868,6 +1879,8 @@
           refreshActiveViews();
         }
       } else {
+        document.documentElement.classList.remove("overflow-hidden");
+        document.body.classList.remove("overflow-hidden");
         if (landing) {
           landing.classList.remove("hidden");
           landing.style.display = "flex";
@@ -5882,107 +5895,112 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         : `Filtrado por: ${currentEtapa}`;
 
       container.innerHTML = `
-        <!-- Encabezado de la Vista Global -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-stone-200 shadow-xs">
-          <div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">Ventana 1 &bull; Consolidada</span>
-              ${currentEtapa !== "todas" ? `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300/60 flex items-center gap-1"><i class="fa-solid fa-filter text-[10px]"></i> ${currentEtapa}</span>` : ''}
-              <h2 class="text-lg font-black text-stone-900">${etapaLabel}</h2>
-            </div>
-            <p class="text-xs text-stone-500 mt-0.5">
-              ${currentEtapa === "todas" ? "Visualización completa de todas las tareas, responsables e inversión del rancho." : `Mostrando exclusivamente las tareas correspondientes a la etapa seleccionada (${total} tareas).`}
-              ${currentEtapa !== "todas" ? `<button onclick="changeEtapaFilter('todas'); document.getElementById('selectEtapa').value='todas';" class="text-emerald-700 hover:text-emerald-800 underline font-semibold ml-1">Ver todas las etapas</button>` : ''}
-            </p>
-          </div>
+        <div class="flex-1 min-h-0 flex flex-col space-y-3">
+          <!-- Encabezado y KPIs fijados en la parte superior -->
+          <div class="shrink-0 space-y-3">
+            <!-- Encabezado de la Vista Global -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 bg-white px-4 py-3 rounded-2xl border border-stone-200 shadow-xs">
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">Ventana 1 &bull; Consolidada</span>
+                  ${currentEtapa !== "todas" ? `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300/60 flex items-center gap-1"><i class="fa-solid fa-filter text-[10px]"></i> ${currentEtapa}</span>` : ''}
+                  <h2 class="text-base font-black text-stone-900">${etapaLabel}</h2>
+                </div>
+                <p class="text-xs text-stone-500 mt-0.5">
+                  ${currentEtapa === "todas" ? "Visualización completa de todas las tareas, responsables e inversión del rancho." : `Mostrando exclusivamente las tareas correspondientes a la etapa seleccionada (${total} tareas).`}
+                  ${currentEtapa !== "todas" ? `<button onclick="changeEtapaFilter('todas'); document.getElementById('selectEtapa').value='todas';" class="text-emerald-700 hover:text-emerald-800 underline font-semibold ml-1">Ver todas las etapas</button>` : ''}
+                </p>
+              </div>
 
-          <div class="inline-flex rounded-lg border border-stone-200 p-1 bg-stone-50">
-            <button id="btnToggleGantt" class="px-3 py-1 rounded-md text-xs font-bold ${currentSubView === 'gantt' ? 'bg-white shadow-xs text-emerald-900' : 'text-stone-600 hover:text-stone-900'} flex items-center gap-1.5 transition">
-              <i class="fa-solid fa-chart-gantt"></i> Gantt
-            </button>
-            <button id="btnToggleCards" class="px-3 py-1 rounded-md text-xs font-bold ${currentSubView === 'cards' ? 'bg-white shadow-xs text-emerald-900' : 'text-stone-600 hover:text-stone-900'} flex items-center gap-1.5 transition">
-              <i class="fa-solid fa-table-columns"></i> Tarjetas
-            </button>
-          </div>
-        </div>
-
-        <!-- Tarjetas KPI Globales -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
-            <div><p class="text-xs font-bold uppercase tracking-wider text-stone-500">Total Tareas</p><p class="text-2xl font-black text-stone-800 mt-1">${total}</p></div>
-            <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg"><i class="fa-solid fa-list-check"></i></div>
-          </div>
-          <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
-            <div><p class="text-xs font-bold uppercase tracking-wider text-amber-600">En Progreso</p><p class="text-2xl font-black text-amber-600 mt-1">${prog}</p></div>
-            <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-lg"><i class="fa-solid fa-spinner animate-spin"></i></div>
-          </div>
-          <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
-            <div><p class="text-xs font-bold uppercase tracking-wider text-emerald-600">Completadas</p><p class="text-2xl font-black text-emerald-700 mt-1">${comp}</p></div>
-            <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg"><i class="fa-solid fa-circle-check"></i></div>
-          </div>
-          <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
-            <div><p class="text-xs font-bold uppercase tracking-wider text-stone-500">Inversión Etapa</p><p class="text-2xl font-black text-emerald-900 mt-1">$${costo.toLocaleString("es-MX", {minimumFractionDigits: 2})}</p></div>
-            <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg"><i class="fa-solid fa-sack-dollar"></i></div>
-          </div>
-        </div>
-
-        <!-- Vista Gantt Global (Estilo Microsoft Project: Panel WBS + Timeline) -->
-        <div id="globalGanttSection" class="${currentSubView === 'gantt' ? '' : 'hidden'} bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <div>
-              <div class="flex items-center gap-3 flex-wrap">
-                <h3 class="text-sm font-bold text-stone-800 flex items-center gap-2">
-                  <i class="fa-solid fa-table-cells text-emerald-600"></i> Cronograma Gantt Unificado — Filas y Columnas Estilo Excel (${total} Tareas)
-                </h3>
-                <button onclick="openCreateTaskModal()" class="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Crear nueva tarea en el cronograma">
-                  <i class="fa-solid fa-plus-circle text-xs"></i> <span>Nueva Tarea</span>
+              <div class="inline-flex rounded-lg border border-stone-200 p-1 bg-stone-50 shrink-0">
+                <button id="btnToggleGantt" class="px-3 py-1 rounded-md text-xs font-bold ${currentSubView === 'gantt' ? 'bg-white shadow-xs text-emerald-900' : 'text-stone-600 hover:text-stone-900'} flex items-center gap-1.5 transition">
+                  <i class="fa-solid fa-chart-gantt"></i> Gantt
                 </button>
-                <button onclick="openCreateStageModal()" class="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Agregar nueva etapa y generar plantilla WBS">
-                  <i class="fa-solid fa-folder-plus text-xs"></i> <span>Nueva Etapa</span>
-                </button>
-                <button onclick="expandAllTaskTrees()" class="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer border border-stone-200" title="Desplegar todas las subtareas en el cronograma">
-                  <i class="fa-solid fa-sitemap text-indigo-600 text-xs"></i> <span>▾ Desplegar Subtareas</span>
-                </button>
-                <button onclick="collapseAllTaskTrees()" class="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer border border-stone-200" title="Colapsar todas las subtareas">
-                  <i class="fa-solid fa-compress text-stone-500 text-xs"></i> <span>▸ Colapsar Todo</span>
+                <button id="btnToggleCards" class="px-3 py-1 rounded-md text-xs font-bold ${currentSubView === 'cards' ? 'bg-white shadow-xs text-emerald-900' : 'text-stone-600 hover:text-stone-900'} flex items-center gap-1.5 transition">
+                  <i class="fa-solid fa-table-columns"></i> Tarjetas
                 </button>
               </div>
-              <p class="text-xs text-stone-400 mt-0.5">Dos ventanas sincronizadas: Listado de tareas (ajustable con scroll horizontal propio) y Cronograma Gantt predominante.</p>
             </div>
-            <div class="flex items-center gap-3 text-xs text-stone-400 italic hidden md:flex">
-              <span><i class="fa-solid fa-arrows-left-right text-stone-300"></i> Scroll horizontal independiente</span>
-              <span>&bull;</span>
-              <span><i class="fa-solid fa-arrows-split-up-and-left text-stone-300"></i> Arrastra el divisor para ajustar</span>
-              <span>&bull;</span>
-              <span><i class="fa-solid fa-hand-pointer text-stone-300"></i> Clic para ver detalle</span>
-            </div>
-          </div>
-          <div id="globalExcelGanttContainer" class="w-full rounded-xl border border-stone-200 bg-white relative shadow-2xs overflow-hidden">
-          </div>
-        </div>
 
-        <!-- Vista Kanban Cards Global -->
-        <div id="globalCardsSection" class="${currentSubView === 'cards' ? '' : 'hidden'} grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="bg-stone-100/70 p-4 rounded-xl border border-stone-200 flex flex-col space-y-3">
-            <div class="flex items-center justify-between font-bold text-xs uppercase tracking-wider text-stone-600 border-b pb-2">
-              <span>⚪ No Iniciada</span>
-              <span id="kBadgeNoInic" class="px-2 py-0.5 rounded-full bg-stone-200 text-stone-800">0</span>
+            <!-- Tarjetas KPI Globales -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div class="bg-white p-3.5 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
+                <div><p class="text-xs font-bold uppercase tracking-wider text-stone-500">Total Tareas</p><p class="text-2xl font-black text-stone-800 mt-0.5">${total}</p></div>
+                <div class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-base"><i class="fa-solid fa-list-check"></i></div>
+              </div>
+              <div class="bg-white p-3.5 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
+                <div><p class="text-xs font-bold uppercase tracking-wider text-amber-600">En Progreso</p><p class="text-2xl font-black text-amber-600 mt-0.5">${prog}</p></div>
+                <div class="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-base"><i class="fa-solid fa-spinner animate-spin"></i></div>
+              </div>
+              <div class="bg-white p-3.5 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
+                <div><p class="text-xs font-bold uppercase tracking-wider text-emerald-600">Completadas</p><p class="text-2xl font-black text-emerald-700 mt-0.5">${comp}</p></div>
+                <div class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-base"><i class="fa-solid fa-circle-check"></i></div>
+              </div>
+              <div class="bg-white p-3.5 rounded-xl border border-stone-200 shadow-xs flex items-center justify-between">
+                <div><p class="text-xs font-bold uppercase tracking-wider text-stone-500">Inversión Etapa</p><p class="text-2xl font-black text-emerald-900 mt-0.5">$${costo.toLocaleString("es-MX", {minimumFractionDigits: 2})}</p></div>
+                <div class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-base"><i class="fa-solid fa-sack-dollar"></i></div>
+              </div>
             </div>
-            <div id="kColNoInic" class="space-y-3 flex-1"></div>
           </div>
-          <div class="bg-amber-50/50 p-4 rounded-xl border border-amber-200/70 flex flex-col space-y-3">
-            <div class="flex items-center justify-between font-bold text-xs uppercase tracking-wider text-amber-800 border-b border-amber-200 pb-2">
-              <span>🟡 En Progreso</span>
-              <span id="kBadgeProg" class="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">0</span>
+
+          <!-- Vista Gantt Global (Toma todo el alto restante y scrollea sólo de aquí para abajo) -->
+          <div id="globalGanttSection" class="${currentSubView === 'gantt' ? '' : 'hidden'} flex-1 min-h-0 bg-white p-4 rounded-2xl border border-stone-200 shadow-sm flex flex-col space-y-3">
+            <div class="shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <div>
+                <div class="flex items-center gap-3 flex-wrap">
+                  <h3 class="text-sm font-bold text-stone-800 flex items-center gap-2">
+                    <i class="fa-solid fa-table-cells text-emerald-600"></i> Cronograma Gantt Unificado — Filas y Columnas Estilo Excel (${total} Tareas)
+                  </h3>
+                  <button onclick="openCreateTaskModal()" class="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Crear nueva tarea en el cronograma">
+                    <i class="fa-solid fa-plus-circle text-xs"></i> <span>Nueva Tarea</span>
+                  </button>
+                  <button onclick="openCreateStageModal()" class="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Agregar nueva etapa y generar plantilla WBS">
+                    <i class="fa-solid fa-folder-plus text-xs"></i> <span>Nueva Etapa</span>
+                  </button>
+                  <button onclick="expandAllTaskTrees()" class="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer border border-stone-200" title="Desplegar todas las subtareas en el cronograma">
+                    <i class="fa-solid fa-sitemap text-indigo-600 text-xs"></i> <span>▾ Desplegar Subtareas</span>
+                  </button>
+                  <button onclick="collapseAllTaskTrees()" class="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer border border-stone-200" title="Colapsar todas las subtareas">
+                    <i class="fa-solid fa-compress text-stone-500 text-xs"></i> <span>▸ Colapsar Todo</span>
+                  </button>
+                </div>
+                <p class="text-xs text-stone-400 mt-0.5">Dos ventanas sincronizadas: Listado de tareas (ajustable con scroll horizontal propio) y Cronograma Gantt predominante.</p>
+              </div>
+              <div class="flex items-center gap-3 text-xs text-stone-400 italic hidden md:flex">
+                <span><i class="fa-solid fa-arrows-left-right text-stone-300"></i> Scroll horizontal independiente</span>
+                <span>&bull;</span>
+                <span><i class="fa-solid fa-arrows-split-up-and-left text-stone-300"></i> Arrastra el divisor para ajustar</span>
+                <span>&bull;</span>
+                <span><i class="fa-solid fa-hand-pointer text-stone-300"></i> Clic para ver detalle</span>
+              </div>
             </div>
-            <div id="kColProg" class="space-y-3 flex-1"></div>
+            <div id="globalExcelGanttContainer" class="flex-1 min-h-0 w-full rounded-xl border border-stone-200 bg-white relative shadow-2xs overflow-hidden flex flex-col">
+            </div>
           </div>
-          <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200/70 flex flex-col space-y-3">
-            <div class="flex items-center justify-between font-bold text-xs uppercase tracking-wider text-emerald-800 border-b border-emerald-200 pb-2">
-              <span>🟢 Completada</span>
-              <span id="kBadgeComp" class="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900">0</span>
+
+          <!-- Vista Kanban Cards Global -->
+          <div id="globalCardsSection" class="${currentSubView === 'cards' ? '' : 'hidden'} flex-1 min-h-0 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-stone-100/70 p-4 rounded-xl border border-stone-200 flex flex-col space-y-3">
+              <div class="flex items-center justify-between font-bold text-xs uppercase tracking-wider text-stone-600 border-b pb-2">
+                <span>⚪ No Iniciada</span>
+                <span id="kBadgeNoInic" class="px-2 py-0.5 rounded-full bg-stone-200 text-stone-800">0</span>
+              </div>
+              <div id="kColNoInic" class="space-y-3 flex-1"></div>
             </div>
-            <div id="kColComp" class="space-y-3 flex-1"></div>
+            <div class="bg-amber-50/50 p-4 rounded-xl border border-amber-200/70 flex flex-col space-y-3">
+              <div class="flex items-center justify-between font-bold text-xs uppercase tracking-wider text-amber-800 border-b border-amber-200 pb-2">
+                <span>🟡 En Progreso</span>
+                <span id="kBadgeProg" class="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">0</span>
+              </div>
+              <div id="kColProg" class="space-y-3 flex-1"></div>
+            </div>
+            <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200/70 flex flex-col space-y-3">
+              <div class="flex items-center justify-between font-bold text-xs uppercase tracking-wider text-emerald-800 border-b border-emerald-200 pb-2">
+                <span>🟢 Completada</span>
+                <span id="kBadgeComp" class="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900">0</span>
+              </div>
+              <div id="kColComp" class="space-y-3 flex-1"></div>
+            </div>
           </div>
         </div>
       `;
@@ -7131,7 +7149,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             </div>
             <span class="text-xs text-stone-400 italic hidden md:inline">Scroll independiente en cada ventana &bull; Arrastra el divisor</span>
           </div>
-          <div id="specialistExcelGanttContainer" class="w-full rounded-xl border border-stone-200 bg-white relative shadow-2xs overflow-hidden">
+          <div id="specialistExcelGanttContainer" class="w-full h-[460px] min-h-[460px] rounded-xl border border-stone-200 bg-white relative shadow-2xs overflow-hidden flex flex-col">
           </div>
         </div>
 
@@ -7175,7 +7193,11 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       const container = document.getElementById(containerId);
       if (!container) return;
 
-      container.className = "w-full rounded-xl border border-stone-200 bg-white shadow-2xs overflow-hidden relative select-none";
+      if (containerId === "specialistExcelGanttContainer") {
+        container.className = "w-full h-[460px] min-h-[460px] rounded-xl border border-stone-200 bg-white shadow-2xs overflow-hidden relative select-none flex flex-col";
+      } else {
+        container.className = "flex-1 min-h-0 w-full rounded-xl border border-stone-200 bg-white shadow-2xs overflow-hidden relative select-none flex flex-col";
+      }
 
       if (!tasks || tasks.length === 0) {
         container.innerHTML = `
@@ -7492,9 +7514,9 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
 
       // 3. Ensamblar HTML Completo con las Dos Ventanas Coexistentes + Splitter
       const html = `
-        <div class="flex w-full overflow-hidden select-none bg-white relative h-full">
+        <div class="flex w-full overflow-hidden select-none bg-white relative h-full flex-1 min-h-0">
           <!-- VENTANA IZQUIERDA: LISTADO DE TAREAS Y SUBTAREAS (CON SCROLL PROPIO) -->
-          <div id="${containerId}_tasksPane" class="shrink-0 flex flex-col border-r border-stone-200 bg-white overflow-hidden" style="width: ${taskPaneWidth}px; min-width: 220px; max-width: 650px;">
+          <div id="${containerId}_tasksPane" class="shrink-0 flex flex-col border-r border-stone-200 bg-white overflow-hidden h-full" style="width: ${taskPaneWidth}px; min-width: 220px; max-width: 650px;">
             <!-- Cabecera de Tareas -->
             <div id="${containerId}_tasksHeader" class="overflow-x-hidden border-b border-stone-200 bg-stone-100 shrink-0 select-none">
               <div class="min-w-[540px]">
@@ -7514,7 +7536,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             </div>
             
             <!-- Cuerpo de Tareas con Scrollbar Horizontal y Vertical propio -->
-            <div id="${containerId}_tasksBody" class="overflow-x-auto overflow-y-auto max-h-[560px] custom-scrollbar flex-1 bg-white select-none">
+            <div id="${containerId}_tasksBody" class="overflow-x-auto overflow-y-auto flex-1 min-h-0 custom-scrollbar bg-white select-none">
               <table class="w-full min-w-[540px] border-collapse text-xs">
                 <tbody class="divide-y divide-stone-100">
                   ${tasksTableRowsHtml}
@@ -7524,12 +7546,12 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           </div>
 
           <!-- BARRA DIVISORIA AJUSTABLE (SPLITTER DRAG-TO-RESIZE) -->
-          <div id="${containerId}_splitter" class="w-2 hover:w-2.5 bg-stone-200 hover:bg-emerald-500 active:bg-emerald-600 cursor-col-resize transition-all shrink-0 flex items-center justify-center group select-none relative z-20" title="Arrastra para ajustar el tamaño de la lista de tareas (Doble clic para alternar)">
+          <div id="${containerId}_splitter" class="w-2 hover:w-2.5 bg-stone-200 hover:bg-emerald-500 active:bg-emerald-600 cursor-col-resize transition-all shrink-0 flex items-center justify-center group select-none relative z-20 h-full" title="Arrastra para ajustar el tamaño de la lista de tareas (Doble clic para alternar)">
             <div class="w-0.5 h-7 bg-stone-400 group-hover:bg-white rounded-full transition-colors"></div>
           </div>
 
           <!-- VENTANA DERECHA: CRONOGRAMA GANTT (PREDOMINANTE CON SCROLL PROPIO) -->
-          <div id="${containerId}_timelinePane" class="flex-1 min-w-0 flex flex-col bg-stone-50/20 overflow-hidden">
+          <div id="${containerId}_timelinePane" class="flex-1 min-w-0 flex flex-col bg-stone-50/20 overflow-hidden h-full">
             <!-- Cabecera del Calendario -->
             <div id="${containerId}_timelineHeader" class="overflow-x-hidden border-b border-stone-200 bg-stone-50 shrink-0 select-none">
               <div style="width: ${timelineWidth}px; min-width: ${timelineWidth}px;">
@@ -7553,7 +7575,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             </div>
 
             <!-- Cuerpo del Gantt con Scrollbar Horizontal y Vertical propio -->
-            <div id="${containerId}_timelineBody" class="overflow-x-auto overflow-y-auto max-h-[560px] custom-scrollbar flex-1 relative bg-stone-50/10 select-none">
+            <div id="${containerId}_timelineBody" class="overflow-x-auto overflow-y-auto flex-1 min-h-0 custom-scrollbar relative bg-stone-50/10 select-none">
               <div style="width: ${timelineWidth}px; min-width: ${timelineWidth}px; position: relative;">
                 <div class="absolute inset-0 flex pointer-events-none">
                   ${daysHeader.map(d => `
