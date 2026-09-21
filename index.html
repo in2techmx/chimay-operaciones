@@ -1614,6 +1614,19 @@
     let expandedTaskIds = new Set();
     window.expandedTaskIds = expandedTaskIds;
 
+    function parseDateParts(dStr) {
+      if (!dStr) return null;
+      const s = String(dStr).substring(0, 10);
+      const parts = s.split("-");
+      if (parts.length !== 3) return null;
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+      return new Date(y, m, d, 12, 0, 0);
+    }
+    window.parseDateParts = parseDateParts;
+
     function toggleTaskTree(taskId) {
       if (expandedTaskIds.has(taskId)) {
         expandedTaskIds.delete(taskId);
@@ -1645,32 +1658,26 @@
 
     function refreshCurrentGanttView() {
       if (currentView === "todos") {
-        const wbsContainer = document.getElementById("globalWbsRows");
-        const svgEl = document.getElementById("globalGanttSvg");
-        if (wbsContainer && svgEl && currentSubView === "gantt") {
-          const activeTasks = getActiveTasks();
-          renderWbsRows("globalWbsRows", activeTasks);
-          mountGantt("#globalGanttSvg", activeTasks);
+        const container = document.getElementById("globalExcelGanttContainer");
+        if (container && currentSubView === "gantt") {
+          renderExcelGanttTable("globalExcelGanttContainer", getActiveTasks());
           return;
         }
-        const container = document.getElementById("viewContainer");
-        if (container) renderGlobalView(container);
+        const viewContainer = document.getElementById("viewContainer");
+        if (viewContainer) renderGlobalView(viewContainer);
       } else if (currentView === "reporting") {
-        const container = document.getElementById("viewContainer");
-        if (container) renderReportingView(container);
+        const viewContainer = document.getElementById("viewContainer");
+        if (viewContainer) renderReportingView(viewContainer);
       } else if (currentView === "agentico") {
         // Vista agéntica
       } else {
-        const wbsContainer = document.getElementById("specialistWbsRows");
-        const svgEl = document.getElementById("specialistGanttSvg");
-        if (wbsContainer && svgEl) {
-          const userTasks = getActiveTasks(currentView);
-          renderWbsRows("specialistWbsRows", userTasks);
-          mountGantt("#specialistGanttSvg", userTasks);
+        const container = document.getElementById("specialistExcelGanttContainer");
+        if (container) {
+          renderExcelGanttTable("specialistExcelGanttContainer", getActiveTasks(currentView));
           return;
         }
-        const container = document.getElementById("viewContainer");
-        if (container) renderSpecialistView(container, currentView);
+        const viewContainer = document.getElementById("viewContainer");
+        if (viewContainer) renderSpecialistView(viewContainer, currentView);
       }
     }
     window.refreshCurrentGanttView = refreshCurrentGanttView;
@@ -5904,7 +5911,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             <div>
               <div class="flex items-center gap-3 flex-wrap">
                 <h3 class="text-sm font-bold text-stone-800 flex items-center gap-2">
-                  <i class="fa-solid fa-timeline text-emerald-600"></i> Cronograma de Operaciones — Estilo Microsoft Project (${total} Tareas)
+                  <i class="fa-solid fa-table-cells text-emerald-600"></i> Cronograma Gantt Unificado — Filas y Columnas Estilo Excel (${total} Tareas)
                 </h3>
                 <button onclick="openCreateTaskModal()" class="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Crear nueva tarea en el cronograma">
                   <i class="fa-solid fa-plus-circle text-xs"></i> <span>Nueva Tarea</span>
@@ -5919,7 +5926,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                   <i class="fa-solid fa-compress text-stone-500 text-xs"></i> <span>▸ Colapsar Todo</span>
                 </button>
               </div>
-              <p class="text-xs text-stone-400 mt-0.5">Panel WBS a la izquierda sincronizado 1:1 con la línea de tiempo temporal a la derecha.</p>
+              <p class="text-xs text-stone-400 mt-0.5">Cuadrícula unificada: cada tarea es una fila, cada subtarea la fila siguiente con barra temporal integrada.</p>
             </div>
             <div class="flex items-center gap-3 text-xs text-stone-400 italic hidden md:flex">
               <span><i class="fa-solid fa-arrows-left-right text-stone-300"></i> Scroll horizontal para fechas</span>
@@ -5927,36 +5934,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
               <span><i class="fa-solid fa-hand-pointer text-stone-300"></i> Clic en fila o barra para ver detalle</span>
             </div>
           </div>
-          <div class="w-full overflow-x-auto overflow-y-auto max-h-[640px] rounded-xl border border-stone-200 bg-white relative shadow-2xs">
-            ${total > 0 ? `
-              <div class="flex min-w-fit relative">
-                <!-- Panel Izquierdo: Lista WBS Congelada (Estilo MS Project) -->
-                <div class="sticky left-0 z-20 bg-white border-r border-stone-200 shadow-[4px_0_12px_rgba(0,0,0,0.05)] w-[360px] sm:w-[440px] flex-shrink-0 flex flex-col">
-                  <div class="h-[52px] min-h-[52px] max-h-[52px] bg-stone-50 border-b border-stone-200 px-3 flex items-center justify-between text-[11px] font-extrabold text-stone-600 uppercase tracking-wider select-none">
-                    <div class="flex items-center gap-2">
-                      <span class="w-14 text-center">WBS</span>
-                      <span>Tarea / Entregable</span>
-                    </div>
-                    <div class="flex items-center gap-4 text-stone-500 font-bold pr-1">
-                      <span class="hidden sm:inline">Etapa</span>
-                      <span>Resp.</span>
-                    </div>
-                  </div>
-                  <div id="globalWbsRows" class="flex flex-col divide-y divide-stone-100"></div>
-                </div>
-
-                <!-- Panel Derecho: Cronograma Gantt Temporal Limpio -->
-                <div class="flex-1 bg-stone-50/20 overflow-visible">
-                  <svg id="globalGanttSvg"></svg>
-                </div>
-              </div>
-            ` : `
-              <div class="flex flex-col items-center justify-center py-16 text-stone-400">
-                <i class="fa-solid fa-folder-open text-4xl mb-3 text-stone-300"></i>
-                <p class="text-sm font-semibold text-stone-600">No hay tareas asociadas a esta etapa.</p>
-                <button onclick="changeEtapaFilter('todas'); document.getElementById('selectEtapa').value='todas';" class="mt-3 px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-bold">Ver Todas las Etapas</button>
-              </div>
-            `}
+          <div id="globalExcelGanttContainer" class="w-full overflow-x-auto overflow-y-auto max-h-[640px] rounded-xl border border-stone-200 bg-white relative shadow-2xs">
           </div>
         </div>
 
@@ -5996,8 +5974,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           btnG.className = "px-3 py-1 rounded-md text-xs font-bold bg-white shadow-xs text-emerald-900 flex items-center gap-1.5 transition";
           btnC.className = "px-3 py-1 rounded-md text-xs font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1.5 transition";
           if (activeTasks.length > 0) {
-            renderWbsRows("globalWbsRows", activeTasks);
-            mountGantt("#globalGanttSvg", activeTasks);
+            renderExcelGanttTable("globalExcelGanttContainer", activeTasks);
           }
         };
         btnC.onclick = () => {
@@ -6012,8 +5989,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
 
       if (currentSubView === "gantt") {
         if (activeTasks.length > 0) {
-          renderWbsRows("globalWbsRows", activeTasks);
-          mountGantt("#globalGanttSvg", activeTasks);
+          renderExcelGanttTable("globalExcelGanttContainer", activeTasks);
         }
       } else {
         renderKanbanColumns(activeTasks);
@@ -7128,32 +7104,11 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                   <i class="fa-solid fa-compress text-stone-500 text-xs"></i> <span>▸ Colapsar Todo</span>
                 </button>
               </div>
-              <p class="text-xs text-stone-400 mt-0.5">Panel WBS a la izquierda alineado 1:1 con las barras temporales.</p>
+              <p class="text-xs text-stone-400 mt-0.5">Cuadrícula unificada: cada tarea es una fila, cada subtarea la fila siguiente con barra temporal integrada.</p>
             </div>
             <span class="text-xs text-stone-400 italic hidden md:inline">Haz clic en la fila o barra para ver desglose</span>
           </div>
-          <div class="w-full overflow-x-auto overflow-y-auto max-h-[520px] rounded-xl border border-stone-200 bg-white relative shadow-2xs">
-            <div class="flex min-w-fit relative">
-              <!-- Panel Izquierdo: Lista WBS Congelada -->
-              <div class="sticky left-0 z-20 bg-white border-r border-stone-200 shadow-[4px_0_12px_rgba(0,0,0,0.05)] w-[360px] sm:w-[440px] flex-shrink-0 flex flex-col">
-                <div class="h-[52px] min-h-[52px] max-h-[52px] bg-stone-50 border-b border-stone-200 px-3 flex items-center justify-between text-[11px] font-extrabold text-stone-600 uppercase tracking-wider select-none">
-                  <div class="flex items-center gap-2">
-                    <span class="w-14 text-center">WBS</span>
-                    <span>Tarea / Entregable</span>
-                  </div>
-                  <div class="flex items-center gap-4 text-stone-500 font-bold pr-1">
-                    <span class="hidden sm:inline">Etapa</span>
-                    <span>Estado</span>
-                  </div>
-                </div>
-                <div id="specialistWbsRows" class="flex flex-col divide-y divide-stone-100"></div>
-              </div>
-
-              <!-- Panel Derecho: Cronograma Gantt Temporal Limpio -->
-              <div class="flex-1 bg-stone-50/20 overflow-visible">
-                <svg id="specialistGanttSvg"></svg>
-              </div>
-            </div>
+          <div id="specialistExcelGanttContainer" class="w-full overflow-x-auto overflow-y-auto max-h-[520px] rounded-xl border border-stone-200 bg-white relative shadow-2xs">
           </div>
         </div>
 
@@ -7167,36 +7122,236 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       `;
 
       if (userTasks.length > 0) {
-        renderWbsRows("specialistWbsRows", userTasks);
-        mountGantt("#specialistGanttSvg", userTasks);
+        renderExcelGanttTable("specialistExcelGanttContainer", userTasks);
         renderUserCards("#specialistCardsList", userTasks);
       } else {
         const msg = currentEtapa !== "todas" 
           ? `No hay tareas asignadas a ${info.name} en la etapa "${currentEtapa}".` 
           : `No hay tareas activas asignadas a este especialista.`;
-        document.getElementById("specialistGanttSvg").parentElement.innerHTML = `
-          <div class="flex flex-col items-center justify-center py-12 text-stone-400">
-            <i class="fa-solid fa-calendar-xmark text-3xl mb-2 text-stone-300"></i>
-            <p class="text-sm font-semibold text-stone-600">${msg}</p>
-            ${currentEtapa !== "todas" ? `<button onclick="changeEtapaFilter('todas'); document.getElementById('selectEtapa').value='todas';" class="mt-2 text-xs text-emerald-700 hover:underline font-bold">Ver en todas las etapas</button>` : ''}
-          </div>
-        `;
+        const c = document.getElementById("specialistExcelGanttContainer");
+        if (c) {
+          c.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-12 text-stone-400">
+              <i class="fa-solid fa-calendar-xmark text-3xl mb-2 text-stone-300"></i>
+              <p class="text-sm font-semibold text-stone-600">${msg}</p>
+              ${currentEtapa !== "todas" ? `<button onclick="changeEtapaFilter('todas'); document.getElementById('selectEtapa').value='todas';" class="mt-2 text-xs text-emerald-700 hover:underline font-bold cursor-pointer">Ver en todas las etapas</button>` : ''}
+            </div>
+          `;
+        }
       }
     }
 
-    // Renderizado del Panel Izquierdo WBS (Estilo Microsoft Project con Árbol de Subtareas)
-    function renderWbsRows(containerId, tasks) {
+    // =========================================================================
+    // CRONOGRAMA GANTT UNIFICADO ESTILO EXCEL (FILAS Y COLUMNAS)
+    // Cada tarea es una fila, cada subtarea la fila siguiente con barra integrada
+    // Cero anidamiento de bibliotecas, inmovilización de paneles y alineación 1:1
+    // =========================================================================
+    function renderExcelGanttTable(containerId, tasks) {
       const container = document.getElementById(containerId);
       if (!container) return;
-      container.innerHTML = "";
 
+      if (!tasks || tasks.length === 0) {
+        container.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-16 text-stone-400 bg-white">
+            <i class="fa-solid fa-calendar-xmark text-4xl mb-3 text-stone-300"></i>
+            <p class="text-sm font-semibold text-stone-600">No hay tareas asociadas para mostrar en el cronograma.</p>
+            ${currentEtapa !== "todas" ? `<button onclick="changeEtapaFilter('todas'); document.getElementById('selectEtapa').value='todas';" class="mt-3 px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-bold cursor-pointer">Ver Todas las Etapas</button>` : ''}
+          </div>
+        `;
+        return;
+      }
+
+      // 1. Determinar el horizonte temporal (fecha mínima y máxima)
+      let minTime = Infinity;
+      let maxTime = -Infinity;
+
+      function checkDates(sStr, eStr) {
+        const s = parseDateParts(sStr);
+        const e = parseDateParts(eStr) || s;
+        if (s) {
+          if (s.getTime() < minTime) minTime = s.getTime();
+          if (s.getTime() > maxTime) maxTime = s.getTime();
+        }
+        if (e) {
+          if (e.getTime() < minTime) minTime = e.getTime();
+          if (e.getTime() > maxTime) maxTime = e.getTime();
+        }
+      }
+
+      tasks.forEach(t => {
+        checkDates(t.start, t.end);
+        if (t.subtareas && Array.isArray(t.subtareas)) {
+          t.subtareas.forEach(sub => {
+            checkDates(sub.start || sub.fecha, sub.end || sub.fecha);
+          });
+        }
+      });
+
+      const now = new Date();
+      if (minTime === Infinity) minTime = new Date(now.getFullYear(), now.getMonth(), 1, 12).getTime();
+      if (maxTime === -Infinity) maxTime = new Date(now.getFullYear(), now.getMonth() + 1, 28, 12).getTime();
+
+      // Ajustar margen temporal (iniciar en lunes previo y finalizar con margen)
+      let calStart = new Date(minTime);
+      calStart.setDate(calStart.getDate() - 3);
+      const dayOfWeek = calStart.getDay();
+      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      calStart.setDate(calStart.getDate() + diffToMonday);
+      calStart.setHours(12, 0, 0, 0);
+
+      let calEnd = new Date(maxTime);
+      calEnd.setDate(calEnd.getDate() + 7);
+      calEnd.setHours(12, 0, 0, 0);
+
+      const msPerDay = 86400000;
+      let totalDays = Math.round((calEnd.getTime() - calStart.getTime()) / msPerDay);
+      if (totalDays < 28) {
+        calEnd.setDate(calEnd.getDate() + (28 - totalDays));
+        totalDays = Math.round((calEnd.getTime() - calStart.getTime()) / msPerDay);
+      }
+
+      // Ancho de columna según escala activa
+      let dayWidth = 24; // 'Week'
+      if (currentMode === "Day") dayWidth = 38;
+      else if (currentMode === "Month") dayWidth = 10;
+
+      const timelineWidth = totalDays * dayWidth;
+
+      // Hoy: indicador de fecha actual
+      const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+      const todayOffsetDays = (todayDate.getTime() - calStart.getTime()) / msPerDay;
+      const isTodayInWindow = todayOffsetDays >= 0 && todayOffsetDays <= totalDays;
+      const todayLeftPx = Math.round(todayOffsetDays * dayWidth + (dayWidth / 2));
+
+      // Generar cabecera de calendario por meses y días
+      const monthSpans = [];
+      const daysHeader = [];
+
+      let curD = new Date(calStart);
+      let currentMonthName = "";
+      let currentMonthDays = 0;
+      const monthNamesShort = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+      const dayNamesShort = ["D", "L", "M", "M", "J", "V", "S"];
+
+      for (let i = 0; i < totalDays; i++) {
+        const mName = `${monthNamesShort[curD.getMonth()]} ${curD.getFullYear()}`;
+        if (mName !== currentMonthName) {
+          if (currentMonthDays > 0) {
+            monthSpans.push({ name: currentMonthName, days: currentMonthDays, width: currentMonthDays * dayWidth });
+          }
+          currentMonthName = mName;
+          currentMonthDays = 0;
+        }
+        currentMonthDays++;
+
+        const isWeekend = curD.getDay() === 0 || curD.getDay() === 6;
+        const isToday = curD.getFullYear() === now.getFullYear() && curD.getMonth() === now.getMonth() && curD.getDate() === now.getDate();
+
+        daysHeader.push({
+          dayNum: curD.getDate(),
+          dayLetter: dayNamesShort[curD.getDay()],
+          isWeekend,
+          isToday,
+          left: i * dayWidth,
+          width: dayWidth
+        });
+
+        curD.setDate(curD.getDate() + 1);
+      }
+      if (currentMonthDays > 0) {
+        monthSpans.push({ name: currentMonthName, days: currentMonthDays, width: currentMonthDays * dayWidth });
+      }
+
+      // 2. Generar HTML de la tabla unificada estilo Excel
+      let html = `
+        <table class="w-full border-collapse text-xs select-none bg-white">
+          <thead>
+            <!-- Fila 1 de Cabecera: Títulos WBS y Meses del Timeline -->
+            <tr class="h-[28px] bg-stone-100 border-b border-stone-200 text-[11px] font-black text-stone-700 uppercase">
+              <th class="sticky left-0 z-30 bg-stone-100 border-r border-stone-200 px-2 text-center w-[90px] min-w-[90px]">
+                WBS / ID
+              </th>
+              <th class="sticky left-[90px] z-30 bg-stone-100 border-r border-stone-200 px-3 text-left w-[260px] min-w-[260px]">
+                Tarea / Entregable
+              </th>
+              <th class="sticky left-[350px] z-30 bg-stone-100 border-r border-stone-200 px-2.5 text-left w-[110px] min-w-[110px]">
+                Responsable
+              </th>
+              <th class="sticky left-[460px] z-30 bg-stone-100 border-r border-stone-200 px-2 text-center w-[110px] min-w-[110px] shadow-[4px_0_10px_rgba(0,0,0,0.06)]">
+                Estado
+              </th>
+              <!-- Cabecera de Meses del Timeline -->
+              <th class="p-0 border-b border-stone-200 bg-stone-50" style="width: ${timelineWidth}px; min-width: ${timelineWidth}px;">
+                <div class="flex h-[28px]">
+                  ${monthSpans.map(m => `
+                    <div class="h-full flex items-center justify-center font-extrabold text-[11px] text-stone-600 border-r border-stone-200 uppercase tracking-wider px-2 truncate" style="width: ${m.width}px;">
+                      ${m.name}
+                    </div>
+                  `).join('')}
+                </div>
+              </th>
+            </tr>
+
+            <!-- Fila 2 de Cabecera: Subtítulos WBS y Días del Timeline -->
+            <tr class="h-[26px] bg-stone-50 border-b border-stone-200 text-[10px] font-bold text-stone-500">
+              <th class="sticky left-0 z-30 bg-stone-50 border-r border-stone-200 px-2 text-center">
+                Código
+              </th>
+              <th class="sticky left-[90px] z-30 bg-stone-50 border-r border-stone-200 px-3 text-left">
+                Nombre & Entregable
+              </th>
+              <th class="sticky left-[350px] z-30 bg-stone-50 border-r border-stone-200 px-2.5 text-left">
+                Asignado
+              </th>
+              <th class="sticky left-[460px] z-30 bg-stone-50 border-r border-stone-200 px-2 text-center shadow-[4px_0_10px_rgba(0,0,0,0.06)]">
+                Avance
+              </th>
+              <!-- Celdas de Días -->
+              <th class="p-0 border-b border-stone-200 bg-stone-50/80" style="width: ${timelineWidth}px; min-width: ${timelineWidth}px;">
+                <div class="flex h-[26px]">
+                  ${daysHeader.map(d => `
+                    <div class="h-full flex flex-col items-center justify-center border-r border-stone-200/50 font-mono text-[9px] ${d.isToday ? 'bg-amber-100/90 font-black text-amber-900 ring-1 ring-amber-400' : (d.isWeekend ? 'bg-stone-100/60 text-stone-400' : 'text-stone-600')}" style="width: ${d.width}px;" title="Día ${d.dayNum}">
+                      <span>${d.dayNum}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-stone-100">
+      `;
+
+      // 3. Renderizado de Filas (Tareas y Subtareas en secuencia estricta)
       tasks.forEach((t) => {
         const hasSubtasks = t.subtareas && Array.isArray(t.subtareas) && t.subtareas.length > 0;
         const isExpanded = window.expandedTaskIds && window.expandedTaskIds.has(t.id);
 
-        const row = document.createElement("div");
-        row.className = "wbs-row h-[60px] min-h-[60px] max-h-[60px] px-3 flex items-center justify-between gap-2.5 hover:bg-emerald-50/80 transition cursor-pointer border-b border-stone-100 group select-none";
-        row.setAttribute("data-task-id", t.id);
+        // Posición de barra de tarea padre
+        const tStart = parseDateParts(t.start) || new Date(calStart);
+        const tEnd = parseDateParts(t.end) || tStart;
+        const startOff = Math.max(0, (tStart.getTime() - calStart.getTime()) / msPerDay);
+        const duration = Math.max(1, (tEnd.getTime() - tStart.getTime()) / msPerDay + 1);
+        const barLeft = Math.round(startOff * dayWidth);
+        const barWidth = Math.max(dayWidth, Math.round(duration * dayWidth));
+
+        const prog = Number(t.progress) || (t.estado === "Completada" ? 100 : (t.estado === "En Progreso" ? 50 : 0));
+
+        let barBg = "bg-slate-100 border-slate-400 text-slate-800";
+        let barProgBg = "bg-slate-400";
+        if (t.estado === "Completada") {
+          barBg = "bg-emerald-100 border-emerald-500 text-emerald-950";
+          barProgBg = "bg-emerald-500";
+        } else if (t.estado === "En Progreso") {
+          barBg = "bg-amber-100 border-amber-500 text-amber-950";
+          barProgBg = "bg-amber-500";
+        }
+
+        let statusPill = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-100 text-stone-600 border border-stone-300">No Iniciada</span>`;
+        if (t.estado === "Completada") {
+          statusPill = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">Completada</span>`;
+        } else if (t.estado === "En Progreso") {
+          statusPill = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">En Progreso</span>`;
+        }
 
         let avatarBg = "bg-emerald-700";
         let initials = "EM";
@@ -7207,32 +7362,33 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           else if (t.responsable.includes("Don Chiyo")) { avatarBg = "bg-amber-600"; initials = "DC"; }
         }
 
-        let statusDot = `<span class="w-2.5 h-2.5 rounded-full bg-stone-300 ring-2 ring-stone-100 shrink-0" title="No Iniciada"></span>`;
-        if (t.estado === "Completada") {
-          statusDot = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100 shrink-0" title="Completada"></span>`;
-        } else if (t.estado === "En Progreso") {
-          statusDot = `<span class="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-100 animate-pulse shrink-0" title="En Progreso"></span>`;
-        }
-
-        row.innerHTML = `
-          <div class="flex items-center gap-2 min-w-0 flex-1">
-            ${hasSubtasks ? `
-              <button type="button" onclick="event.stopPropagation(); toggleTaskTree('${t.id}')" class="w-5 h-5 flex items-center justify-center rounded hover:bg-stone-200 text-stone-500 hover:text-stone-800 transition text-[11px] shrink-0 cursor-pointer" title="${isExpanded ? 'Colapsar subtareas' : 'Desplegar subtareas'}">
-                <i class="fa-solid ${isExpanded ? 'fa-chevron-down text-emerald-700' : 'fa-chevron-right'}"></i>
-              </button>
-            ` : `
-              <span class="w-5 shrink-0"></span>
-            `}
-            <span class="w-14 shrink-0 font-mono font-black text-xs text-emerald-900 bg-emerald-100/80 px-1.5 py-0.5 rounded text-center border border-emerald-300/60 shadow-2xs group-hover:bg-emerald-200">
-              ${t.id}
-            </span>
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-1.5 min-w-0">
-                <p class="text-xs font-bold text-stone-800 truncate group-hover:text-emerald-900 transition" title="${escapeHtml(t.name)}">
-                  ${escapeHtml(t.name)}
-                </p>
+        // Fila de Tarea Principal
+        html += `
+          <tr class="h-[52px] hover:bg-emerald-50/40 transition group cursor-pointer border-b border-stone-200" onclick="openTaskModal('${t.id}')">
+            <!-- Columna 1: WBS / ID con botón de expansión -->
+            <td class="sticky left-0 z-20 bg-white group-hover:bg-emerald-50 border-r border-stone-200 px-2 text-center" onclick="event.stopPropagation()">
+              <div class="flex items-center justify-between gap-1">
                 ${hasSubtasks ? `
-                  <span class="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0 select-none">
+                  <button type="button" onclick="toggleTaskTree('${t.id}')" class="w-5 h-5 flex items-center justify-center rounded hover:bg-stone-200 text-stone-500 hover:text-stone-900 transition text-[11px] shrink-0 cursor-pointer" title="${isExpanded ? 'Colapsar subtareas' : 'Desplegar subtareas'}">
+                    <i class="fa-solid ${isExpanded ? 'fa-chevron-down text-emerald-700' : 'fa-chevron-right'}"></i>
+                  </button>
+                ` : `
+                  <span class="w-5 shrink-0"></span>
+                `}
+                <span class="w-14 font-mono font-black text-xs text-emerald-900 bg-emerald-100/90 px-1.5 py-0.5 rounded text-center border border-emerald-300/70 shadow-2xs group-hover:bg-emerald-200 truncate">
+                  ${t.id}
+                </span>
+              </div>
+            </td>
+
+            <!-- Columna 2: Tarea / Entregable -->
+            <td class="sticky left-[90px] z-20 bg-white group-hover:bg-emerald-50 border-r border-stone-200 px-3 text-left">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="font-bold text-stone-900 truncate group-hover:text-emerald-900 transition text-xs" title="${escapeHtml(t.name)}">
+                  ${escapeHtml(t.name)}
+                </span>
+                ${hasSubtasks ? `
+                  <span class="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
                     🧩 ${t.subtareas.length} sub
                   </span>
                 ` : ''}
@@ -7244,286 +7400,181 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                 <span>&bull;</span>
                 <span class="font-black text-emerald-800">$${Number(t.costoTotal).toLocaleString('es-MX', {minimumFractionDigits: 0})}</span>
               </div>
-            </div>
-          </div>
-          <div class="flex items-center gap-2 shrink-0 pl-1">
-            ${(taskComments[t.id] && taskComments[t.id].length > 0) ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300/60 flex items-center gap-1 shadow-2xs" title="${taskComments[t.id].length} notas en bitácora"><i class="fa-regular fa-comment-dots text-emerald-700"></i> ${taskComments[t.id].length}</span>` : ''}
-            <span class="w-6 h-6 rounded-lg ${avatarBg} text-white font-extrabold text-[10px] flex items-center justify-center shadow-2xs" title="${escapeHtml(t.responsable || 'Sin Asignar')}">
-              ${initials}
-            </span>
-            ${statusDot}
-          </div>
+            </td>
+
+            <!-- Columna 3: Responsable -->
+            <td class="sticky left-[350px] z-20 bg-white group-hover:bg-emerald-50 border-r border-stone-200 px-2.5 text-left">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="w-5 h-5 rounded-md ${avatarBg} text-white font-black text-[9px] flex items-center justify-center shrink-0 shadow-2xs">
+                  ${initials}
+                </span>
+                <span class="font-semibold text-stone-700 truncate text-[11px]" title="${escapeHtml(t.responsable || 'Sin Asignar')}">
+                  ${escapeHtml(t.responsable || 'Sin Asignar')}
+                </span>
+              </div>
+            </td>
+
+            <!-- Columna 4: Estado -->
+            <td class="sticky left-[460px] z-20 bg-white group-hover:bg-emerald-50 border-r border-stone-200 px-2 text-center shadow-[4px_0_10px_rgba(0,0,0,0.06)]">
+              ${statusPill}
+            </td>
+
+            <!-- Columna 5: Barra de Gantt en la misma fila -->
+            <td class="p-0 relative h-[52px] bg-stone-50/20 group-hover:bg-emerald-50/20 transition overflow-hidden" style="width: ${timelineWidth}px; min-width: ${timelineWidth}px;">
+              <!-- Rejilla de días -->
+              <div class="absolute inset-0 flex pointer-events-none">
+                ${daysHeader.map(d => `
+                  <div class="h-full border-r border-stone-200/30 ${d.isWeekend ? 'bg-stone-100/30' : ''}" style="width: ${d.width}px;"></div>
+                `).join('')}
+              </div>
+
+              <!-- Línea vertical de HOY -->
+              ${isTodayInWindow ? `
+                <div class="absolute top-0 bottom-0 w-[2px] bg-rose-500 z-10 pointer-events-none shadow-xs" style="left: ${todayLeftPx}px;" title="HOY (${now.toISOString().substring(0, 10)})"></div>
+              ` : ''}
+
+              <!-- Barra de Gantt de Tarea -->
+              <div class="absolute top-2.5 h-[32px] rounded-lg border shadow-xs flex items-center px-2.5 transition hover:brightness-105 z-10 ${barBg}" style="left: ${barLeft}px; width: ${barWidth}px;" title="${t.id}: ${escapeHtml(t.name)}&#10;Fechas: ${t.start} ➔ ${t.end}&#10;Progreso: ${prog}%&#10;Responsable: ${escapeHtml(t.responsable || 'Sin Asignar')}">
+                <div class="absolute left-0 top-0 bottom-0 rounded-l-lg opacity-25 ${barProgBg}" style="width: ${prog}%;"></div>
+                <span class="relative z-10 text-[11px] font-black truncate drop-shadow-xs">
+                  ${t.id} &bull; ${escapeHtml(t.name)}
+                </span>
+              </div>
+            </td>
+          </tr>
         `;
 
-        row.onclick = () => openTaskModal(t.id);
-
-        row.onmouseenter = () => {
-          row.classList.add("bg-emerald-100/60");
-          const barWrapper = document.querySelector(`.bar-wrapper[data-task-id="${t.id}"]`);
-          if (barWrapper) barWrapper.classList.add("bar-highlight");
-        };
-        row.onmouseleave = () => {
-          row.classList.remove("bg-emerald-100/60");
-          const barWrapper = document.querySelector(`.bar-wrapper[data-task-id="${t.id}"]`);
-          if (barWrapper) barWrapper.classList.remove("bar-highlight");
-        };
-
-        container.appendChild(row);
-
-        // Si la tarea tiene subtareas y está expandida, renderizar filas secundarias en árbol
-        if (hasSubtasks && isExpanded) {
-          t.subtareas.forEach((sub) => {
-            const subRow = document.createElement("div");
-            subRow.className = "wbs-row wbs-subtask-row h-[60px] min-h-[60px] max-h-[60px] px-3 pl-7 flex items-center justify-between gap-2 bg-indigo-50/20 hover:bg-indigo-50/80 transition cursor-pointer border-b border-stone-100 group select-none";
-            subRow.setAttribute("data-task-id", sub.id);
-            subRow.setAttribute("data-parent-id", t.id);
-
-            let subAvatarBg = "bg-stone-600";
-            let subInitials = "EM";
-            const subResp = sub.responsable || t.responsable || "";
-            if (subResp.includes("Arturo B.")) { subAvatarBg = "bg-blue-600"; subInitials = "AB"; }
-            else if (subResp.includes("Gema R.")) { subAvatarBg = "bg-emerald-600"; subInitials = "GR"; }
-            else if (subResp.includes("Arturo A.")) { subAvatarBg = "bg-purple-600"; subInitials = "AA"; }
-            else if (subResp.includes("Don Chiyo")) { subAvatarBg = "bg-amber-600"; subInitials = "DC"; }
-
-            let subStatusDot = `<span class="w-2.5 h-2.5 rounded-full bg-stone-300 ring-2 ring-stone-100 shrink-0" title="Subtarea No Iniciada"></span>`;
-            if (sub.estado === "Completada") {
-              subStatusDot = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100 shrink-0" title="Subtarea Completada"></span>`;
-            } else if (sub.estado === "En Progreso") {
-              subStatusDot = `<span class="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-100 animate-pulse shrink-0" title="Subtarea En Progreso"></span>`;
-            }
-
-            subRow.innerHTML = `
-              <div class="flex items-center gap-2 min-w-0 flex-1">
-                <span class="font-mono text-indigo-400 text-xs shrink-0 select-none">└──</span>
-                <span class="w-20 shrink-0 font-mono font-bold text-[10px] text-indigo-900 bg-indigo-100/90 px-1 py-0.5 rounded text-center border border-indigo-300/60 shadow-2xs group-hover:bg-indigo-200">
-                  ${sub.id}
-                </span>
-                <div class="min-w-0 flex-1">
-                  <p class="text-xs font-semibold text-stone-800 truncate group-hover:text-indigo-900 transition" title="${escapeHtml(sub.name)}">
-                    ${escapeHtml(sub.name)}
-                  </p>
-                  <div class="flex items-center gap-2 text-[10px] text-stone-400 mt-0.5">
-                    <span class="text-stone-500 font-medium truncate flex items-center gap-1">
-                      <i class="fa-regular fa-calendar text-stone-400 text-[9px]"></i> ${sub.fecha || t.start || '--'}
-                    </span>
-                    <span>&bull;</span>
-                    <span class="font-bold text-stone-600">${sub.horas || 0} hrs</span>
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center gap-2 shrink-0 pl-1">
-                <span class="w-5 h-5 rounded-md ${subAvatarBg} text-white font-extrabold text-[9px] flex items-center justify-center shadow-2xs" title="${escapeHtml(subResp)}">
-                  ${subInitials}
-                </span>
-                ${subStatusDot}
-              </div>
-            `;
-
-            subRow.onclick = () => openTaskModal(t.id);
-
-            subRow.onmouseenter = () => {
-              subRow.classList.add("bg-indigo-100/70");
-              const barWrapper = document.querySelector(`.bar-wrapper[data-task-id="${sub.id}"]`);
-              if (barWrapper) barWrapper.classList.add("bar-subtask-highlight");
-            };
-            subRow.onmouseleave = () => {
-              subRow.classList.remove("bg-indigo-100/70");
-              const barWrapper = document.querySelector(`.bar-wrapper[data-task-id="${sub.id}"]`);
-              if (barWrapper) barWrapper.classList.remove("bar-subtask-highlight");
-            };
-
-            container.appendChild(subRow);
-          });
-        }
-      });
-    }
-
-    // Motor de Montaje de Frappe Gantt con Subtareas Desplegables Sincronizadas
-    function mountGantt(svgSelector, tasks) {
-      const svgEl = document.querySelector(svgSelector);
-      if (!svgEl) return;
-
-      const flatGanttItems = [];
-
-      tasks.forEach(t => {
-        const sDate = (t.start && String(t.start).length >= 10) ? String(t.start).substring(0, 10) : "2026-09-20";
-        let eDate = (t.end && String(t.end).length >= 10) ? String(t.end).substring(0, 10) : sDate;
-        if (new Date(eDate) < new Date(sDate)) eDate = sDate;
-
-        let cls = "gantt-noiniciada";
-        if (t.estado === "Completada") cls = "gantt-completada";
-        else if (t.estado === "En Progreso") cls = "gantt-progreso";
-
-        const prog = Number(t.progress) || (t.estado === "Completada" ? 100 : (t.estado === "En Progreso" ? 50 : 0));
-
-        flatGanttItems.push({
-          id: String(t.id),
-          name: `${t.id}`,
-          fullName: t.name,
-          wbs: t.wbs,
-          responsable: t.responsable,
-          start: sDate,
-          end: eDate,
-          progress: prog,
-          custom_class: cls,
-          dependencies: t.dependencies || "",
-          isSubtask: false,
-          parentTaskId: null
-        });
-
-        // Intercalar subtareas en la línea de tiempo si la tarea está expandida
-        const hasSubtasks = t.subtareas && Array.isArray(t.subtareas) && t.subtareas.length > 0;
-        const isExpanded = window.expandedTaskIds && window.expandedTaskIds.has(t.id);
-
+        // Si la tarea tiene subtareas y está expandida, renderizar cada subtarea como la fila siguiente
         if (hasSubtasks && isExpanded) {
           t.subtareas.forEach(sub => {
-            let subStart = (sub.start && String(sub.start).length >= 10) ? String(sub.start).substring(0, 10) : (sub.fecha && String(sub.fecha).length >= 10 ? String(sub.fecha).substring(0, 10) : sDate);
-            let subEnd = (sub.end && String(sub.end).length >= 10) ? String(sub.end).substring(0, 10) : (sub.fecha && String(sub.fecha).length >= 10 ? String(sub.fecha).substring(0, 10) : subStart);
-            if (new Date(subEnd) < new Date(subStart)) subEnd = subStart;
-            // Garantizar visibilidad de barra de 1 día si inicio coincide con fin
-            if (subStart === subEnd) {
-              const d = new Date(subStart + "T12:00:00");
-              d.setDate(d.getDate() + 1);
-              subEnd = d.toISOString().substring(0, 10);
+            const sStart = parseDateParts(sub.start || sub.fecha) || tStart;
+            const sEnd = parseDateParts(sub.end || sub.fecha) || sStart;
+            const sOff = Math.max(0, (sStart.getTime() - calStart.getTime()) / msPerDay);
+            const sDur = Math.max(1, (sEnd.getTime() - sStart.getTime()) / msPerDay + 1);
+            const sBarLeft = Math.round(sOff * dayWidth);
+            const sBarWidth = Math.max(dayWidth, Math.round(sDur * dayWidth));
+
+            const sProg = sub.estado === "Completada" ? 100 : (sub.estado === "En Progreso" ? 50 : 0);
+
+            let sBarBg = "bg-slate-50 border-slate-300 text-slate-700 border-dashed";
+            let sBarProgBg = "bg-slate-300";
+            if (sub.estado === "Completada") {
+              sBarBg = "bg-indigo-100 border-indigo-500 text-indigo-950";
+              sBarProgBg = "bg-indigo-500";
+            } else if (sub.estado === "En Progreso") {
+              sBarBg = "bg-amber-100 border-amber-500 text-amber-900";
+              sBarProgBg = "bg-amber-500";
             }
 
-            let subCls = "gantt-subtask gantt-subtask-noiniciada";
-            if (sub.estado === "Completada") subCls = "gantt-subtask gantt-subtask-completada";
-            else if (sub.estado === "En Progreso") subCls = "gantt-subtask gantt-subtask-progreso";
+            let sStatusPill = `<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-stone-100 text-stone-500 border border-stone-200">No Iniciada</span>`;
+            if (sub.estado === "Completada") {
+              sStatusPill = `<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Completada</span>`;
+            } else if (sub.estado === "En Progreso") {
+              sStatusPill = `<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-200">En Progreso</span>`;
+            }
 
-            const subProg = Number(sub.progress) || (sub.estado === "Completada" ? 100 : (sub.estado === "En Progreso" ? 50 : 0));
+            const subResp = sub.responsable || t.responsable || "";
+            let sAvatarBg = "bg-stone-600";
+            let sInitials = "EM";
+            if (subResp.includes("Arturo B.")) { sAvatarBg = "bg-blue-600"; sInitials = "AB"; }
+            else if (subResp.includes("Gema R.")) { sAvatarBg = "bg-emerald-600"; sInitials = "GR"; }
+            else if (subResp.includes("Arturo A.")) { sAvatarBg = "bg-purple-600"; sInitials = "AA"; }
+            else if (subResp.includes("Don Chiyo")) { sAvatarBg = "bg-amber-600"; sInitials = "DC"; }
 
-            flatGanttItems.push({
-              id: String(sub.id),
-              name: `↳ ${sub.id}`,
-              fullName: sub.name,
-              wbs: sub.id,
-              responsable: sub.responsable || t.responsable,
-              start: subStart,
-              end: subEnd,
-              progress: subProg,
-              custom_class: subCls,
-              dependencies: "",
-              isSubtask: true,
-              parentTaskId: t.id
-            });
+            html += `
+              <tr class="h-[44px] bg-indigo-50/15 hover:bg-indigo-50/50 transition group cursor-pointer border-b border-stone-100" onclick="openTaskModal('${t.id}')">
+                <!-- Columna 1: Conector y código de subtarea -->
+                <td class="sticky left-0 z-20 bg-indigo-50/40 group-hover:bg-indigo-100/60 border-r border-stone-200 px-2 pl-4 text-center">
+                  <div class="flex items-center gap-1">
+                    <span class="font-mono text-indigo-400 text-xs shrink-0 select-none">└──</span>
+                    <span class="w-16 font-mono font-bold text-[10px] text-indigo-900 bg-indigo-100/90 px-1 py-0.5 rounded text-center border border-indigo-300/60 shadow-2xs truncate">
+                      ${sub.id}
+                    </span>
+                  </div>
+                </td>
+
+                <!-- Columna 2: Nombre de subtarea -->
+                <td class="sticky left-[90px] z-20 bg-indigo-50/40 group-hover:bg-indigo-100/60 border-r border-stone-200 px-3 text-left">
+                  <div class="font-semibold text-stone-800 truncate text-xs group-hover:text-indigo-900 transition" title="${escapeHtml(sub.name)}">
+                    ${escapeHtml(sub.name)}
+                  </div>
+                  <div class="text-[10px] text-stone-400">
+                    <span>${sub.fecha || t.start || '--'}</span> &bull; <span>${sub.horas || 0} hrs</span>
+                  </div>
+                </td>
+
+                <!-- Columna 3: Responsable de subtarea -->
+                <td class="sticky left-[350px] z-20 bg-indigo-50/40 group-hover:bg-indigo-100/60 border-r border-stone-200 px-2.5 text-left">
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <span class="w-4 h-4 rounded ${sAvatarBg} text-white font-extrabold text-[8px] flex items-center justify-center shrink-0">
+                      ${sInitials}
+                    </span>
+                    <span class="font-medium text-stone-700 truncate text-[10px]" title="${escapeHtml(subResp)}">
+                      ${escapeHtml(subResp)}
+                    </span>
+                  </div>
+                </td>
+
+                <!-- Columna 4: Estado de subtarea -->
+                <td class="sticky left-[460px] z-20 bg-indigo-50/40 group-hover:bg-indigo-100/60 border-r border-stone-200 px-2 text-center shadow-[4px_0_10px_rgba(0,0,0,0.06)]">
+                  ${sStatusPill}
+                </td>
+
+                <!-- Columna 5: Barra de Gantt de Subtarea en la misma fila -->
+                <td class="p-0 relative h-[44px] bg-indigo-50/10 group-hover:bg-indigo-50/30 transition overflow-hidden" style="width: ${timelineWidth}px; min-width: ${timelineWidth}px;">
+                  <!-- Rejilla de días -->
+                  <div class="absolute inset-0 flex pointer-events-none">
+                    ${daysHeader.map(d => `
+                      <div class="h-full border-r border-stone-200/20 ${d.isWeekend ? 'bg-stone-100/20' : ''}" style="width: ${d.width}px;"></div>
+                    `).join('')}
+                  </div>
+
+                  <!-- Línea HOY -->
+                  ${isTodayInWindow ? `
+                    <div class="absolute top-0 bottom-0 w-[2px] bg-rose-500/80 z-10 pointer-events-none" style="left: ${todayLeftPx}px;"></div>
+                  ` : ''}
+
+                  <!-- Barra de Gantt de Subtarea -->
+                  <div class="absolute top-2 h-[26px] rounded-md border shadow-2xs flex items-center px-2 transition hover:brightness-105 z-10 ${sBarBg}" style="left: ${sBarLeft}px; width: ${sBarWidth}px;" title="Subtarea ${sub.id}: ${escapeHtml(sub.name)}&#10;Fecha: ${sub.fecha || t.start}&#10;Responsable: ${escapeHtml(subResp)}">
+                    <div class="absolute left-0 top-0 bottom-0 rounded-l-md opacity-30 ${sBarProgBg}" style="width: ${sProg}%;"></div>
+                    <span class="relative z-10 text-[10px] font-bold truncate">
+                      ↳ ${sub.id}: ${escapeHtml(sub.name)}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            `;
           });
         }
       });
 
-      try {
-        new Gantt(svgSelector, flatGanttItems, {
-          header_height: 52,
-          column_width: currentMode === "Day" ? 42 : (currentMode === "Month" ? 75 : 38),
-          step: 24,
-          view_modes: ['Day', 'Week', 'Month'],
-          bar_height: 38,
-          bar_corner_radius: 6,
-          arrow_curve: 5,
-          padding: 22,
-          view_mode: currentMode,
-          date_format: 'YYYY-MM-DD',
-          custom_popup_html: function(task) {
-            const item = flatGanttItems.find(x => x.id === task.id);
-            if (item && item.isSubtask) {
-              return `
-                <div class="p-3 bg-stone-900 text-white rounded-xl shadow-xl text-xs space-y-1.5 max-w-xs border border-indigo-500/50">
-                  <div class="flex items-center justify-between text-indigo-300 font-mono font-bold text-[10px] uppercase">
-                    <span>🧩 Subtarea &bull; ${item.id}</span>
-                    <span>${item.progress}%</span>
-                  </div>
-                  <p class="font-bold text-white text-xs leading-snug">${escapeHtml(item.fullName || item.name)}</p>
-                  <div class="flex items-center justify-between text-[10px] text-stone-300 pt-1 border-t border-stone-800">
-                    <span><i class="fa-regular fa-calendar text-stone-400"></i> ${item.start} ➔ ${item.end}</span>
-                    <span class="text-indigo-300 font-semibold">${escapeHtml(item.responsable || 'Sin Asignar')}</span>
-                  </div>
-                </div>
-              `;
-            }
-            return `
-              <div class="p-3 bg-stone-900 text-white rounded-xl shadow-xl text-xs space-y-1.5 max-w-xs border border-emerald-500/50">
-                <div class="flex items-center justify-between text-emerald-400 font-mono font-bold text-[10px] uppercase">
-                  <span>WBS ${item ? (item.wbs || item.id) : task.id} &bull; ${task.id}</span>
-                  <span>${task.progress}%</span>
-                </div>
-                <p class="font-bold text-white text-xs leading-snug">${escapeHtml(item ? item.fullName : task.name)}</p>
-                <div class="flex items-center justify-between text-[10px] text-stone-300 pt-1 border-t border-stone-800">
-                  <span><i class="fa-regular fa-calendar text-stone-400"></i> ${task.start} ➔ ${task.end}</span>
-                  <span class="text-emerald-400 font-semibold">${escapeHtml((item && item.responsable) ? item.responsable : 'Sin Asignar')}</span>
-                </div>
-              </div>
-            `;
-          },
-          on_click: function(task) {
-            const item = flatGanttItems.find(x => x.id === task.id);
-            if (item && item.isSubtask) {
-              openTaskModal(item.parentTaskId);
-            } else {
-              openTaskModal(task.id);
-            }
-          }
-        });
+      html += `
+          </tbody>
+        </table>
+      `;
 
-        // Estilizar y vincular atributos data-task-id a cada barra y hover bidireccional
-        svgEl.querySelectorAll(".bar-wrapper").forEach((bw, idx) => {
-          const item = flatGanttItems[idx];
-          if (!item) return;
-          bw.setAttribute("data-task-id", item.id);
-          if (item.isSubtask) {
-            bw.setAttribute("data-parent-id", item.parentTaskId);
-            // Ajustar visualmente altura sutil y centrado de la barra de subtarea en el SVG
-            const rectBar = bw.querySelector(".bar");
-            if (rectBar) {
-              const curY = parseFloat(rectBar.getAttribute("y") || "0");
-              rectBar.setAttribute("height", "26");
-              rectBar.setAttribute("y", curY + 6);
-              rectBar.setAttribute("rx", "4");
-            }
-            const rectProg = bw.querySelector(".bar-progress");
-            if (rectProg) {
-              const curY = parseFloat(rectProg.getAttribute("y") || "0");
-              rectProg.setAttribute("height", "26");
-              rectProg.setAttribute("y", curY + 6);
-              rectProg.setAttribute("rx", "4");
-            }
-          }
+      // Preservar posición de scroll del usuario
+      const prevLeft = container.scrollLeft;
+      const prevTop = container.scrollTop;
 
-          bw.addEventListener("mouseenter", () => {
-            document.querySelectorAll(`.wbs-row[data-task-id="${item.id}"]`).forEach(r => {
-              r.classList.add(item.isSubtask ? "bg-indigo-100/80" : "bg-emerald-100/80");
-            });
-          });
-          bw.addEventListener("mouseleave", () => {
-            document.querySelectorAll(`.wbs-row[data-task-id="${item.id}"]`).forEach(r => {
-              r.classList.remove(item.isSubtask ? "bg-indigo-100/80" : "bg-emerald-100/80");
-            });
-          });
-        });
+      container.innerHTML = html;
 
-        // Auto-scroll horizontal inteligente: enfoca la primera tarea en progreso o activa
+      if (prevLeft > 0 || prevTop > 0) {
+        container.scrollLeft = prevLeft;
+        container.scrollTop = prevTop;
+      } else {
+        // Auto-scroll inicial a HOY o a la primera tarea activa
         setTimeout(() => {
-          const container = svgEl.closest(".overflow-x-auto") || svgEl.parentElement;
-          if (container && flatGanttItems.length > 0) {
-            const targetBar = svgEl.querySelector(".gantt-progreso") || svgEl.querySelector(".gantt-subtask-progreso") || svgEl.querySelector(".bar-wrapper");
-            if (targetBar) {
-              const rect = targetBar.querySelector(".bar");
-              if (rect) {
-                const barX = parseFloat(rect.getAttribute("x") || "0");
-                if (barX > 320) {
-                  container.scrollTo({ left: Math.max(0, barX - 200), behavior: 'smooth' });
-                } else {
-                  container.scrollTo({ left: 0, behavior: 'smooth' });
-                }
-              }
-            }
+          if (isTodayInWindow && todayLeftPx > 200) {
+            container.scrollTo({ left: Math.max(0, todayLeftPx - 150), behavior: 'smooth' });
           }
-        }, 120);
-
-      } catch(err) {
-        console.error("Error al inicializar Frappe Gantt:", err);
+        }, 60);
       }
     }
+
+    // Alias retrocompatibles
+    function renderWbsRows(containerId, tasks) { /* Reemplazado por renderExcelGanttTable */ }
+    function mountGantt(svgSelector, tasks) { /* Reemplazado por renderExcelGanttTable */ }
 
     // Renderizar tarjetas en las 3 columnas Kanban de la Vista Global
     function renderKanbanColumns(tasks) {
@@ -7627,11 +7678,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           b.className = "scale-btn px-2.5 py-1 rounded text-stone-600 hover:text-emerald-800 transition";
         }
       });
-      const container = document.getElementById("viewContainer");
-      if (container) {
-        if (currentView === "todos") renderGlobalView(container);
-        else renderSpecialistView(container, currentView);
-      }
+      refreshCurrentGanttView();
     }
 
     // Modal de Tarea
