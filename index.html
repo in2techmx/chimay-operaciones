@@ -189,7 +189,28 @@
       filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.7)) !important;
     }
 
-    /* Animación Cinemática Ken Burns & Carrusel Sleek Yucatán */
+    /* Scrollbars elegantes para ventanas divididas del Gantt */
+    .custom-scrollbar {
+      scrollbar-width: thin;
+      scrollbar-color: #d6d3d1 #f5f5f4;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f5f5f4;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #d6d3d1;
+      border-radius: 4px;
+      border: 1px solid #e7e5e4;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #a8a29e;
+    }
+
     @keyframes kenburns-slide {
       0% { transform: scale(1.0) translate(0, 0); }
       50% { transform: scale(1.08) translate(-1%, -0.5%); }
@@ -5926,15 +5947,17 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                   <i class="fa-solid fa-compress text-stone-500 text-xs"></i> <span>▸ Colapsar Todo</span>
                 </button>
               </div>
-              <p class="text-xs text-stone-400 mt-0.5">Cuadrícula unificada: cada tarea es una fila, cada subtarea la fila siguiente con barra temporal integrada.</p>
+              <p class="text-xs text-stone-400 mt-0.5">Dos ventanas sincronizadas: Listado de tareas (ajustable con scroll horizontal propio) y Cronograma Gantt predominante.</p>
             </div>
             <div class="flex items-center gap-3 text-xs text-stone-400 italic hidden md:flex">
-              <span><i class="fa-solid fa-arrows-left-right text-stone-300"></i> Scroll horizontal para fechas</span>
+              <span><i class="fa-solid fa-arrows-left-right text-stone-300"></i> Scroll horizontal independiente</span>
               <span>&bull;</span>
-              <span><i class="fa-solid fa-hand-pointer text-stone-300"></i> Clic en fila o barra para ver detalle</span>
+              <span><i class="fa-solid fa-arrows-split-up-and-left text-stone-300"></i> Arrastra el divisor para ajustar</span>
+              <span>&bull;</span>
+              <span><i class="fa-solid fa-hand-pointer text-stone-300"></i> Clic para ver detalle</span>
             </div>
           </div>
-          <div id="globalExcelGanttContainer" class="w-full overflow-x-auto overflow-y-auto max-h-[640px] rounded-xl border border-stone-200 bg-white relative shadow-2xs">
+          <div id="globalExcelGanttContainer" class="w-full rounded-xl border border-stone-200 bg-white relative shadow-2xs overflow-hidden">
           </div>
         </div>
 
@@ -7104,11 +7127,11 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                   <i class="fa-solid fa-compress text-stone-500 text-xs"></i> <span>▸ Colapsar Todo</span>
                 </button>
               </div>
-              <p class="text-xs text-stone-400 mt-0.5">Cuadrícula unificada: cada tarea es una fila, cada subtarea la fila siguiente con barra temporal integrada.</p>
+              <p class="text-xs text-stone-400 mt-0.5">Dos ventanas sincronizadas: Listado de tareas (ajustable con scroll horizontal propio) y Cronograma Gantt predominante.</p>
             </div>
-            <span class="text-xs text-stone-400 italic hidden md:inline">Haz clic en la fila o barra para ver desglose</span>
+            <span class="text-xs text-stone-400 italic hidden md:inline">Scroll independiente en cada ventana &bull; Arrastra el divisor</span>
           </div>
-          <div id="specialistExcelGanttContainer" class="w-full overflow-x-auto overflow-y-auto max-h-[520px] rounded-xl border border-stone-200 bg-white relative shadow-2xs">
+          <div id="specialistExcelGanttContainer" class="w-full rounded-xl border border-stone-200 bg-white relative shadow-2xs overflow-hidden">
           </div>
         </div>
 
@@ -7141,14 +7164,18 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       }
     }
 
-    // =========================================================================
-    // CRONOGRAMA GANTT UNIFICADO ESTILO EXCEL (FILAS Y COLUMNAS)
-    // Cada tarea es una fila, cada subtarea la fila siguiente con barra integrada
-    // Cero anidamiento de bibliotecas, inmovilización de paneles y alineación 1:1
+        // =========================================================================
+    // CRONOGRAMA GANTT CON DOS VENTANAS COEXISTENTES & SPLITTER AJUSTABLE
+    // Ventana Izquierda: Tareas y Subtareas (ancho ajustable, scroll horizontal propio)
+    // Barra Divisoria: Splitter drag-to-resize para recortar o ensanchar la lista
+    // Ventana Derecha: Gantt Timeline predominante (scroll horizontal propio)
+    // Sincronización Vertical 1:1 absoluta por altura idéntica de filas (52px / 44px)
     // =========================================================================
     function renderExcelGanttTable(containerId, tasks) {
       const container = document.getElementById(containerId);
       if (!container) return;
+
+      container.className = "w-full rounded-xl border border-stone-200 bg-white shadow-2xs overflow-hidden relative select-none";
 
       if (!tasks || tasks.length === 0) {
         container.innerHTML = `
@@ -7262,69 +7289,18 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         monthSpans.push({ name: currentMonthName, days: currentMonthDays, width: currentMonthDays * dayWidth });
       }
 
-      // 2. Generar HTML de la tabla unificada estilo Excel
-      let html = `
-        <table class="w-full border-collapse text-xs select-none bg-white">
-          <thead>
-            <!-- Fila 1 de Cabecera: Títulos WBS y Meses del Timeline -->
-            <tr class="h-[28px] bg-stone-100 border-b border-stone-200 text-[11px] font-black text-stone-700 uppercase">
-              <th class="sticky left-0 z-30 bg-stone-100 border-r border-stone-200 px-2 text-center w-[90px] min-w-[90px]">
-                WBS / ID
-              </th>
-              <th class="sticky left-[90px] z-30 bg-stone-100 border-r border-stone-200 px-3 text-left w-[260px] min-w-[260px]">
-                Tarea / Entregable
-              </th>
-              <th class="sticky left-[350px] z-30 bg-stone-100 border-r border-stone-200 px-2.5 text-left w-[110px] min-w-[110px]">
-                Responsable
-              </th>
-              <th class="sticky left-[460px] z-30 bg-stone-100 border-r border-stone-200 px-2 text-center w-[110px] min-w-[110px] shadow-[4px_0_10px_rgba(0,0,0,0.06)]">
-                Estado
-              </th>
-              <!-- Cabecera de Meses del Timeline -->
-              <th class="p-0 border-b border-stone-200 bg-stone-50" style="width: ${timelineWidth}px; min-width: ${timelineWidth}px;">
-                <div class="flex h-[28px]">
-                  ${monthSpans.map(m => `
-                    <div class="h-full flex items-center justify-center font-extrabold text-[11px] text-stone-600 border-r border-stone-200 uppercase tracking-wider px-2 truncate" style="width: ${m.width}px;">
-                      ${m.name}
-                    </div>
-                  `).join('')}
-                </div>
-              </th>
-            </tr>
+      // Ancho inicial del panel de tareas (guardado en window o default 360px)
+      const taskPaneWidth = window.ganttTaskPaneWidth || 360;
 
-            <!-- Fila 2 de Cabecera: Subtítulos WBS y Días del Timeline -->
-            <tr class="h-[26px] bg-stone-50 border-b border-stone-200 text-[10px] font-bold text-stone-500">
-              <th class="sticky left-0 z-30 bg-stone-50 border-r border-stone-200 px-2 text-center">
-                Código
-              </th>
-              <th class="sticky left-[90px] z-30 bg-stone-50 border-r border-stone-200 px-3 text-left">
-                Nombre & Entregable
-              </th>
-              <th class="sticky left-[350px] z-30 bg-stone-50 border-r border-stone-200 px-2.5 text-left">
-                Asignado
-              </th>
-              <th class="sticky left-[460px] z-30 bg-stone-50 border-r border-stone-200 px-2 text-center shadow-[4px_0_10px_rgba(0,0,0,0.06)]">
-                Avance
-              </th>
-              <!-- Celdas de Días -->
-              <th class="p-0 border-b border-stone-200 bg-stone-50/80" style="width: ${timelineWidth}px; min-width: ${timelineWidth}px;">
-                <div class="flex h-[26px]">
-                  ${daysHeader.map(d => `
-                    <div class="h-full flex flex-col items-center justify-center border-r border-stone-200/50 font-mono text-[9px] ${d.isToday ? 'bg-amber-100/90 font-black text-amber-900 ring-1 ring-amber-400' : (d.isWeekend ? 'bg-stone-100/60 text-stone-400' : 'text-stone-600')}" style="width: ${d.width}px;" title="Día ${d.dayNum}">
-                      <span>${d.dayNum}</span>
-                    </div>
-                  `).join('')}
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-stone-100">
-      `;
+      // 2. Generar Filas Sincronizadas para Ambos Paneles
+      let tasksTableRowsHtml = "";
+      let timelineRowsHtml = "";
+      let rowCounter = 0;
 
-      // 3. Renderizado de Filas (Tareas y Subtareas en secuencia estricta)
       tasks.forEach((t) => {
         const hasSubtasks = t.subtareas && Array.isArray(t.subtareas) && t.subtareas.length > 0;
         const isExpanded = window.expandedTaskIds && window.expandedTaskIds.has(t.id);
+        const taskRowIdx = rowCounter++;
 
         // Posición de barra de tarea padre
         const tStart = parseDateParts(t.start) || new Date(calStart);
@@ -7362,11 +7338,10 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           else if (t.responsable.includes("Don Chiyo")) { avatarBg = "bg-amber-600"; initials = "DC"; }
         }
 
-        // Fila de Tarea Principal
-        html += `
-          <tr class="h-[52px] hover:bg-emerald-50/40 transition group cursor-pointer border-b border-stone-200" onclick="openTaskModal('${t.id}')">
-            <!-- Columna 1: WBS / ID con botón de expansión -->
-            <td class="sticky left-0 z-20 bg-white group-hover:bg-emerald-50 border-r border-stone-200 px-2 text-center" onclick="event.stopPropagation()">
+        // Fila en Panel de Tareas (h-[52px])
+        tasksTableRowsHtml += `
+          <tr class="h-[52px] max-h-[52px] hover:bg-emerald-50/50 transition cursor-pointer border-b border-stone-200" data-row-idx="${taskRowIdx}" onclick="openTaskModal('${t.id}')">
+            <td class="px-2 text-center w-[85px] min-w-[85px] border-r border-stone-200" onclick="event.stopPropagation()">
               <div class="flex items-center justify-between gap-1">
                 ${hasSubtasks ? `
                   <button type="button" onclick="toggleTaskTree('${t.id}')" class="w-5 h-5 flex items-center justify-center rounded hover:bg-stone-200 text-stone-500 hover:text-stone-900 transition text-[11px] shrink-0 cursor-pointer" title="${isExpanded ? 'Colapsar subtareas' : 'Desplegar subtareas'}">
@@ -7375,16 +7350,14 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                 ` : `
                   <span class="w-5 shrink-0"></span>
                 `}
-                <span class="w-14 font-mono font-black text-xs text-emerald-900 bg-emerald-100/90 px-1.5 py-0.5 rounded text-center border border-emerald-300/70 shadow-2xs group-hover:bg-emerald-200 truncate">
+                <span class="w-14 font-mono font-black text-xs text-emerald-900 bg-emerald-100/90 px-1.5 py-0.5 rounded text-center border border-emerald-300/70 shadow-2xs truncate">
                   ${t.id}
                 </span>
               </div>
             </td>
-
-            <!-- Columna 2: Tarea / Entregable -->
-            <td class="sticky left-[90px] z-20 bg-white group-hover:bg-emerald-50 border-r border-stone-200 px-3 text-left">
+            <td class="px-3 text-left w-[230px] min-w-[230px] border-r border-stone-200">
               <div class="flex items-center gap-1.5 min-w-0">
-                <span class="font-bold text-stone-900 truncate group-hover:text-emerald-900 transition text-xs" title="${escapeHtml(t.name)}">
+                <span class="font-bold text-stone-900 truncate text-xs" title="${escapeHtml(t.name)}">
                   ${escapeHtml(t.name)}
                 </span>
                 ${hasSubtasks ? `
@@ -7394,16 +7367,14 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                 ` : ''}
               </div>
               <div class="flex items-center gap-2 text-[10px] text-stone-400 mt-0.5">
-                <span class="text-stone-600 font-semibold truncate max-w-[130px] flex items-center gap-1">
+                <span class="text-stone-600 font-semibold truncate max-w-[120px] flex items-center gap-1">
                   <i class="fa-regular fa-folder text-stone-400 text-[9px]"></i> ${escapeHtml(t.etapa || 'General')}
                 </span>
                 <span>&bull;</span>
                 <span class="font-black text-emerald-800">$${Number(t.costoTotal).toLocaleString('es-MX', {minimumFractionDigits: 0})}</span>
               </div>
             </td>
-
-            <!-- Columna 3: Responsable -->
-            <td class="sticky left-[350px] z-20 bg-white group-hover:bg-emerald-50 border-r border-stone-200 px-2.5 text-left">
+            <td class="px-2.5 text-left w-[110px] min-w-[110px] border-r border-stone-200">
               <div class="flex items-center gap-1.5 min-w-0">
                 <span class="w-5 h-5 rounded-md ${avatarBg} text-white font-black text-[9px] flex items-center justify-center shrink-0 shadow-2xs">
                   ${initials}
@@ -7413,40 +7384,28 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                 </span>
               </div>
             </td>
-
-            <!-- Columna 4: Estado -->
-            <td class="sticky left-[460px] z-20 bg-white group-hover:bg-emerald-50 border-r border-stone-200 px-2 text-center shadow-[4px_0_10px_rgba(0,0,0,0.06)]">
+            <td class="px-2 text-center w-[115px] min-w-[115px]">
               ${statusPill}
-            </td>
-
-            <!-- Columna 5: Barra de Gantt en la misma fila -->
-            <td class="p-0 relative h-[52px] bg-stone-50/20 group-hover:bg-emerald-50/20 transition overflow-hidden" style="width: ${timelineWidth}px; min-width: ${timelineWidth}px;">
-              <!-- Rejilla de días -->
-              <div class="absolute inset-0 flex pointer-events-none">
-                ${daysHeader.map(d => `
-                  <div class="h-full border-r border-stone-200/30 ${d.isWeekend ? 'bg-stone-100/30' : ''}" style="width: ${d.width}px;"></div>
-                `).join('')}
-              </div>
-
-              <!-- Línea vertical de HOY -->
-              ${isTodayInWindow ? `
-                <div class="absolute top-0 bottom-0 w-[2px] bg-rose-500 z-10 pointer-events-none shadow-xs" style="left: ${todayLeftPx}px;" title="HOY (${now.toISOString().substring(0, 10)})"></div>
-              ` : ''}
-
-              <!-- Barra de Gantt de Tarea -->
-              <div class="absolute top-2.5 h-[32px] rounded-lg border shadow-xs flex items-center px-2.5 transition hover:brightness-105 z-10 ${barBg}" style="left: ${barLeft}px; width: ${barWidth}px;" title="${t.id}: ${escapeHtml(t.name)}&#10;Fechas: ${t.start} ➔ ${t.end}&#10;Progreso: ${prog}%&#10;Responsable: ${escapeHtml(t.responsable || 'Sin Asignar')}">
-                <div class="absolute left-0 top-0 bottom-0 rounded-l-lg opacity-25 ${barProgBg}" style="width: ${prog}%;"></div>
-                <span class="relative z-10 text-[11px] font-black truncate drop-shadow-xs">
-                  ${t.id} &bull; ${escapeHtml(t.name)}
-                </span>
-              </div>
             </td>
           </tr>
         `;
 
-        // Si la tarea tiene subtareas y está expandida, renderizar cada subtarea como la fila siguiente
+        // Fila en Panel de Timeline (h-[52px])
+        timelineRowsHtml += `
+          <div class="h-[52px] max-h-[52px] relative border-b border-stone-200 hover:bg-emerald-50/30 transition cursor-pointer" data-row-idx="${taskRowIdx}" onclick="openTaskModal('${t.id}')">
+            <div class="absolute top-2.5 h-[32px] rounded-lg border shadow-xs flex items-center px-2.5 transition hover:brightness-105 z-10 ${barBg}" style="left: ${barLeft}px; width: ${barWidth}px;" title="${t.id}: ${escapeHtml(t.name)}&#10;Fechas: ${t.start} ➔ ${t.end}&#10;Progreso: ${prog}%&#10;Responsable: ${escapeHtml(t.responsable || 'Sin Asignar')}">
+              <div class="absolute left-0 top-0 bottom-0 rounded-l-lg opacity-25 ${barProgBg}" style="width: ${prog}%;"></div>
+              <span class="relative z-10 text-[11px] font-black truncate drop-shadow-xs">
+                ${t.id} &bull; ${escapeHtml(t.name)}
+              </span>
+            </div>
+          </div>
+        `;
+
+        // Subtareas si está expandida
         if (hasSubtasks && isExpanded) {
           t.subtareas.forEach(sub => {
+            const subRowIdx = rowCounter++;
             const sStart = parseDateParts(sub.start || sub.fecha) || tStart;
             const sEnd = parseDateParts(sub.end || sub.fecha) || sStart;
             const sOff = Math.max(0, (sStart.getTime() - calStart.getTime()) / msPerDay);
@@ -7481,30 +7440,26 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             else if (subResp.includes("Arturo A.")) { sAvatarBg = "bg-purple-600"; sInitials = "AA"; }
             else if (subResp.includes("Don Chiyo")) { sAvatarBg = "bg-amber-600"; sInitials = "DC"; }
 
-            html += `
-              <tr class="h-[44px] bg-indigo-50/15 hover:bg-indigo-50/50 transition group cursor-pointer border-b border-stone-100" onclick="openTaskModal('${t.id}')">
-                <!-- Columna 1: Conector y código de subtarea -->
-                <td class="sticky left-0 z-20 bg-indigo-50/40 group-hover:bg-indigo-100/60 border-r border-stone-200 px-2 pl-4 text-center">
+            // Subtarea en Panel de Tareas (h-[44px])
+            tasksTableRowsHtml += `
+              <tr class="h-[44px] max-h-[44px] bg-indigo-50/15 hover:bg-indigo-50/50 transition cursor-pointer border-b border-stone-100" data-row-idx="${subRowIdx}" onclick="openTaskModal('${t.id}')">
+                <td class="px-2 pl-3 text-center w-[85px] min-w-[85px] border-r border-stone-200">
                   <div class="flex items-center gap-1">
                     <span class="font-mono text-indigo-400 text-xs shrink-0 select-none">└──</span>
-                    <span class="w-16 font-mono font-bold text-[10px] text-indigo-900 bg-indigo-100/90 px-1 py-0.5 rounded text-center border border-indigo-300/60 shadow-2xs truncate">
+                    <span class="w-14 font-mono font-bold text-[10px] text-indigo-900 bg-indigo-100/90 px-1 py-0.5 rounded text-center border border-indigo-300/60 shadow-2xs truncate">
                       ${sub.id}
                     </span>
                   </div>
                 </td>
-
-                <!-- Columna 2: Nombre de subtarea -->
-                <td class="sticky left-[90px] z-20 bg-indigo-50/40 group-hover:bg-indigo-100/60 border-r border-stone-200 px-3 text-left">
-                  <div class="font-semibold text-stone-800 truncate text-xs group-hover:text-indigo-900 transition" title="${escapeHtml(sub.name)}">
+                <td class="px-3 text-left w-[230px] min-w-[230px] border-r border-stone-200">
+                  <div class="font-semibold text-stone-800 truncate text-xs" title="${escapeHtml(sub.name)}">
                     ${escapeHtml(sub.name)}
                   </div>
                   <div class="text-[10px] text-stone-400">
                     <span>${sub.fecha || t.start || '--'}</span> &bull; <span>${sub.horas || 0} hrs</span>
                   </div>
                 </td>
-
-                <!-- Columna 3: Responsable de subtarea -->
-                <td class="sticky left-[350px] z-20 bg-indigo-50/40 group-hover:bg-indigo-100/60 border-r border-stone-200 px-2.5 text-left">
+                <td class="px-2.5 text-left w-[110px] min-w-[110px] border-r border-stone-200">
                   <div class="flex items-center gap-1.5 min-w-0">
                     <span class="w-4 h-4 rounded ${sAvatarBg} text-white font-extrabold text-[8px] flex items-center justify-center shrink-0">
                       ${sInitials}
@@ -7514,62 +7469,230 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                     </span>
                   </div>
                 </td>
-
-                <!-- Columna 4: Estado de subtarea -->
-                <td class="sticky left-[460px] z-20 bg-indigo-50/40 group-hover:bg-indigo-100/60 border-r border-stone-200 px-2 text-center shadow-[4px_0_10px_rgba(0,0,0,0.06)]">
+                <td class="px-2 text-center w-[115px] min-w-[115px]">
                   ${sStatusPill}
                 </td>
-
-                <!-- Columna 5: Barra de Gantt de Subtarea en la misma fila -->
-                <td class="p-0 relative h-[44px] bg-indigo-50/10 group-hover:bg-indigo-50/30 transition overflow-hidden" style="width: ${timelineWidth}px; min-width: ${timelineWidth}px;">
-                  <!-- Rejilla de días -->
-                  <div class="absolute inset-0 flex pointer-events-none">
-                    ${daysHeader.map(d => `
-                      <div class="h-full border-r border-stone-200/20 ${d.isWeekend ? 'bg-stone-100/20' : ''}" style="width: ${d.width}px;"></div>
-                    `).join('')}
-                  </div>
-
-                  <!-- Línea HOY -->
-                  ${isTodayInWindow ? `
-                    <div class="absolute top-0 bottom-0 w-[2px] bg-rose-500/80 z-10 pointer-events-none" style="left: ${todayLeftPx}px;"></div>
-                  ` : ''}
-
-                  <!-- Barra de Gantt de Subtarea -->
-                  <div class="absolute top-2 h-[26px] rounded-md border shadow-2xs flex items-center px-2 transition hover:brightness-105 z-10 ${sBarBg}" style="left: ${sBarLeft}px; width: ${sBarWidth}px;" title="Subtarea ${sub.id}: ${escapeHtml(sub.name)}&#10;Fecha: ${sub.fecha || t.start}&#10;Responsable: ${escapeHtml(subResp)}">
-                    <div class="absolute left-0 top-0 bottom-0 rounded-l-md opacity-30 ${sBarProgBg}" style="width: ${sProg}%;"></div>
-                    <span class="relative z-10 text-[10px] font-bold truncate">
-                      ↳ ${sub.id}: ${escapeHtml(sub.name)}
-                    </span>
-                  </div>
-                </td>
               </tr>
+            `;
+
+            // Subtarea en Panel de Timeline (h-[44px])
+            timelineRowsHtml += `
+              <div class="h-[44px] max-h-[44px] relative border-b border-stone-100 bg-indigo-50/10 hover:bg-indigo-50/30 transition cursor-pointer" data-row-idx="${subRowIdx}" onclick="openTaskModal('${t.id}')">
+                <div class="absolute top-2 h-[26px] rounded-md border shadow-2xs flex items-center px-2 transition hover:brightness-105 z-10 ${sBarBg}" style="left: ${sBarLeft}px; width: ${sBarWidth}px;" title="Subtarea ${sub.id}: ${escapeHtml(sub.name)}&#10;Fecha: ${sub.fecha || t.start}&#10;Responsable: ${escapeHtml(subResp)}">
+                  <div class="absolute left-0 top-0 bottom-0 rounded-l-md opacity-30 ${sBarProgBg}" style="width: ${sProg}%;"></div>
+                  <span class="relative z-10 text-[10px] font-bold truncate">
+                    ↳ ${sub.id}: ${escapeHtml(sub.name)}
+                  </span>
+                </div>
+              </div>
             `;
           });
         }
       });
 
-      html += `
-          </tbody>
-        </table>
+      // 3. Ensamblar HTML Completo con las Dos Ventanas Coexistentes + Splitter
+      const html = `
+        <div class="flex w-full overflow-hidden select-none bg-white relative h-full">
+          <!-- VENTANA IZQUIERDA: LISTADO DE TAREAS Y SUBTAREAS (CON SCROLL PROPIO) -->
+          <div id="${containerId}_tasksPane" class="shrink-0 flex flex-col border-r border-stone-200 bg-white overflow-hidden" style="width: ${taskPaneWidth}px; min-width: 220px; max-width: 650px;">
+            <!-- Cabecera de Tareas -->
+            <div id="${containerId}_tasksHeader" class="overflow-x-hidden border-b border-stone-200 bg-stone-100 shrink-0 select-none">
+              <div class="min-w-[540px]">
+                <div class="flex h-[28px] border-b border-stone-200 text-[11px] font-black text-stone-700 uppercase items-center">
+                  <div class="w-[85px] min-w-[85px] shrink-0 px-2 text-center border-r border-stone-200">WBS / ID</div>
+                  <div class="w-[230px] min-w-[230px] shrink-0 px-3 text-left border-r border-stone-200">Tarea / Entregable</div>
+                  <div class="w-[110px] min-w-[110px] shrink-0 px-2.5 text-left border-r border-stone-200">Responsable</div>
+                  <div class="w-[115px] min-w-[115px] shrink-0 px-2 text-center">Estado</div>
+                </div>
+                <div class="flex h-[26px] bg-stone-50 text-[10px] font-bold text-stone-500 items-center">
+                  <div class="w-[85px] min-w-[85px] shrink-0 px-2 text-center border-r border-stone-200">Código</div>
+                  <div class="w-[230px] min-w-[230px] shrink-0 px-3 text-left border-r border-stone-200">Nombre & Detalle</div>
+                  <div class="w-[110px] min-w-[110px] shrink-0 px-2.5 text-left border-r border-stone-200">Asignado</div>
+                  <div class="w-[115px] min-w-[115px] shrink-0 px-2 text-center">Avance</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Cuerpo de Tareas con Scrollbar Horizontal y Vertical propio -->
+            <div id="${containerId}_tasksBody" class="overflow-x-auto overflow-y-auto max-h-[560px] custom-scrollbar flex-1 bg-white select-none">
+              <table class="w-full min-w-[540px] border-collapse text-xs">
+                <tbody class="divide-y divide-stone-100">
+                  ${tasksTableRowsHtml}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- BARRA DIVISORIA AJUSTABLE (SPLITTER DRAG-TO-RESIZE) -->
+          <div id="${containerId}_splitter" class="w-2 hover:w-2.5 bg-stone-200 hover:bg-emerald-500 active:bg-emerald-600 cursor-col-resize transition-all shrink-0 flex items-center justify-center group select-none relative z-20" title="Arrastra para ajustar el tamaño de la lista de tareas (Doble clic para alternar)">
+            <div class="w-0.5 h-7 bg-stone-400 group-hover:bg-white rounded-full transition-colors"></div>
+          </div>
+
+          <!-- VENTANA DERECHA: CRONOGRAMA GANTT (PREDOMINANTE CON SCROLL PROPIO) -->
+          <div id="${containerId}_timelinePane" class="flex-1 min-w-0 flex flex-col bg-stone-50/20 overflow-hidden">
+            <!-- Cabecera del Calendario -->
+            <div id="${containerId}_timelineHeader" class="overflow-x-hidden border-b border-stone-200 bg-stone-50 shrink-0 select-none">
+              <div style="width: ${timelineWidth}px; min-width: ${timelineWidth}px;">
+                <!-- Fila 1 Meses (28px) -->
+                <div class="flex h-[28px] border-b border-stone-200">
+                  ${monthSpans.map(m => `
+                    <div class="h-full flex items-center justify-center font-extrabold text-[11px] text-stone-600 border-r border-stone-200 uppercase tracking-wider px-2 truncate" style="width: ${m.width}px;">
+                      ${m.name}
+                    </div>
+                  `).join('')}
+                </div>
+                <!-- Fila 2 Días (26px) -->
+                <div class="flex h-[26px]">
+                  ${daysHeader.map(d => `
+                    <div class="h-full flex flex-col items-center justify-center border-r border-stone-200/50 font-mono text-[9px] ${d.isToday ? 'bg-amber-100/90 font-black text-amber-900 ring-1 ring-amber-400' : (d.isWeekend ? 'bg-stone-100/60 text-stone-400' : 'text-stone-600')}" style="width: ${d.width}px;" title="Día ${d.dayNum}">
+                      <span>${d.dayNum}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+
+            <!-- Cuerpo del Gantt con Scrollbar Horizontal y Vertical propio -->
+            <div id="${containerId}_timelineBody" class="overflow-x-auto overflow-y-auto max-h-[560px] custom-scrollbar flex-1 relative bg-stone-50/10 select-none">
+              <div style="width: ${timelineWidth}px; min-width: ${timelineWidth}px; position: relative;">
+                <div class="absolute inset-0 flex pointer-events-none">
+                  ${daysHeader.map(d => `
+                    <div class="h-full border-r border-stone-200/30 ${d.isWeekend ? 'bg-stone-100/30' : ''}" style="width: ${d.width}px;"></div>
+                  `).join('')}
+                </div>
+                <!-- Línea de HOY -->
+                ${isTodayInWindow ? `
+                  <div class="absolute top-0 bottom-0 w-[2px] bg-rose-500 z-10 pointer-events-none shadow-xs" style="left: ${todayLeftPx}px;" title="HOY (${now.toISOString().substring(0, 10)})"></div>
+                ` : ''}
+
+                <!-- Filas de Barras de Gantt -->
+                ${timelineRowsHtml}
+              </div>
+            </div>
+          </div>
+        </div>
       `;
 
-      // Preservar posición de scroll del usuario
-      const prevLeft = container.scrollLeft;
-      const prevTop = container.scrollTop;
+      // 4. Capturar scroll previo para preservarlo sin saltos
+      const oldTasksBody = document.getElementById(`${containerId}_tasksBody`);
+      const oldTimelineBody = document.getElementById(`${containerId}_timelineBody`);
+      const prevTasksScrollLeft = oldTasksBody ? oldTasksBody.scrollLeft : 0;
+      const prevTimelineScrollLeft = oldTimelineBody ? oldTimelineBody.scrollLeft : 0;
+      const prevScrollTop = oldTasksBody ? oldTasksBody.scrollTop : (oldTimelineBody ? oldTimelineBody.scrollTop : 0);
+      const hadPrevScroll = prevTasksScrollLeft > 0 || prevTimelineScrollLeft > 0 || prevScrollTop > 0;
 
       container.innerHTML = html;
 
-      if (prevLeft > 0 || prevTop > 0) {
-        container.scrollLeft = prevLeft;
-        container.scrollTop = prevTop;
+      // 5. Elementos DOM activos y Sincronización
+      const tasksBody = document.getElementById(`${containerId}_tasksBody`);
+      const tasksHeader = document.getElementById(`${containerId}_tasksHeader`);
+      const timelineBody = document.getElementById(`${containerId}_timelineBody`);
+      const timelineHeader = document.getElementById(`${containerId}_timelineHeader`);
+      const splitter = document.getElementById(`${containerId}_splitter`);
+      const tasksPane = document.getElementById(`${containerId}_tasksPane`);
+
+      // Restaurar o inicializar scroll
+      if (hadPrevScroll) {
+        if (tasksBody) {
+          tasksBody.scrollLeft = prevTasksScrollLeft;
+          tasksBody.scrollTop = prevScrollTop;
+          if (tasksHeader) tasksHeader.scrollLeft = prevTasksScrollLeft;
+        }
+        if (timelineBody) {
+          timelineBody.scrollLeft = prevTimelineScrollLeft;
+          timelineBody.scrollTop = prevScrollTop;
+          if (timelineHeader) timelineHeader.scrollLeft = prevTimelineScrollLeft;
+        }
       } else {
-        // Auto-scroll inicial a HOY o a la primera tarea activa
         setTimeout(() => {
-          if (isTodayInWindow && todayLeftPx > 200) {
-            container.scrollTo({ left: Math.max(0, todayLeftPx - 150), behavior: 'smooth' });
+          if (timelineBody && isTodayInWindow && todayLeftPx > 200) {
+            timelineBody.scrollTo({ left: Math.max(0, todayLeftPx - 150), behavior: 'smooth' });
           }
         }, 60);
       }
+
+      // Sincronización de scroll bidireccional
+      if (tasksBody && timelineBody) {
+        let isSyncingTasks = false;
+        let isSyncingTimeline = false;
+
+        tasksBody.addEventListener('scroll', () => {
+          if (tasksHeader) tasksHeader.scrollLeft = tasksBody.scrollLeft;
+          if (!isSyncingTasks) {
+            isSyncingTimeline = true;
+            timelineBody.scrollTop = tasksBody.scrollTop;
+            requestAnimationFrame(() => { isSyncingTimeline = false; });
+          }
+        });
+
+        timelineBody.addEventListener('scroll', () => {
+          if (timelineHeader) timelineHeader.scrollLeft = timelineBody.scrollLeft;
+          if (!isSyncingTimeline) {
+            isSyncingTasks = true;
+            tasksBody.scrollTop = timelineBody.scrollTop;
+            requestAnimationFrame(() => { isSyncingTasks = false; });
+          }
+        });
+      }
+
+      // Splitter interactivo (Drag-to-Resize & Doble Clic)
+      if (splitter && tasksPane) {
+        let isDragging = false;
+        let startX = 0;
+        let startWidth = 0;
+
+        splitter.onmousedown = (e) => {
+          e.preventDefault();
+          isDragging = true;
+          startX = e.clientX;
+          startWidth = tasksPane.offsetWidth;
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+
+          const onMouseMove = (ev) => {
+            if (!isDragging) return;
+            const delta = ev.clientX - startX;
+            const newWidth = Math.max(200, Math.min(container.offsetWidth - 200, startWidth + delta));
+            tasksPane.style.width = newWidth + 'px';
+            window.ganttTaskPaneWidth = newWidth;
+          };
+
+          const onMouseUp = () => {
+            if (isDragging) {
+              isDragging = false;
+              document.body.style.cursor = '';
+              document.body.style.userSelect = '';
+              document.removeEventListener('mousemove', onMouseMove);
+              document.removeEventListener('mouseup', onMouseUp);
+            }
+          };
+
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+        };
+
+        splitter.ondblclick = () => {
+          const curW = tasksPane.offsetWidth;
+          const newW = curW > 330 ? 250 : 420;
+          tasksPane.style.width = newW + 'px';
+          window.ganttTaskPaneWidth = newW;
+        };
+      }
+
+      // Hover sincronizado entre filas de ambas ventanas
+      container.querySelectorAll("[data-row-idx]").forEach(el => {
+        const idx = el.getAttribute("data-row-idx");
+        el.addEventListener("mouseenter", () => {
+          container.querySelectorAll(`[data-row-idx="${idx}"]`).forEach(r => {
+            r.classList.add("bg-emerald-100/50");
+          });
+        });
+        el.addEventListener("mouseleave", () => {
+          container.querySelectorAll(`[data-row-idx="${idx}"]`).forEach(r => {
+            r.classList.remove("bg-emerald-100/50");
+          });
+        });
+      });
     }
 
     // Alias retrocompatibles
