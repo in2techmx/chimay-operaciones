@@ -555,6 +555,27 @@ async function startPollingDaemon(botToken) {
 
   console.log("🚀 Iniciando Bot de Telegram de Chimay en modo Long Polling...");
   console.log("📁 Repositorio:", REPO_ROOT);
+
+  // Verificar estado del bot en Telegram (getMe)
+  try {
+    const meData = await new Promise((resolve) => {
+      https.get(`https://api.telegram.org/bot${botToken}/getMe`, res => {
+        let d = '';
+        res.on('data', chunk => d += chunk);
+        res.on('end', () => {
+          try { resolve(JSON.parse(d)); } catch (e) { resolve({ ok: false }); }
+        });
+      }).on('error', () => resolve({ ok: false }));
+    });
+    if (meData.ok && meData.result) {
+      console.log(`✅ Bot conectado exitosamente como: @${meData.result.username} (${meData.result.first_name})`);
+    } else {
+      console.warn("⚠️ Aviso: Verificación de token devolvió:", meData.description || "Sin respuesta");
+    }
+  } catch (err) {
+    console.warn("⚠️ No se pudo verificar getMe:", err.message);
+  }
+
   let offset = 0;
 
   while (true) {
