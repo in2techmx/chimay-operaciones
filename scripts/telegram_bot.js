@@ -24,6 +24,22 @@ const USERS_FILE = path.join(DATA_DIR, 'usuarios.json');
 const PROJECTS_FILE = path.join(DATA_DIR, 'proyectos.json');
 const ATTACHMENTS_FILE = path.join(DATA_DIR, 'adjuntos.json');
 
+// Cargar variables de entorno locales desde .env si existe (sin dependencias npm)
+try {
+  const envPath = path.join(REPO_ROOT, '.env');
+  if (fs.existsSync(envPath)) {
+    const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const match = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+      if (match && !process.env[match[1]]) {
+        process.env[match[1]] = match[2].trim().replace(/^['"]|['"]$/g, '');
+      }
+    }
+  }
+} catch (e) {}
+
 // Memoria de sesiones para hilos de tareas enfocadas (1-a-1)
 const userSessions = {}; // from.id -> { activeTaskId: "TSK-01" }
 

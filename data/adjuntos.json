@@ -36,6 +36,19 @@
       "canal": "Telegram",
       "url": "data/adjuntos/TSK-PRE-01/Factura_Materiales_Riego_001.pdf",
       "nota": "Factura de compra de tubería de 2 pulgadas"
+    },
+    {
+      "id": "ATT-1790002881195",
+      "taskId": "TSK-PRE-01",
+      "name": "Factura_Materiales_Riego_001.pdf",
+      "categoria": "Factura / Ticket",
+      "tipo": "pdf",
+      "tamano": "1.4 MB",
+      "fecha": "2026-09-21T15:01:21.195Z",
+      "autor": "Arturo A.",
+      "canal": "Telegram",
+      "url": "data/adjuntos/TSK-PRE-01/Factura_Materiales_Riego_001.pdf",
+      "nota": "Factura de compra de tubería de 2 pulgadas"
     }
   ]
 }
