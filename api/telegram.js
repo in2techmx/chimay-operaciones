@@ -13,17 +13,21 @@ const botModule = require('../scripts/telegram_bot.js');
 const { commitFileToGitHub } = require('../scripts/github_api_sync.js');
 
 function getBotToken() {
-  return (
-    process.env.TELEGRAM_BOT_TOKEN ||
-    process.env.TELEGRAM_TOKEN ||
-    process.env.BOT_TOKEN ||
-    process.env.API_TELEGRAM ||
-    process.env.TELEGRAM_API ||
-    process.env.TELEGRAM_API_KEY ||
-    process.env.telegram_bot_token ||
-    process.env.Telegram_Bot_Token ||
-    ''
-  ).trim();
+  if (process.env.Telegram_API_Key) return process.env.Telegram_API_Key.trim();
+  if (process.env.TELEGRAM_BOT_TOKEN) return process.env.TELEGRAM_BOT_TOKEN.trim();
+  if (process.env.TELEGRAM_API_KEY) return process.env.TELEGRAM_API_KEY.trim();
+  if (process.env.TELEGRAM_TOKEN) return process.env.TELEGRAM_TOKEN.trim();
+  if (process.env.BOT_TOKEN) return process.env.BOT_TOKEN.trim();
+
+  // Coincidencia dinámica insensible a mayúsculas/minúsculas
+  const key = Object.keys(process.env).find(k => 
+    /telegram/i.test(k) && /(token|api|key)/i.test(k)
+  );
+  if (key && process.env[key]) {
+    return process.env[key].trim();
+  }
+
+  return '';
 }
 
 function callTelegramApi(botToken, method, payload) {
