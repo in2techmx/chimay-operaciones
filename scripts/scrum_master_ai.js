@@ -331,27 +331,19 @@ async function generateDailyStandup(options = {}) {
   const context = compileProjectContext();
   const apiKey = getGeminiApiKey();
 
-  // Si hay Gemini API Key disponible, generamos una síntesis con IA
+  // Si hay Gemini API Key disponible, generamos una síntesis con IA (100% operativa)
   if (apiKey) {
     const systemPrompt = `Eres el Scrum Master y Agile Coach experto de "Proyecto Chimay" (IN2TECHMX).
 Tu misión es facilitar el Daily Standup matutino para el equipo operativo.
-Debes ser pragmático, enfocado en bloqueos, cuellos de botella, riesgos y en impulsar la entrega de valor.
+Debes ser pragmático, enfocado en bloqueos, cuellos de botella, riesgos y en impulsar la ejecución de entregables.
 Usa formato Markdown compatible con Telegram (negritas con *, código con \`, listas con viñetas limpias).
-Incluye la perspectiva financiera: Activo vs Proyectado.
-Mantén el mensaje motivador, claro y de máximo 320 palabras.`;
+Mantén el mensaje motivador, claro y de máximo 280 palabras.
+REGLA CRÍTICA: NO incluyas información, montos ni cifras de costos o presupuestos en el Daily Standup. Los costos y finanzas se gestionan exclusivamente en el reporte de costos (/costos).`;
 
-    const fin = context.finanzas;
     const userPrompt = `A continuación tienes el estado del proyecto en tiempo real (${context.fechaHoy}):
 Métricas Operativas:
 - Avance Global: ${context.resumenMetricas.porcentajeAvanceGlobal}% (${context.resumenMetricas.completadas}/${context.resumenMetricas.totalTareas} tareas)
 - Subtareas: ${context.resumenMetricas.subtareasCompletadas}/${context.resumenMetricas.totalSubtareas} completadas (${context.resumenMetricas.subtareasPendientes} pendientes)
-
-Balance Financiero (Activo vs Proyectado):
-- Costo al Día (Completadas / Real): $${fin.costoAlDia.toLocaleString('es-MX')} MXN (${fin.pctAlDia}%)
-- Costo en Curso (En Progreso): $${fin.costoEnProgreso.toLocaleString('es-MX')} MXN (${fin.pctEnCurso}%)
-- Total Tareas Activas: $${fin.costoActivoTotal.toLocaleString('es-MX')} MXN (${fin.pctActivoTotal}%)
-- Costo Proyectado (No Iniciadas / Sin sumar actual): $${fin.costoProyectado.toLocaleString('es-MX')} MXN (${fin.pctProyectado}%)
-- Presupuesto Total Global (Sumando actual): $${fin.costoTotalGlobal.toLocaleString('es-MX')} MXN (100%)
 
 Tareas en Progreso:
 ${context.enProgreso.map(t => `- [${t.id}] ${t.name} (Resp: ${t.responsable}, Avance: ${t.progress}%)`).join('\n') || 'Ninguna en progreso hoy.'}
@@ -368,10 +360,9 @@ ${context.inicianPronto.map(t => `- ⏳ [${t.id}] ${t.name} (Inicia: ${t.start},
 Genera el Daily Standup estructurado en:
 1. ☀️ Saludo y Estado del Sprint
 2. ⚡ En Curso Hoy (quién hace qué)
-3. 💰 Balance Financiero (Activo vs Proyectado en 2 líneas concisas)
-4. 🚨 Cuellos de Botella y Riesgos Inmediatos
-5. ⏳ Próximos Inicios y Preparación
-6. 🎯 Foco del Día`;
+3. 🚨 Cuellos de Botella y Riesgos Inmediatos
+4. ⏳ Próximos Inicios y Preparación
+5. 🎯 Foco del Día`;
 
     const aiResponse = await callGeminiLlm(systemPrompt, userPrompt, apiKey);
     if (aiResponse) {
@@ -385,16 +376,16 @@ Genera el Daily Standup estructurado en:
 
 /**
  * Plantilla de Daily Standup heurística estructurada (cero dependencias de IA)
+ * Exclusivamente operativa: avances, personas, cuellos de botella y foco del día.
  */
 function buildHeuristicDailyStandup(ctx) {
-  const fin = ctx.finanzas;
   let text = `☀️ *Daily Standup — Proyecto Chimay*\n`;
   text += `📅 *Fecha:* \`${ctx.fechaHoy}\` | *Avance Global:* \`${ctx.resumenMetricas.porcentajeAvanceGlobal}%\`\n\n`;
 
   // 1. En progreso
   text += `⚡ *1. En Progreso Hoy:*\n`;
   if (ctx.enProgreso.length === 0) {
-    text += `   _Sin tareas en curso activo. Selecciona una en /tareas para iniciarla._\n`;
+    text += `   _Sin tareas en curso activo. Selecciona una en /mis_tareas para iniciarla._\n`;
   } else {
     ctx.enProgreso.forEach(t => {
       text += `   • *${t.id}:* ${t.name}\n     👤 \`${t.responsable}\` | 📊 ${t.progress}%\n`;
@@ -411,16 +402,8 @@ function buildHeuristicDailyStandup(ctx) {
     text += `\n`;
   }
 
-  // 3. Balance Financiero: Tareas Activas vs Costo Proyectado
-  text += `💰 *3. Balance Financiero (Activo vs Proyectado):*\n`;
-  text += `   • *Costo al Día (Completadas):* \`$${fin.costoAlDia.toLocaleString('es-MX')} MXN\` (${fin.pctAlDia}%)\n`;
-  text += `   • *Costo en Curso (En Progreso):* \`$${fin.costoEnProgreso.toLocaleString('es-MX')} MXN\` (${fin.pctEnCurso}%)\n`;
-  text += `   • *⚡ Total Tareas Activas:* \`$${fin.costoActivoTotal.toLocaleString('es-MX')} MXN\` (${fin.pctActivoTotal}%)\n`;
-  text += `   • *⏳ Proyectado (No Iniciadas):* \`$${fin.costoProyectado.toLocaleString('es-MX')} MXN\` (${fin.pctProyectado}%)\n`;
-  text += `   • *🌐 Total Global (Sumando Actual):* \`$${fin.costoTotalGlobal.toLocaleString('es-MX')} MXN\`\n\n`;
-
-  // 4. Cuellos de botella y alertas
-  text += `🚨 *4. Cuellos de Botella y Riesgos:*\n`;
+  // 3. Cuellos de botella y alertas
+  text += `🚨 *3. Cuellos de Botella y Riesgos:*\n`;
   if (ctx.vencidas.length === 0) {
     text += `   ✅ *Excelente:* Todas las actividades están dentro del cronograma previsto.\n`;
   } else {
@@ -430,8 +413,8 @@ function buildHeuristicDailyStandup(ctx) {
   }
   text += `\n`;
 
-  // 5. Próximos inicios
-  text += `⏳ *5. Inicios en los Próximos 7 Días:*\n`;
+  // 4. Próximos inicios
+  text += `⏳ *4. Inicios en los Próximos 7 Días:*\n`;
   if (ctx.inicianPronto.length === 0) {
     text += `   _No hay nuevas tareas programadas para iniciar esta semana._\n`;
   } else {
@@ -441,8 +424,8 @@ function buildHeuristicDailyStandup(ctx) {
   }
   text += `\n`;
 
-  // 6. Foco del día
-  text += `🎯 *6. Foco del Día Recomendado:*\n`;
+  // 5. Foco del día
+  text += `🎯 *5. Foco del Día Recomendado:*\n`;
   if (ctx.vencidas.length > 0) {
     text += `   👉 Resolver la tarea demorada *${ctx.vencidas[0].id}* con ${ctx.vencidas[0].responsable} para no impactar dependencias.\n`;
   } else if (ctx.enProgreso.length > 0) {
