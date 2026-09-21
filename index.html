@@ -143,6 +143,52 @@
       filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.6)) !important;
     }
 
+    /* 4. Subtareas en Cronograma Gantt (Estilo Jerárquico Árbol) */
+    .gantt .bar-wrapper.gantt-subtask .bar {
+      rx: 4px !important;
+      ry: 4px !important;
+    }
+    .gantt .bar-wrapper.gantt-subtask .bar-progress {
+      rx: 4px !important;
+      ry: 4px !important;
+    }
+    .gantt .bar-wrapper.gantt-subtask.gantt-subtask-completada .bar {
+      fill: #e0e7ff !important;
+      stroke: #4f46e5 !important;
+      stroke-width: 1.5px !important;
+    }
+    .gantt .bar-wrapper.gantt-subtask.gantt-subtask-completada .bar-progress {
+      fill: #4f46e5 !important;
+    }
+    .gantt .bar-wrapper.gantt-subtask.gantt-subtask-progreso .bar {
+      fill: #fef3c7 !important;
+      stroke: #d97706 !important;
+      stroke-width: 1.5px !important;
+    }
+    .gantt .bar-wrapper.gantt-subtask.gantt-subtask-progreso .bar-progress {
+      fill: #d97706 !important;
+    }
+    .gantt .bar-wrapper.gantt-subtask.gantt-subtask-noiniciada .bar {
+      fill: #f8fafc !important;
+      stroke: #94a3b8 !important;
+      stroke-width: 1.2px !important;
+      stroke-dasharray: 4 2 !important;
+    }
+    .gantt .bar-wrapper.gantt-subtask .bar-label,
+    .gantt .bar-wrapper.gantt-subtask .bar-label.big {
+      fill: #312e81 !important;
+      stroke: #ffffff !important;
+      stroke-width: 3px !important;
+      paint-order: stroke fill !important;
+      font-size: 11px !important;
+      font-weight: 800 !important;
+    }
+    .bar-subtask-highlight .bar {
+      stroke: #4338ca !important;
+      stroke-width: 2.5px !important;
+      filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.7)) !important;
+    }
+
     /* Animación Cinemática Ken Burns & Carrusel Sleek Yucatán */
     @keyframes kenburns-slide {
       0% { transform: scale(1.0) translate(0, 0); }
@@ -1563,6 +1609,71 @@
     let selectedTaskId = null;
     let currentUser = null;          // Usuario activo autenticado con Google
     let taskComments = {};           // Bitácora / Chat de cada tarea { taskId: [comments] }
+
+    // Árbol jerárquico de subtareas colapsables en WBS y Cronograma Gantt
+    let expandedTaskIds = new Set();
+    window.expandedTaskIds = expandedTaskIds;
+
+    function toggleTaskTree(taskId) {
+      if (expandedTaskIds.has(taskId)) {
+        expandedTaskIds.delete(taskId);
+      } else {
+        expandedTaskIds.add(taskId);
+      }
+      refreshCurrentGanttView();
+    }
+    window.toggleTaskTree = toggleTaskTree;
+
+    function expandAllTaskTrees() {
+      const currentTasks = (currentView !== "todos" && currentView !== "reporting" && currentView !== "agentico")
+        ? getActiveTasks(currentView)
+        : getActiveTasks();
+      currentTasks.forEach(t => {
+        if (t.subtareas && Array.isArray(t.subtareas) && t.subtareas.length > 0) {
+          expandedTaskIds.add(t.id);
+        }
+      });
+      refreshCurrentGanttView();
+    }
+    window.expandAllTaskTrees = expandAllTaskTrees;
+
+    function collapseAllTaskTrees() {
+      expandedTaskIds.clear();
+      refreshCurrentGanttView();
+    }
+    window.collapseAllTaskTrees = collapseAllTaskTrees;
+
+    function refreshCurrentGanttView() {
+      if (currentView === "todos") {
+        const wbsContainer = document.getElementById("globalWbsRows");
+        const svgEl = document.getElementById("globalGanttSvg");
+        if (wbsContainer && svgEl && currentSubView === "gantt") {
+          const activeTasks = getActiveTasks();
+          renderWbsRows("globalWbsRows", activeTasks);
+          mountGantt("#globalGanttSvg", activeTasks);
+          return;
+        }
+        const container = document.getElementById("viewContainer");
+        if (container) renderGlobalView(container);
+      } else if (currentView === "reporting") {
+        const container = document.getElementById("viewContainer");
+        if (container) renderReportingView(container);
+      } else if (currentView === "agentico") {
+        // Vista agéntica
+      } else {
+        const wbsContainer = document.getElementById("specialistWbsRows");
+        const svgEl = document.getElementById("specialistGanttSvg");
+        if (wbsContainer && svgEl) {
+          const userTasks = getActiveTasks(currentView);
+          renderWbsRows("specialistWbsRows", userTasks);
+          mountGantt("#specialistGanttSvg", userTasks);
+          return;
+        }
+        const container = document.getElementById("viewContainer");
+        if (container) renderSpecialistView(container, currentView);
+      }
+    }
+    window.refreshCurrentGanttView = refreshCurrentGanttView;
 
     // Comentarios pre-sembrados con trazabilidad y realismo para el Proyecto Chimay
     const DEFAULT_TASK_COMMENTS = {};
@@ -4030,7 +4141,11 @@ Los archivos JSON han sido preparados.`);
         list = list.filter(t => (t.etapa || "").trim() === currentEtapa.trim());
       }
       if (specialist && specialist !== "todos") {
-        list = list.filter(t => t.responsable && t.responsable.includes(specialist));
+        list = list.filter(t => {
+          const isDirectResp = t.responsable && t.responsable.includes(specialist);
+          const isSubResp = t.subtareas && Array.isArray(t.subtareas) && t.subtareas.some(s => s.responsable && s.responsable.includes(specialist));
+          return isDirectResp || isSubResp;
+        });
       }
       return list;
     }
@@ -5797,6 +5912,12 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                 <button onclick="openCreateStageModal()" class="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Agregar nueva etapa y generar plantilla WBS">
                   <i class="fa-solid fa-folder-plus text-xs"></i> <span>Nueva Etapa</span>
                 </button>
+                <button onclick="expandAllTaskTrees()" class="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer border border-stone-200" title="Desplegar todas las subtareas en el cronograma">
+                  <i class="fa-solid fa-sitemap text-indigo-600 text-xs"></i> <span>▾ Desplegar Subtareas</span>
+                </button>
+                <button onclick="collapseAllTaskTrees()" class="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer border border-stone-200" title="Colapsar todas las subtareas">
+                  <i class="fa-solid fa-compress text-stone-500 text-xs"></i> <span>▸ Colapsar Todo</span>
+                </button>
               </div>
               <p class="text-xs text-stone-400 mt-0.5">Panel WBS a la izquierda sincronizado 1:1 con la línea de tiempo temporal a la derecha.</p>
             </div>
@@ -6466,8 +6587,18 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                 ${reportingFilterCategory !== 'all' ? `Filtrando por categoría: <strong class="text-emerald-800 uppercase font-bold">${reportingFilterCategory}</strong>` : 'Mostrando todas las tareas del periodo con auditoría de vencimiento y reprogramaciones.'}
               </p>
             </div>
-            <div class="text-xs font-bold text-stone-600">
-              Total Inversión Visible: <strong class="text-stone-900 font-black">$${filteredTasks.reduce((s, t) => s + (Number(t.costoTotal) || 0), 0).toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN</strong>
+            <div class="flex items-center gap-3 flex-wrap">
+              <div class="inline-flex items-center gap-1">
+                <button onclick="expandAllTaskTrees()" class="px-2.5 py-1 rounded-lg bg-white hover:bg-stone-200 text-stone-700 text-xs font-bold border border-stone-200 transition shadow-2xs cursor-pointer flex items-center gap-1" title="Desplegar todas las subtareas">
+                  <i class="fa-solid fa-sitemap text-indigo-600"></i> <span>▾ Subtareas</span>
+                </button>
+                <button onclick="collapseAllTaskTrees()" class="px-2.5 py-1 rounded-lg bg-white hover:bg-stone-200 text-stone-700 text-xs font-bold border border-stone-200 transition shadow-2xs cursor-pointer flex items-center gap-1" title="Colapsar subtareas">
+                  <i class="fa-solid fa-compress text-stone-500"></i> <span>▸ Colapsar</span>
+                </button>
+              </div>
+              <div class="text-xs font-bold text-stone-600">
+                Total Inversión Visible: <strong class="text-stone-900 font-black">$${filteredTasks.reduce((s, t) => s + (Number(t.costoTotal) || 0), 0).toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN</strong>
+              </div>
             </div>
           </div>
 
@@ -6489,18 +6620,36 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
               </thead>
               <tbody class="divide-y divide-stone-100">
                 ${filteredTasks.map(t => {
+                  const hasSubs = t.subtareas && Array.isArray(t.subtareas) && t.subtareas.length > 0;
+                  const isExp = window.expandedTaskIds && window.expandedTaskIds.has(t.id);
                   const isOverdue = isTaskOverdue(t, metrics.todayStr);
                   const delayDays = getTaskDelayDays(t, metrics.todayStr);
                   const isReprog = isTaskRescheduled(t);
 
-                  return `
-                    <tr class="hover:bg-stone-50/80 transition group">
+                  let rowsHtml = `
+                    <tr class="hover:bg-stone-50/80 transition group ${isExp ? 'bg-stone-50/50' : ''}">
                       <td class="py-2.5 px-3 font-mono font-bold text-emerald-800 whitespace-nowrap">
-                        ${t.wbs ? `<span class="text-stone-400 font-normal mr-1">${t.wbs}</span>` : ''}${t.id}
+                        <div class="flex items-center gap-1.5">
+                          ${hasSubs ? `
+                            <button type="button" onclick="event.stopPropagation(); toggleTaskTree('${t.id}')" class="w-4 h-4 rounded hover:bg-stone-200 text-stone-500 hover:text-stone-800 flex items-center justify-center text-[10px] cursor-pointer" title="${isExp ? 'Colapsar subtareas' : 'Desplegar subtareas'}">
+                              <i class="fa-solid ${isExp ? 'fa-chevron-down text-emerald-700' : 'fa-chevron-right'}"></i>
+                            </button>
+                          ` : `
+                            <span class="w-4"></span>
+                          `}
+                          <span>${t.wbs ? `<span class="text-stone-400 font-normal mr-1">${t.wbs}</span>` : ''}${t.id}</span>
+                        </div>
                       </td>
                       <td class="py-2.5 px-3 min-w-[220px]">
-                        <div class="font-bold text-stone-900 group-hover:text-emerald-800 transition">
-                          ${escapeHtml(t.name)}
+                        <div class="flex items-center gap-1.5 min-w-0">
+                          <span class="font-bold text-stone-900 group-hover:text-emerald-800 transition">
+                            ${escapeHtml(t.name)}
+                          </span>
+                          ${hasSubs ? `
+                            <span class="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0 select-none">
+                              🧩 ${t.subtareas.length} sub
+                            </span>
+                          ` : ''}
                         </div>
                         <div class="text-[10px] text-stone-400 mt-0.5">
                           Etapa: ${escapeHtml(t.etapa || 'General')}
@@ -6542,6 +6691,43 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                       </td>
                     </tr>
                   `;
+
+                  if (hasSubs && isExp) {
+                    rowsHtml += t.subtareas.map(sub => `
+                      <tr class="bg-indigo-50/20 hover:bg-indigo-50/60 transition border-b border-stone-100 text-xs">
+                        <td class="py-2 px-3 pl-7 font-mono text-[11px] font-bold text-indigo-700 whitespace-nowrap">
+                          <span class="text-indigo-400 mr-1 select-none font-normal">└──</span>${sub.id}
+                        </td>
+                        <td class="py-2 px-3 min-w-[220px]">
+                          <div class="font-medium text-stone-800">${escapeHtml(sub.name)}</div>
+                          <div class="text-[10px] text-stone-400">Subtarea granular de ${t.id}</div>
+                        </td>
+                        <td class="py-2 px-3 whitespace-nowrap">
+                          <span class="font-semibold text-stone-700">${escapeHtml(sub.responsable || t.responsable || 'Sin Asignar')}</span>
+                          <div class="text-[10px] text-stone-400">${sub.horas || 0} hrs</div>
+                        </td>
+                        <td class="py-2 px-3 whitespace-nowrap font-mono text-[11px] text-stone-600">
+                          ${sub.fecha || t.start || '--'}
+                        </td>
+                        <td class="py-2 px-3 whitespace-nowrap">
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${sub.estado === 'Completada' ? 'bg-emerald-100 text-emerald-800' : (sub.estado === 'En Progreso' ? 'bg-amber-100 text-amber-800' : 'bg-stone-200 text-stone-700')}">
+                            ${sub.estado}
+                          </span>
+                        </td>
+                        <td class="py-2 px-3 text-right font-mono text-stone-400 text-[11px]">-</td>
+                        <td class="py-2 px-3 text-right font-mono text-stone-400 text-[11px]">-</td>
+                        <td class="py-2 px-3 text-right font-mono text-stone-400 text-[11px]">-</td>
+                        <td class="py-2 px-3 text-right font-mono text-stone-400 text-[11px]">-</td>
+                        <td class="py-2 px-3 text-center whitespace-nowrap">
+                          <button onclick="openTaskModal('${t.id}')" class="px-2 py-0.5 rounded bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 text-[10px] font-bold transition cursor-pointer">
+                            Ver Tarea
+                          </button>
+                        </td>
+                      </tr>
+                    `).join('');
+                  }
+
+                  return rowsHtml;
                 }).join('')}
               </tbody>
             </table>
@@ -6935,6 +7121,12 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                 <button onclick="openCreateStageModal()" class="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Agregar nueva etapa y generar plantilla WBS">
                   <i class="fa-solid fa-folder-plus text-xs"></i> <span>Nueva Etapa</span>
                 </button>
+                <button onclick="expandAllTaskTrees()" class="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer border border-stone-200" title="Desplegar todas las subtareas en el cronograma">
+                  <i class="fa-solid fa-sitemap text-indigo-600 text-xs"></i> <span>▾ Desplegar Subtareas</span>
+                </button>
+                <button onclick="collapseAllTaskTrees()" class="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer border border-stone-200" title="Colapsar todas las subtareas">
+                  <i class="fa-solid fa-compress text-stone-500 text-xs"></i> <span>▸ Colapsar Todo</span>
+                </button>
               </div>
               <p class="text-xs text-stone-400 mt-0.5">Panel WBS a la izquierda alineado 1:1 con las barras temporales.</p>
             </div>
@@ -6992,13 +7184,16 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       }
     }
 
-    // Renderizado del Panel Izquierdo WBS (Estilo Microsoft Project)
+    // Renderizado del Panel Izquierdo WBS (Estilo Microsoft Project con Árbol de Subtareas)
     function renderWbsRows(containerId, tasks) {
       const container = document.getElementById(containerId);
       if (!container) return;
       container.innerHTML = "";
 
       tasks.forEach((t) => {
+        const hasSubtasks = t.subtareas && Array.isArray(t.subtareas) && t.subtareas.length > 0;
+        const isExpanded = window.expandedTaskIds && window.expandedTaskIds.has(t.id);
+
         const row = document.createElement("div");
         row.className = "wbs-row h-[60px] min-h-[60px] max-h-[60px] px-3 flex items-center justify-between gap-2.5 hover:bg-emerald-50/80 transition cursor-pointer border-b border-stone-100 group select-none";
         row.setAttribute("data-task-id", t.id);
@@ -7020,17 +7215,31 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         }
 
         row.innerHTML = `
-          <div class="flex items-center gap-2.5 min-w-0 flex-1">
+          <div class="flex items-center gap-2 min-w-0 flex-1">
+            ${hasSubtasks ? `
+              <button type="button" onclick="event.stopPropagation(); toggleTaskTree('${t.id}')" class="w-5 h-5 flex items-center justify-center rounded hover:bg-stone-200 text-stone-500 hover:text-stone-800 transition text-[11px] shrink-0 cursor-pointer" title="${isExpanded ? 'Colapsar subtareas' : 'Desplegar subtareas'}">
+                <i class="fa-solid ${isExpanded ? 'fa-chevron-down text-emerald-700' : 'fa-chevron-right'}"></i>
+              </button>
+            ` : `
+              <span class="w-5 shrink-0"></span>
+            `}
             <span class="w-14 shrink-0 font-mono font-black text-xs text-emerald-900 bg-emerald-100/80 px-1.5 py-0.5 rounded text-center border border-emerald-300/60 shadow-2xs group-hover:bg-emerald-200">
               ${t.id}
             </span>
             <div class="min-w-0 flex-1">
-              <p class="text-xs font-bold text-stone-800 truncate group-hover:text-emerald-900 transition" title="${t.name}">
-                ${t.name}
-              </p>
+              <div class="flex items-center gap-1.5 min-w-0">
+                <p class="text-xs font-bold text-stone-800 truncate group-hover:text-emerald-900 transition" title="${escapeHtml(t.name)}">
+                  ${escapeHtml(t.name)}
+                </p>
+                ${hasSubtasks ? `
+                  <span class="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0 select-none">
+                    🧩 ${t.subtareas.length} sub
+                  </span>
+                ` : ''}
+              </div>
               <div class="flex items-center gap-2 text-[10px] text-stone-400 mt-0.5">
                 <span class="text-stone-600 font-semibold truncate max-w-[130px] flex items-center gap-1">
-                  <i class="fa-regular fa-folder text-stone-400 text-[9px]"></i> ${t.etapa || 'General'}
+                  <i class="fa-regular fa-folder text-stone-400 text-[9px]"></i> ${escapeHtml(t.etapa || 'General')}
                 </span>
                 <span>&bull;</span>
                 <span class="font-black text-emerald-800">$${Number(t.costoTotal).toLocaleString('es-MX', {minimumFractionDigits: 0})}</span>
@@ -7039,7 +7248,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           </div>
           <div class="flex items-center gap-2 shrink-0 pl-1">
             ${(taskComments[t.id] && taskComments[t.id].length > 0) ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300/60 flex items-center gap-1 shadow-2xs" title="${taskComments[t.id].length} notas en bitácora"><i class="fa-regular fa-comment-dots text-emerald-700"></i> ${taskComments[t.id].length}</span>` : ''}
-            <span class="w-6 h-6 rounded-lg ${avatarBg} text-white font-extrabold text-[10px] flex items-center justify-center shadow-2xs" title="${t.responsable}">
+            <span class="w-6 h-6 rounded-lg ${avatarBg} text-white font-extrabold text-[10px] flex items-center justify-center shadow-2xs" title="${escapeHtml(t.responsable || 'Sin Asignar')}">
               ${initials}
             </span>
             ${statusDot}
@@ -7060,15 +7269,84 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         };
 
         container.appendChild(row);
+
+        // Si la tarea tiene subtareas y está expandida, renderizar filas secundarias en árbol
+        if (hasSubtasks && isExpanded) {
+          t.subtareas.forEach((sub) => {
+            const subRow = document.createElement("div");
+            subRow.className = "wbs-row wbs-subtask-row h-[60px] min-h-[60px] max-h-[60px] px-3 pl-7 flex items-center justify-between gap-2 bg-indigo-50/20 hover:bg-indigo-50/80 transition cursor-pointer border-b border-stone-100 group select-none";
+            subRow.setAttribute("data-task-id", sub.id);
+            subRow.setAttribute("data-parent-id", t.id);
+
+            let subAvatarBg = "bg-stone-600";
+            let subInitials = "EM";
+            const subResp = sub.responsable || t.responsable || "";
+            if (subResp.includes("Arturo B.")) { subAvatarBg = "bg-blue-600"; subInitials = "AB"; }
+            else if (subResp.includes("Gema R.")) { subAvatarBg = "bg-emerald-600"; subInitials = "GR"; }
+            else if (subResp.includes("Arturo A.")) { subAvatarBg = "bg-purple-600"; subInitials = "AA"; }
+            else if (subResp.includes("Don Chiyo")) { subAvatarBg = "bg-amber-600"; subInitials = "DC"; }
+
+            let subStatusDot = `<span class="w-2.5 h-2.5 rounded-full bg-stone-300 ring-2 ring-stone-100 shrink-0" title="Subtarea No Iniciada"></span>`;
+            if (sub.estado === "Completada") {
+              subStatusDot = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100 shrink-0" title="Subtarea Completada"></span>`;
+            } else if (sub.estado === "En Progreso") {
+              subStatusDot = `<span class="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-100 animate-pulse shrink-0" title="Subtarea En Progreso"></span>`;
+            }
+
+            subRow.innerHTML = `
+              <div class="flex items-center gap-2 min-w-0 flex-1">
+                <span class="font-mono text-indigo-400 text-xs shrink-0 select-none">└──</span>
+                <span class="w-20 shrink-0 font-mono font-bold text-[10px] text-indigo-900 bg-indigo-100/90 px-1 py-0.5 rounded text-center border border-indigo-300/60 shadow-2xs group-hover:bg-indigo-200">
+                  ${sub.id}
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-semibold text-stone-800 truncate group-hover:text-indigo-900 transition" title="${escapeHtml(sub.name)}">
+                    ${escapeHtml(sub.name)}
+                  </p>
+                  <div class="flex items-center gap-2 text-[10px] text-stone-400 mt-0.5">
+                    <span class="text-stone-500 font-medium truncate flex items-center gap-1">
+                      <i class="fa-regular fa-calendar text-stone-400 text-[9px]"></i> ${sub.fecha || t.start || '--'}
+                    </span>
+                    <span>&bull;</span>
+                    <span class="font-bold text-stone-600">${sub.horas || 0} hrs</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0 pl-1">
+                <span class="w-5 h-5 rounded-md ${subAvatarBg} text-white font-extrabold text-[9px] flex items-center justify-center shadow-2xs" title="${escapeHtml(subResp)}">
+                  ${subInitials}
+                </span>
+                ${subStatusDot}
+              </div>
+            `;
+
+            subRow.onclick = () => openTaskModal(t.id);
+
+            subRow.onmouseenter = () => {
+              subRow.classList.add("bg-indigo-100/70");
+              const barWrapper = document.querySelector(`.bar-wrapper[data-task-id="${sub.id}"]`);
+              if (barWrapper) barWrapper.classList.add("bar-subtask-highlight");
+            };
+            subRow.onmouseleave = () => {
+              subRow.classList.remove("bg-indigo-100/70");
+              const barWrapper = document.querySelector(`.bar-wrapper[data-task-id="${sub.id}"]`);
+              if (barWrapper) barWrapper.classList.remove("bar-subtask-highlight");
+            };
+
+            container.appendChild(subRow);
+          });
+        }
       });
     }
 
-    // Motor de Montaje de Frappe Gantt (Instancia limpia con ID de WBS y sincronización)
+    // Motor de Montaje de Frappe Gantt con Subtareas Desplegables Sincronizadas
     function mountGantt(svgSelector, tasks) {
       const svgEl = document.querySelector(svgSelector);
       if (!svgEl) return;
 
-      const frappeTasks = tasks.map(t => {
+      const flatGanttItems = [];
+
+      tasks.forEach(t => {
         const sDate = (t.start && String(t.start).length >= 10) ? String(t.start).substring(0, 10) : "2026-09-20";
         let eDate = (t.end && String(t.end).length >= 10) ? String(t.end).substring(0, 10) : sDate;
         if (new Date(eDate) < new Date(sDate)) eDate = sDate;
@@ -7079,19 +7357,63 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
 
         const prog = Number(t.progress) || (t.estado === "Completada" ? 100 : (t.estado === "En Progreso" ? 50 : 0));
 
-        return {
+        flatGanttItems.push({
           id: String(t.id),
-          name: `${t.id}`, // Estilo Microsoft Project: Barra identificada limpiamente por su código WBS
+          name: `${t.id}`,
+          fullName: t.name,
+          wbs: t.wbs,
+          responsable: t.responsable,
           start: sDate,
           end: eDate,
           progress: prog,
           custom_class: cls,
-          dependencies: t.dependencies || ""
-        };
+          dependencies: t.dependencies || "",
+          isSubtask: false,
+          parentTaskId: null
+        });
+
+        // Intercalar subtareas en la línea de tiempo si la tarea está expandida
+        const hasSubtasks = t.subtareas && Array.isArray(t.subtareas) && t.subtareas.length > 0;
+        const isExpanded = window.expandedTaskIds && window.expandedTaskIds.has(t.id);
+
+        if (hasSubtasks && isExpanded) {
+          t.subtareas.forEach(sub => {
+            let subStart = (sub.start && String(sub.start).length >= 10) ? String(sub.start).substring(0, 10) : (sub.fecha && String(sub.fecha).length >= 10 ? String(sub.fecha).substring(0, 10) : sDate);
+            let subEnd = (sub.end && String(sub.end).length >= 10) ? String(sub.end).substring(0, 10) : (sub.fecha && String(sub.fecha).length >= 10 ? String(sub.fecha).substring(0, 10) : subStart);
+            if (new Date(subEnd) < new Date(subStart)) subEnd = subStart;
+            // Garantizar visibilidad de barra de 1 día si inicio coincide con fin
+            if (subStart === subEnd) {
+              const d = new Date(subStart + "T12:00:00");
+              d.setDate(d.getDate() + 1);
+              subEnd = d.toISOString().substring(0, 10);
+            }
+
+            let subCls = "gantt-subtask gantt-subtask-noiniciada";
+            if (sub.estado === "Completada") subCls = "gantt-subtask gantt-subtask-completada";
+            else if (sub.estado === "En Progreso") subCls = "gantt-subtask gantt-subtask-progreso";
+
+            const subProg = Number(sub.progress) || (sub.estado === "Completada" ? 100 : (sub.estado === "En Progreso" ? 50 : 0));
+
+            flatGanttItems.push({
+              id: String(sub.id),
+              name: `↳ ${sub.id}`,
+              fullName: sub.name,
+              wbs: sub.id,
+              responsable: sub.responsable || t.responsable,
+              start: subStart,
+              end: subEnd,
+              progress: subProg,
+              custom_class: subCls,
+              dependencies: "",
+              isSubtask: true,
+              parentTaskId: t.id
+            });
+          });
+        }
       });
 
       try {
-        new Gantt(svgSelector, frappeTasks, {
+        new Gantt(svgSelector, flatGanttItems, {
           header_height: 52,
           column_width: currentMode === "Day" ? 42 : (currentMode === "Month" ? 75 : 38),
           step: 24,
@@ -7102,25 +7424,79 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           padding: 22,
           view_mode: currentMode,
           date_format: 'YYYY-MM-DD',
+          custom_popup_html: function(task) {
+            const item = flatGanttItems.find(x => x.id === task.id);
+            if (item && item.isSubtask) {
+              return `
+                <div class="p-3 bg-stone-900 text-white rounded-xl shadow-xl text-xs space-y-1.5 max-w-xs border border-indigo-500/50">
+                  <div class="flex items-center justify-between text-indigo-300 font-mono font-bold text-[10px] uppercase">
+                    <span>🧩 Subtarea &bull; ${item.id}</span>
+                    <span>${item.progress}%</span>
+                  </div>
+                  <p class="font-bold text-white text-xs leading-snug">${escapeHtml(item.fullName || item.name)}</p>
+                  <div class="flex items-center justify-between text-[10px] text-stone-300 pt-1 border-t border-stone-800">
+                    <span><i class="fa-regular fa-calendar text-stone-400"></i> ${item.start} ➔ ${item.end}</span>
+                    <span class="text-indigo-300 font-semibold">${escapeHtml(item.responsable || 'Sin Asignar')}</span>
+                  </div>
+                </div>
+              `;
+            }
+            return `
+              <div class="p-3 bg-stone-900 text-white rounded-xl shadow-xl text-xs space-y-1.5 max-w-xs border border-emerald-500/50">
+                <div class="flex items-center justify-between text-emerald-400 font-mono font-bold text-[10px] uppercase">
+                  <span>WBS ${item ? (item.wbs || item.id) : task.id} &bull; ${task.id}</span>
+                  <span>${task.progress}%</span>
+                </div>
+                <p class="font-bold text-white text-xs leading-snug">${escapeHtml(item ? item.fullName : task.name)}</p>
+                <div class="flex items-center justify-between text-[10px] text-stone-300 pt-1 border-t border-stone-800">
+                  <span><i class="fa-regular fa-calendar text-stone-400"></i> ${task.start} ➔ ${task.end}</span>
+                  <span class="text-emerald-400 font-semibold">${escapeHtml((item && item.responsable) ? item.responsable : 'Sin Asignar')}</span>
+                </div>
+              </div>
+            `;
+          },
           on_click: function(task) {
-            openTaskModal(task.id);
+            const item = flatGanttItems.find(x => x.id === task.id);
+            if (item && item.isSubtask) {
+              openTaskModal(item.parentTaskId);
+            } else {
+              openTaskModal(task.id);
+            }
           }
         });
 
-        // Vincular atributos data-task-id a cada barra y hover bidireccional
+        // Estilizar y vincular atributos data-task-id a cada barra y hover bidireccional
         svgEl.querySelectorAll(".bar-wrapper").forEach((bw, idx) => {
-          const t = tasks[idx];
-          if (!t) return;
-          bw.setAttribute("data-task-id", t.id);
+          const item = flatGanttItems[idx];
+          if (!item) return;
+          bw.setAttribute("data-task-id", item.id);
+          if (item.isSubtask) {
+            bw.setAttribute("data-parent-id", item.parentTaskId);
+            // Ajustar visualmente altura sutil y centrado de la barra de subtarea en el SVG
+            const rectBar = bw.querySelector(".bar");
+            if (rectBar) {
+              const curY = parseFloat(rectBar.getAttribute("y") || "0");
+              rectBar.setAttribute("height", "26");
+              rectBar.setAttribute("y", curY + 6);
+              rectBar.setAttribute("rx", "4");
+            }
+            const rectProg = bw.querySelector(".bar-progress");
+            if (rectProg) {
+              const curY = parseFloat(rectProg.getAttribute("y") || "0");
+              rectProg.setAttribute("height", "26");
+              rectProg.setAttribute("y", curY + 6);
+              rectProg.setAttribute("rx", "4");
+            }
+          }
 
           bw.addEventListener("mouseenter", () => {
-            document.querySelectorAll(`.wbs-row[data-task-id="${t.id}"]`).forEach(r => {
-              r.classList.add("bg-emerald-100/80");
+            document.querySelectorAll(`.wbs-row[data-task-id="${item.id}"]`).forEach(r => {
+              r.classList.add(item.isSubtask ? "bg-indigo-100/80" : "bg-emerald-100/80");
             });
           });
           bw.addEventListener("mouseleave", () => {
-            document.querySelectorAll(`.wbs-row[data-task-id="${t.id}"]`).forEach(r => {
-              r.classList.remove("bg-emerald-100/80");
+            document.querySelectorAll(`.wbs-row[data-task-id="${item.id}"]`).forEach(r => {
+              r.classList.remove(item.isSubtask ? "bg-indigo-100/80" : "bg-emerald-100/80");
             });
           });
         });
@@ -7128,8 +7504,8 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         // Auto-scroll horizontal inteligente: enfoca la primera tarea en progreso o activa
         setTimeout(() => {
           const container = svgEl.closest(".overflow-x-auto") || svgEl.parentElement;
-          if (container && frappeTasks.length > 0) {
-            const targetBar = svgEl.querySelector(".gantt-progreso") || svgEl.querySelector(".bar-wrapper");
+          if (container && flatGanttItems.length > 0) {
+            const targetBar = svgEl.querySelector(".gantt-progreso") || svgEl.querySelector(".gantt-subtask-progreso") || svgEl.querySelector(".bar-wrapper");
             if (targetBar) {
               const rect = targetBar.querySelector(".bar");
               if (rect) {
@@ -8565,6 +8941,11 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       recalculateTaskRollup(t);
       inputName.value = "";
       renderModalSubtasks(selectedTaskId);
+
+      // Asegurar que la tarea quede expandida para que la nueva subtarea sea visible en el árbol
+      if (window.expandedTaskIds) {
+        window.expandedTaskIds.add(t.id);
+      }
 
       // Refrescar vistas
       const container = document.getElementById("viewContainer");
