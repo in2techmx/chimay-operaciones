@@ -11,6 +11,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
@@ -370,6 +371,11 @@
           <i class="fa-solid fa-robot text-purple-200"></i> Planificador Agéntico IA
         </button>
 
+        <!-- Botón Integración Telegram (US-CHIMAY-TEL-01) -->
+        <button id="btnModalTelegram" onclick="openTelegramModal()" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200/80 shadow-2xs hover:border-sky-400 cursor-pointer" title="Gestión Operativa y Asistente Telegram">
+          <i class="fa-brands fa-telegram text-sky-500 text-sm"></i> Telegram
+        </button>
+
         <!-- Separador visual discreto -->
         <span class="h-4 w-px bg-stone-200 hidden sm:inline-block"></span>
 
@@ -703,6 +709,52 @@
           <i class="fa-solid fa-users-gear"></i> Administrar Usuarios, Roles y Permisos
         </button>
         <button onclick="closeGoogleAuthModal()" class="text-stone-400 hover:text-stone-600 text-xs font-semibold">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Integración Telegram (US-CHIMAY-TEL-01 - Git-as-a-Database) -->
+  <div id="telegramModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-4xl w-full p-5 sm:p-7 shadow-2xl border border-stone-200 flex flex-col max-h-[92vh] overflow-hidden my-auto animate-in fade-in zoom-in duration-150">
+      
+      <!-- Cabecera del Modal -->
+      <div class="flex justify-between items-start border-b border-stone-100 pb-4 shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-sky-500 text-white flex items-center justify-center text-xl shadow-md">
+            <i class="fa-brands fa-telegram"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-lg sm:text-xl font-black text-stone-900 leading-snug">Asistente Operativo Telegram</h3>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-sky-100 text-sky-800 border border-sky-300">Git-as-a-Database</span>
+            </div>
+            <p class="text-xs text-stone-500 font-medium mt-0.5">Gestión de tareas, bitácora colaborativa y consultas en tiempo real desde tu móvil</p>
+          </div>
+        </div>
+        <button onclick="closeTelegramModal()" class="text-stone-400 hover:text-stone-700 w-8 h-8 rounded-full hover:bg-stone-100 flex items-center justify-center transition cursor-pointer text-lg font-bold">
+          &times;
+        </button>
+      </div>
+
+      <!-- Barra de Pestañas del Modal -->
+      <div class="flex items-center gap-2 border-b border-stone-200 pt-3 pb-2 shrink-0 overflow-x-auto text-xs font-bold">
+        <button onclick="switchTelegramTab('conexion')" id="tabBtnTelConexion" class="px-3.5 py-1.5 rounded-xl bg-sky-600 text-white shadow-xs transition flex items-center gap-1.5 whitespace-nowrap">
+          <i class="fa-solid fa-qrcode"></i> Conexión Rápida & QR
+        </button>
+        <button onclick="switchTelegramTab('simulador')" id="tabBtnTelSimulador" class="px-3.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 transition flex items-center gap-1.5 whitespace-nowrap">
+          <i class="fa-solid fa-terminal"></i> Consola / Simulador Web
+        </button>
+        <button onclick="switchTelegramTab('comandos')" id="tabBtnTelComandos" class="px-3.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 transition flex items-center gap-1.5 whitespace-nowrap">
+          <i class="fa-solid fa-book"></i> Reglas & Comandos
+        </button>
+        <button onclick="switchTelegramTab('usuarios')" id="tabBtnTelUsuarios" class="px-3.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 transition flex items-center gap-1.5 whitespace-nowrap">
+          <i class="fa-solid fa-users-gear"></i> Vinculación de Equipo
+        </button>
+      </div>
+
+      <!-- Contenedor Dinámico de Contenido de Pestañas -->
+      <div class="flex-1 overflow-y-auto py-4 space-y-4" id="telegramTabContent">
+        <!-- Renderizado dinámico vía JavaScript -->
       </div>
     </div>
   </div>
@@ -3041,6 +3093,8 @@ Las tareas ya asignadas conservarán su nombre en el historial, pero el usuario 
                     usersConfig[u.nombre].rol = u.rol;
                     usersConfig[u.nombre].canEditTasks = u.puedeEditar;
                     usersConfig[u.nombre].editScope = u.alcanceEdicion;
+                    usersConfig[u.nombre].telegramId = u.telegramId;
+                    usersConfig[u.nombre].telegramUser = u.telegramUser;
                   }
                 });
                 syncTeamInfoWithUsersConfig();
@@ -7399,7 +7453,627 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       }
     };
 
+    // =========================================================================
+    // 0.39 MÓDULO DE INTEGRACIÓN TELEGRAM (US-CHIMAY-TEL-01) - Git-as-a-Database
+    // =========================================================================
+    let telegramActiveTab = "conexion";
+    let telegramBotUsername = localStorage.getItem("chimay_telegram_bot_user") || "ChimayOperacionesBot";
+    let telegramCurrentPin = "";
+    let telegramSimHistory = [
+      { sender: "bot", text: "🤖 ¡Hola! Soy el Asistente Operativo de Chimay en Telegram.\n\nEscribe *mis tareas*, *reporte* o *ayuda* para comenzar.", time: "12:00", buttons: [{ text: "📋 Mis Tareas", cmd: "mis tareas" }, { text: "📊 Reporte", cmd: "reporte" }] }
+    ];
+
+    function openTelegramModal() {
+      const m = document.getElementById("telegramModal");
+      if (!m) return;
+      m.classList.remove("hidden");
+      if (!telegramCurrentPin) {
+        generateTelegramPin();
+      }
+      switchTelegramTab(telegramActiveTab);
+    }
+
+    function closeTelegramModal() {
+      const m = document.getElementById("telegramModal");
+      if (m) m.classList.add("hidden");
+    }
+
+    function generateTelegramPin() {
+      telegramCurrentPin = "CHIMAY-" + Math.floor(1000 + Math.random() * 9000);
+      return telegramCurrentPin;
+    }
+
+    function switchTelegramTab(tabId) {
+      telegramActiveTab = tabId;
+      const tabBtns = {
+        conexion: document.getElementById("tabBtnTelConexion"),
+        simulador: document.getElementById("tabBtnTelSimulador"),
+        comandos: document.getElementById("tabBtnTelComandos"),
+        usuarios: document.getElementById("tabBtnTelUsuarios")
+      };
+
+      Object.keys(tabBtns).forEach(k => {
+        if (tabBtns[k]) {
+          if (k === tabId) {
+            tabBtns[k].className = "px-3.5 py-1.5 rounded-xl bg-sky-600 text-white shadow-xs transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer";
+          } else {
+            tabBtns[k].className = "px-3.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer";
+          }
+        }
+      });
+
+      const container = document.getElementById("telegramTabContent");
+      if (!container) return;
+
+      if (tabId === "conexion") {
+        renderTelegramConexionTab(container);
+      } else if (tabId === "simulador") {
+        renderTelegramSimuladorTab(container);
+      } else if (tabId === "comandos") {
+        renderTelegramComandosTab(container);
+      } else if (tabId === "usuarios") {
+        renderTelegramUsuariosTab(container);
+      }
+    }
+
+    function renderTelegramConexionTab(container) {
+      const botUrl = "https://t.me/" + telegramBotUsername.replace('@', '');
+      const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(botUrl);
+      const activeUser = currentUser ? (currentUser.nombre || currentUser.name || "Arturo B.") : "Arturo B.";
+      const activeConfig = (usersConfig && usersConfig[activeUser]) || (TEAM_INFO && TEAM_INFO[activeUser]) || {};
+
+      container.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Tarjeta 1: Acceso Directo y QR -->
+          <div class="p-5 rounded-2xl bg-gradient-to-br from-sky-50 via-sky-100/50 to-white border border-sky-200 flex flex-col justify-between space-y-4">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-1 rounded-lg text-xs font-black bg-sky-600 text-white flex items-center gap-1.5 shadow-2xs">
+                  <i class="fa-brands fa-telegram"></i> Bot Oficial
+                </span>
+                <span class="text-xs text-stone-500 font-mono">@${escapeHtml(telegramBotUsername)}</span>
+              </div>
+              <h4 class="text-base font-black text-stone-900 mt-2.5">Conéctate al Asistente en 1 Toque</h4>
+              <p class="text-xs text-stone-600 mt-1 leading-relaxed">
+                Abre el chat oficial en tu app de Telegram para gestionar entregables en campo, chatear y recibir alertas sin abrir la computadora.
+              </p>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center gap-4 bg-white p-3.5 rounded-xl border border-sky-100 shadow-2xs">
+              <img src="${qrUrl}" alt="QR Bot Telegram" class="w-28 h-28 rounded-lg border border-stone-200 bg-stone-50 shadow-2xs shrink-0" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'112\' height=\'112\'><rect width=\'112\' height=\'112\' fill=\'%23f1f5f9\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-size=\'10\' fill=\'%2364748b\'>Escanea con Telegram</text></svg>'">
+              <div class="space-y-2 text-center sm:text-left flex-1">
+                <span class="text-[11px] font-bold text-stone-500 block">Escanear con la cámara del celular</span>
+                <a href="${botUrl}" target="_blank" rel="noopener noreferrer" class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs transition shadow-sm">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir en Telegram
+                </a>
+                <button type="button" onclick="navigator.clipboard.writeText('${botUrl}'); alert('Enlace copiado al portapapeles: ${botUrl}');" class="w-full inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-700 font-bold text-[11px] transition">
+                  <i class="fa-regular fa-copy"></i> Copiar Enlace
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tarjeta 2: Tu Cuenta & Vinculación Segura -->
+          <div class="p-5 rounded-2xl bg-white border border-stone-200 space-y-4 flex flex-col justify-between shadow-2xs">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-black uppercase tracking-wider text-stone-500">Tu Estado en Telegram</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  <i class="fa-solid fa-shield-check"></i> Autorizado
+                </span>
+              </div>
+              
+              <div class="mt-3 p-3 rounded-xl bg-stone-50 border border-stone-200 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl ${activeConfig.avatarBg || 'bg-blue-600'} text-white font-black text-xs flex items-center justify-center shadow-2xs">
+                  ${activeConfig.initials || 'AB'}
+                </div>
+                <div>
+                  <span class="text-xs font-black text-stone-900 block">${escapeHtml(activeUser)}</span>
+                  <span class="text-[11px] text-stone-500 font-medium">${escapeHtml(activeConfig.rol || 'Miembro del Equipo')}</span>
+                </div>
+              </div>
+
+              <!-- Código PIN de Vinculación -->
+              <div class="mt-4 p-3.5 rounded-xl bg-amber-50 border border-amber-200/80 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-black text-amber-900">Código de Emparejamiento Rápido:</span>
+                  <button type="button" onclick="generateTelegramPin(); switchTelegramTab('conexion');" class="text-[10px] font-bold text-amber-800 hover:underline">
+                    <i class="fa-solid fa-arrows-rotate"></i> Regenerar
+                  </button>
+                </div>
+                <div class="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-amber-300">
+                  <span class="font-mono font-black text-base tracking-wider text-amber-950">${telegramCurrentPin}</span>
+                  <button type="button" onclick="navigator.clipboard.writeText('/vincular ' + telegramCurrentPin); alert('Comando copiado: /vincular ' + telegramCurrentPin);" class="text-xs text-amber-700 hover:text-amber-900 font-bold flex items-center gap-1">
+                    <i class="fa-regular fa-copy"></i> Copiar
+                  </button>
+                </div>
+                <p class="text-[10px] text-amber-800/90 leading-tight">
+                  Envía en Telegram: <code>/vincular ${telegramCurrentPin}</code> para enlazar automáticamente tu ID con ${escapeHtml(activeUser)}.
+                </p>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-stone-100 flex items-center justify-between text-xs">
+              <span class="text-stone-500 font-medium">Modo Mini App:</span>
+              <button type="button" onclick="switchTelegramTab('simulador')" class="text-sky-700 hover:text-sky-900 font-bold flex items-center gap-1">
+                <i class="fa-solid fa-terminal"></i> Probar en el Simulador &rarr;
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTelegramSimuladorTab(container) {
+      const activeUser = currentUser ? (currentUser.nombre || currentUser.name || "Arturo B.") : "Arturo B.";
+
+      container.innerHTML = `
+        <div class="flex flex-col h-[460px] bg-stone-100 rounded-2xl border border-stone-200 overflow-hidden shadow-inner">
+          <!-- Barra superior del simulador -->
+          <div class="px-4 py-2.5 bg-stone-800 text-white flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-sky-500 text-white flex items-center justify-center text-sm shadow-xs">
+                <i class="fa-brands fa-telegram"></i>
+              </div>
+              <div>
+                <span class="text-xs font-bold block leading-none">Bot Chimay Operaciones</span>
+                <span class="text-[10px] text-emerald-400 font-mono">bot &bull; conectado a Git-as-a-Database</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-[11px] text-stone-300">
+              <span>Usuario activo: <strong class="text-white font-bold">${escapeHtml(activeUser)}</strong></span>
+            </div>
+          </div>
+
+          <!-- Área de Mensajes del Chat -->
+          <div id="simuladorMessagesContainer" class="flex-1 p-3.5 overflow-y-auto space-y-3 font-sans text-xs">
+            ${telegramSimHistory.map(m => `
+              <div class="flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-100">
+                <div class="max-w-[85%] rounded-2xl p-3 shadow-xs ${m.sender === 'user' ? 'bg-sky-600 text-white rounded-br-xs' : 'bg-white text-stone-800 border border-stone-200 rounded-bl-xs'} space-y-1.5">
+                  <div class="whitespace-pre-wrap leading-relaxed">${formatTelegramMessageText(m.text)}</div>
+                  ${(m.buttons && m.buttons.length > 0) ? `
+                    <div class="pt-2 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      ${m.buttons.map(b => `
+                        <button type="button" onclick="ejecutarComandoSimulador('${escapeHtml(b.cmd)}')" class="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-[11px] transition text-center shadow-2xs">
+                          ${escapeHtml(b.text)}
+                        </button>
+                      `).join('')}
+                    </div>
+                  ` : ''}
+                  <div class="text-[9px] text-right opacity-60">${m.time || ''}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Barra de Accesos Rápidos (Chips) -->
+          <div class="px-3 py-1.5 bg-stone-200/80 border-t border-stone-200 flex items-center gap-1.5 overflow-x-auto shrink-0 text-[11px]">
+            <span class="text-stone-500 font-bold shrink-0 text-[10px] uppercase">Ejemplos:</span>
+            <button type="button" onclick="ejecutarComandoSimulador('mis tareas')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">📋 mis tareas</button>
+            <button type="button" onclick="ejecutarComandoSimulador('completar TSK-PRE-01')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">✅ completar TSK-PRE-01</button>
+            <button type="button" onclick="ejecutarComandoSimulador('TSK-PRE-01: Se aplicó abono orgánico en campo')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">💬 comentar TSK-PRE-01</button>
+            <button type="button" onclick="ejecutarComandoSimulador('crear Instalar válvula de retención sector 2')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">➕ crear tarea</button>
+            <button type="button" onclick="ejecutarComandoSimulador('reporte')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">📊 reporte</button>
+          </div>
+
+          <!-- Barra de entrada de texto -->
+          <form onsubmit="handleSimuladorSubmit(event)" class="p-2.5 bg-white border-t border-stone-200 flex items-center gap-2 shrink-0">
+            <input type="text" id="simuladorInputText" placeholder="Escribe un comando (ej. 'mis tareas', 'completar TSK-01', 'TSK-01: avance')..." class="flex-1 bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-xs font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-sky-500/30">
+            <button type="submit" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-paper-plane"></i> Enviar
+            </button>
+          </form>
+        </div>
+      `;
+
+      const msgBox = document.getElementById("simuladorMessagesContainer");
+      if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
+    }
+
+    function formatTelegramMessageText(txt) {
+      if (!txt) return "";
+      return escapeHtml(txt)
+        .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
+        .replace(/`(.*?)`/g, '<code class="px-1 py-0.5 rounded bg-stone-200/60 font-mono text-[11px] text-stone-800">$1</code>')
+        .replace(/_(.*?)_/g, '<em>$1</em>');
+    }
+
+    function handleSimuladorSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById("simuladorInputText");
+      if (!input || !input.value.trim()) return;
+      const cmd = input.value.trim();
+      input.value = "";
+      ejecutarComandoSimulador(cmd);
+    }
+
+    function ejecutarComandoSimulador(cmdText) {
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      telegramSimHistory.push({ sender: "user", text: cmdText, time: now });
+
+      const activeUser = currentUser ? (currentUser.nombre || currentUser.name || "Arturo B.") : "Arturo B.";
+      const raw = cmdText.trim();
+      const lower = raw.toLowerCase();
+
+      let botReply = { text: "", buttons: null };
+
+      // REGLAS DE NEGOCIO ESTRICTAS
+      if (lower === "/start" || lower === "ayuda" || lower === "menu") {
+        botReply.text = "🤖 *Centro de Operaciones Chimay (Telegram)*\n¡Hola *" + activeUser + "*!\n\n" +
+          "Comandos disponibles:\n" +
+          "📋 *mis tareas* ➔ Ver tus entregables asignados.\n" +
+          "✅ *completar [ID]* ➔ Finalizar tu tarea (Solo dueño).\n" +
+          "🚀 *iniciar [ID]* ➔ Poner tu tarea en progreso.\n" +
+          "💬 *[ID]: [comentario]* ➔ Chatear en cualquier tarea.\n" +
+          "➕ *crear [nombre]* ➔ Crear nueva tarea auto-asignada.\n" +
+          "📊 *reporte* ➔ Resumen de avance del proyecto.";
+        botReply.buttons = [
+          { text: "📋 Mis Tareas", cmd: "mis tareas" },
+          { text: "📊 Reporte", cmd: "reporte" }
+        ];
+      } else if (lower === "mis tareas" || lower === "tareas" || lower === "pendientes") {
+        const myTasks = tasksData.filter(t => {
+          const r = (t.responsable || "").toLowerCase();
+          const u = activeUser.toLowerCase();
+          return r.includes(u) || u.includes(r);
+        });
+
+        if (myTasks.length === 0) {
+          botReply.text = "📋 *Tus Tareas Asignadas (" + activeUser + ")*\nNo tienes tareas activas asignadas actualmente.";
+        } else {
+          let str = "📋 *Tareas Asignadas a " + activeUser + " (" + myTasks.length + "):*\n\n";
+          const btns = [];
+          myTasks.forEach(t => {
+            const icon = t.estado === "Completada" ? "✅" : (t.estado === "En Progreso" ? "⚡" : "⏳");
+            str += icon + " *" + t.id + ":* " + t.name + "\n   📅 Límite: `" + (t.end || 'N/A') + "` | Estado: *" + t.estado + "* | Avance: " + (t.progress || 0) + "%\n\n";
+            if (t.estado !== "Completada") {
+              btns.push({ text: "✅ Completar " + t.id, cmd: "completar " + t.id });
+            }
+          });
+          botReply.text = str.trim();
+          botReply.buttons = btns.length > 0 ? btns : null;
+        }
+      } else if (lower.match(/^(?:completar|finalizar|terminar|cerrar)\s+([a-z0-9\-]+)$/i)) {
+        const m = lower.match(/^(?:completar|finalizar|terminar|cerrar)\s+([a-z0-9\-]+)$/i);
+        const targetId = m[1].toUpperCase();
+        const task = tasksData.find(t => {
+          const tid = String(t.id).toUpperCase();
+          return tid === targetId || tid.endsWith("-" + targetId.replace(/[^0-9]/g, ''));
+        });
+
+        if (!task) {
+          botReply.text = "⚠️ No se encontró la tarea *" + targetId + "*. Escribe *mis tareas* para verificar los IDs disponibles.";
+        } else {
+          // Regla de propiedad estricta: solo el responsable asignado puede modificar
+          const isOwner = (task.responsable || "").toLowerCase().includes(activeUser.toLowerCase()) ||
+                          (usersConfig[activeUser] && usersConfig[activeUser].alcanceEdicion === "todas");
+
+          if (!isOwner) {
+            botReply.text = "⚠️ *Permiso denegado:*\nSolo el responsable asignado (*" + task.responsable + "*) puede modificar o completar esta tarea.";
+          } else {
+            task.estado = "Completada";
+            task.progress = 100;
+            task.fechaCambioEstado = new Date().toISOString();
+            refreshActiveViews();
+            botReply.text = "✅ *¡Tarea completada con éxito!*\n\n📌 *ID:* `" + task.id + "`\n📝 *Nombre:* " + task.name + "\n👤 *Responsable:* " + activeUser + "\n📊 *Estado:* Completada (100%)\n🐙 *Sincronización:* Sincronizado en memoria y listo para commit en Git.";
+          }
+        }
+      } else if (lower.match(/^(?:iniciar|arrancar|comenzar)\s+([a-z0-9\-]+)$/i)) {
+        const m = lower.match(/^(?:iniciar|arrancar|comenzar)\s+([a-z0-9\-]+)$/i);
+        const targetId = m[1].toUpperCase();
+        const task = tasksData.find(t => {
+          const tid = String(t.id).toUpperCase();
+          return tid === targetId || tid.endsWith("-" + targetId.replace(/[^0-9]/g, ''));
+        });
+
+        if (!task) {
+          botReply.text = "⚠️ No se encontró la tarea *" + targetId + "*.";
+        } else {
+          const isOwner = (task.responsable || "").toLowerCase().includes(activeUser.toLowerCase()) ||
+                          (usersConfig[activeUser] && usersConfig[activeUser].alcanceEdicion === "todas");
+          if (!isOwner) {
+            botReply.text = "⚠️ *Permiso denegado:*\nSolo el responsable asignado (*" + task.responsable + "*) puede modificar esta tarea.";
+          } else {
+            task.estado = "En Progreso";
+            task.progress = 50;
+            refreshActiveViews();
+            botReply.text = "🚀 *Tarea puesta en progreso:*\n\n📌 *ID:* `" + task.id + "`\n📝 *Nombre:* " + task.name + "\n👤 *Responsable:* " + activeUser + "\n📊 *Estado:* En Progreso (50%)";
+          }
+        }
+      } else if (raw.match(/^(?:comentar\s+)?(tsk-[a-z0-9\-]+)[:\s]+(.+)$/i)) {
+        const m = raw.match(/^(?:comentar\s+)?(tsk-[a-z0-9\-]+)[:\s]+(.+)$/i);
+        const targetId = m[1].toUpperCase();
+        const comment = m[2].trim();
+        const task = tasksData.find(t => {
+          const tid = String(t.id).toUpperCase();
+          return tid === targetId || tid.endsWith("-" + targetId.replace(/[^0-9]/g, ''));
+        });
+
+        if (!task) {
+          botReply.text = "⚠️ No se encontró la tarea *" + targetId + "* para comentar.";
+        } else {
+          // Regla: cualquier usuario autorizado puede chatear en cualquier tarea
+          if (!taskComments[task.id]) taskComments[task.id] = [];
+          taskComments[task.id].push({
+            id: "COM-" + Date.now(),
+            taskId: task.id,
+            author: activeUser,
+            message: comment,
+            timestamp: new Date().toISOString(),
+            canal: "Telegram"
+          });
+          localStorage.setItem("chimay_task_comments", JSON.stringify(taskComments));
+          refreshActiveViews();
+          botReply.text = "💬 *Comentario publicado en " + task.id + ":*\n\n\"" + comment + "\"\n\n👤 *Autor:* " + activeUser + "\n🌐 *Visibilidad:* Ya visible en el Centro de Operaciones Web.";
+        }
+      } else if (lower.startsWith("crear ") || lower.startsWith("nueva tarea ")) {
+        const taskName = raw.replace(/^(?:crear\s+tarea\s+|crear\s+|nueva\s+tarea\s+)/i, "").trim();
+        if (!taskName) {
+          botReply.text = "⚠️ Por favor especifica el nombre de la tarea.\nEjemplo: `crear Limpieza y poda de camas`";
+        } else {
+          // Creación universal: auto-asignada al creador
+          const maxNum = tasksData.reduce((max, t) => {
+            const m = String(t.id).match(/(\d+)$/);
+            return m ? Math.max(max, parseInt(m[1], 10)) : max;
+          }, 0);
+          const nextId = "TSK-" + String(maxNum + 1).padStart(2, '0');
+          const hoy = new Date().toISOString().split('T')[0];
+          const fin = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+          const newTask = {
+            id: nextId,
+            name: taskName,
+            responsable: activeUser, // Auto-asignado
+            horas: 8,
+            costoPersonal: 1600,
+            costoMateriales: 0,
+            costoTerceros: 0,
+            costoTotal: 1600,
+            start: hoy,
+            end: fin,
+            progress: 0,
+            estado: "No Iniciada",
+            prioridad: "Media",
+            etapa: "General"
+          };
+
+          tasksData.push(newTask);
+          refreshActiveViews();
+          botReply.text = "📋 *¡Nueva tarea creada con éxito!*\n\n📌 *ID WBS:* `" + newTask.id + "`\n📝 *Nombre:* " + newTask.name + "\n👤 *Responsable:* *" + activeUser + "* (Auto-asignada al creador)\n📅 *Fecha Límite:* `" + newTask.end + "`\n📊 *Estado:* No Iniciada";
+        }
+      } else if (lower.includes("reporte") || lower.includes("costos") || lower.includes("balance")) {
+        const total = tasksData.length;
+        const comp = tasksData.filter(t => t.estado === "Completada").length;
+        const prog = tasksData.filter(t => t.estado === "En Progreso").length;
+        const pend = tasksData.filter(t => t.estado === "No Iniciada").length;
+        const totalCost = tasksData.reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
+
+        botReply.text = "📊 *Reporte Operativo Chimay*\n\n" +
+          "📦 *Total Tareas:* " + total + "\n" +
+          "✅ *Completadas:* " + comp + " (" + (total > 0 ? Math.round((comp/total)*100) : 0) + "%)\n" +
+          "⚡ *En Progreso:* " + prog + "\n" +
+          "⏳ *Por Iniciar:* " + pend + "\n" +
+          "💰 *Presupuesto Total:* $" + totalCost.toLocaleString('es-MX') + " MXN";
+        botReply.buttons = [{ text: "📊 Ver en Informes & Costos", cmd: "reporte" }];
+      } else {
+        botReply.text = "🤖 No reconocí ese comando, *" + activeUser + "*.\nEscribe *mis tareas* o *ayuda* para ver las opciones disponibles.";
+      }
+
+      telegramSimHistory.push({ sender: "bot", text: botReply.text, time: now, buttons: botReply.buttons });
+      switchTelegramTab("simulador");
+    }
+
+    function renderTelegramComandosTab(container) {
+      container.innerHTML = `
+        <div class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <!-- Regla 1: Propiedad Estricta -->
+            <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-1.5">
+              <div class="flex items-center gap-2 text-amber-900 font-black text-xs">
+                <i class="fa-solid fa-user-shield text-amber-600"></i>
+                <span>1. Regla de Propiedad Estricta</span>
+              </div>
+              <p class="text-xs text-amber-950/80 leading-relaxed">
+                <strong>Solo el responsable de la tarea</strong> puede cambiar su estado (marcarla como <code>completar TSK-01</code> o <code>iniciar TSK-01</code>). Si otro usuario intenta modificarla, el bot deniega la acción protegiendo la asignación.
+              </p>
+            </div>
+
+            <!-- Regla 2: Chat Universal -->
+            <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-1.5">
+              <div class="flex items-center gap-2 text-emerald-900 font-black text-xs">
+                <i class="fa-solid fa-comments text-emerald-600"></i>
+                <span>2. Chat Universal y Colaborativo</span>
+              </div>
+              <p class="text-xs text-emerald-950/80 leading-relaxed">
+                <strong>Cualquier usuario autorizado puede chatear en cualquier tarea.</strong> Al enviar <code>TSK-01: Se instaló el sistema de riego</code>, la nota queda registrada en la bitácora con firma del autor y visible en la web.
+              </p>
+            </div>
+
+            <!-- Regla 3: Creación Universal & Auto-Asignación -->
+            <div class="p-4 rounded-2xl bg-sky-50 border border-sky-200 space-y-1.5">
+              <div class="flex items-center gap-2 text-sky-900 font-black text-xs">
+                <i class="fa-solid fa-plus-circle text-sky-600"></i>
+                <span>3. Creación Universal & Auto-Asignación</span>
+              </div>
+              <p class="text-xs text-sky-950/80 leading-relaxed">
+                <strong>Cualquier usuario autorizado puede crear tareas</strong> enviando <code>crear [nombre de tarea]</code>. El sistema da de alta el entregable y asigna automáticamente como dueño a quien la creó.
+              </p>
+            </div>
+
+            <!-- Regla 4: Seguridad Zero Info Disclosure -->
+            <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 space-y-1.5">
+              <div class="flex items-center gap-2 text-rose-900 font-black text-xs">
+                <i class="fa-solid fa-ban text-rose-600"></i>
+                <span>4. Seguridad y Privacidad (AS Gate 2)</span>
+              </div>
+              <p class="text-xs text-rose-950/80 leading-relaxed">
+                Ante personas no registradas, el bot responde de forma estrictamente anónima: <em>"🚫 Acceso no autorizado. Tu ID de Telegram es [XXXXX]. Solicita a Web Master brindarte acceso."</em> No filtra nombres ni datos del equipo.
+              </p>
+            </div>
+          </div>
+
+          <!-- Tabla de Comandos Rápidos -->
+          <div class="rounded-2xl border border-stone-200 bg-white overflow-hidden shadow-2xs">
+            <div class="px-4 py-2.5 bg-stone-50 border-b border-stone-200 font-black text-xs text-stone-700 flex items-center justify-between">
+              <span>Catálogo Completo de Comandos Telegram</span>
+              <span class="text-[10px] text-stone-400 font-mono">Git-as-a-Database Bridge</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-stone-100/70 text-stone-500 font-bold uppercase text-[10px]">
+                  <tr>
+                    <th class="px-4 py-2">Comando / Formato</th>
+                    <th class="px-4 py-2">¿Quién puede usarlo?</th>
+                    <th class="px-4 py-2">Descripción</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100 text-stone-700">
+                  <tr class="hover:bg-stone-50">
+                    <td class="px-4 py-2.5 font-mono font-bold text-sky-700">mis tareas</td>
+                    <td class="px-4 py-2.5 font-bold text-emerald-800">Cualquier miembro</td>
+                    <td class="px-4 py-2.5">Consulta la lista de entregables asignados al usuario con botones de acción.</td>
+                  </tr>
+                  <tr class="hover:bg-stone-50">
+                    <td class="px-4 py-2.5 font-mono font-bold text-sky-700">completar [ID]</td>
+                    <td class="px-4 py-2.5 font-bold text-amber-800">Solo el Responsable</td>
+                    <td class="px-4 py-2.5">Marca la tarea al 100% y genera commit en Git.</td>
+                  </tr>
+                  <tr class="hover:bg-stone-50">
+                    <td class="px-4 py-2.5 font-mono font-bold text-sky-700">iniciar [ID]</td>
+                    <td class="px-4 py-2.5 font-bold text-amber-800">Solo el Responsable</td>
+                    <td class="px-4 py-2.5">Pone la tarea en estado "En Progreso" (50%).</td>
+                  </tr>
+                  <tr class="hover:bg-stone-50">
+                    <td class="px-4 py-2.5 font-mono font-bold text-sky-700">[ID]: [mensaje]</td>
+                    <td class="px-4 py-2.5 font-bold text-emerald-800">Cualquier miembro</td>
+                    <td class="px-4 py-2.5">Publica un comentario en el hilo de chat de la tarea en la bitácora del proyecto.</td>
+                  </tr>
+                  <tr class="hover:bg-stone-50">
+                    <td class="px-4 py-2.5 font-mono font-bold text-sky-700">crear [nombre]</td>
+                    <td class="px-4 py-2.5 font-bold text-emerald-800">Cualquier miembro</td>
+                    <td class="px-4 py-2.5">Da de alta una nueva tarea y la auto-asigna a quien envió el mensaje.</td>
+                  </tr>
+                  <tr class="hover:bg-stone-50">
+                    <td class="px-4 py-2.5 font-mono font-bold text-sky-700">reporte</td>
+                    <td class="px-4 py-2.5 font-bold text-emerald-800">Cualquier miembro</td>
+                    <td class="px-4 py-2.5">Resumen de salud operativa: total de tareas, completadas, avance y presupuesto.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTelegramUsuariosTab(container) {
+      const usersList = Object.keys(usersConfig).map(k => usersConfig[k]);
+
+      container.innerHTML = `
+        <div class="space-y-4">
+          <div class="p-4 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <h4 class="text-xs font-black text-stone-900">Directorio de Vinculación de Telegram</h4>
+              <p class="text-[11px] text-stone-500 mt-0.5">Control de acceso RBAC por lista blanca en <code>data/usuarios.json</code>.</p>
+            </div>
+            <button type="button" onclick="downloadTelegramUsersJson()" class="px-3 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-download"></i> Descargar usuarios.json
+            </button>
+          </div>
+
+          <div class="rounded-2xl border border-stone-200 bg-white overflow-hidden shadow-2xs">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-stone-100/70 text-stone-500 font-bold uppercase text-[10px]">
+                <tr>
+                  <th class="px-4 py-2.5">Especialista / Nombre</th>
+                  <th class="px-4 py-2.5">Rol en Chimay</th>
+                  <th class="px-4 py-2.5">Usuario Telegram (@username)</th>
+                  <th class="px-4 py-2.5 text-center">Permisos de Edición</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-stone-100 text-stone-700">
+                ${usersList.map(u => `
+                  <tr class="hover:bg-stone-50">
+                    <td class="px-4 py-3 font-bold text-stone-900 flex items-center gap-2">
+                      <span class="w-6 h-6 rounded-lg ${u.avatarBg || 'bg-blue-600'} text-white font-black text-[10px] flex items-center justify-center">${u.initials || 'AB'}</span>
+                      ${escapeHtml(u.nombre || u.name)}
+                    </td>
+                    <td class="px-4 py-3 text-stone-600">${escapeHtml(u.rol || 'Miembro')}</td>
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-1.5">
+                        <span class="text-sky-600 font-mono font-bold">${escapeHtml(u.telegramUser ? '@' + u.telegramUser.replace('@', '') : '@sin_vincular')}</span>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${u.alcanceEdicion === 'todas' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}">
+                        ${u.alcanceEdicion === 'todas' ? 'Todas las tareas' : 'Solo asignadas (Dueño)'}
+                      </span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function downloadTelegramUsersJson() {
+      const users = Object.keys(usersConfig).map(k => {
+        const u = usersConfig[k];
+        return {
+          id: u.id || ("USR-" + k.substring(0,3).toUpperCase()),
+          nombre: u.nombre || k,
+          usuario: u.usuario || k.toLowerCase().replace(/[^a-z0-9]/g, '.'),
+          email: u.email || "",
+          aliasEmail: u.aliasEmail || "",
+          rol: u.rol || "Miembro",
+          puedeEditar: u.canEditTasks !== undefined ? u.canEditTasks : true,
+          alcanceEdicion: u.editScope || "asignadas",
+          telegramId: u.telegramId || null,
+          telegramUser: u.telegramUser || k.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+          avatarBg: u.avatarBg || "bg-blue-600",
+          initials: u.initials || "AB"
+        };
+      });
+
+      const blob = new Blob([JSON.stringify(users, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "usuarios.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function initTelegramWebApp() {
+      if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+        try {
+          const tg = window.Telegram.WebApp;
+          tg.ready();
+          tg.expand();
+          if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const tgUser = tg.initDataUnsafe.user;
+            const username = (tgUser.username || "").toLowerCase();
+            const first = (tgUser.first_name || "").toLowerCase();
+            for (const k in usersConfig) {
+              const u = usersConfig[k];
+              const uName = (u.nombre || k).toLowerCase();
+              if ((u.telegramUser && u.telegramUser.toLowerCase() === username) || uName.includes(first)) {
+                loginAsSpecialist(u.nombre || k);
+                break;
+              }
+            }
+          }
+        } catch(e) {
+          console.warn("Telegram WebApp init warning:", e);
+        }
+      }
+    }
+
+
     // Inicialización al cargar la página
+    initTelegramWebApp();
     initUsersConfig();
     initGoogleAuth();
     initGoogleIdentity();

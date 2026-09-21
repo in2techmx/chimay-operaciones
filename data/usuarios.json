@@ -8,6 +8,8 @@
     "rol": "Web Master (Master Admon)",
     "puedeEditar": true,
     "alcanceEdicion": "todas",
+    "telegramId": null,
+    "telegramUser": "in2techmx",
     "avatarBg": "bg-purple-600",
     "initials": "AA"
   },
@@ -19,6 +21,8 @@
     "rol": "Gerente Operativo",
     "puedeEditar": true,
     "alcanceEdicion": "asignadas",
+    "telegramId": 100200300,
+    "telegramUser": "arturo_b",
     "avatarBg": "bg-blue-600",
     "initials": "AB"
   },
@@ -30,6 +34,8 @@
     "rol": "Gerente Legal",
     "puedeEditar": true,
     "alcanceEdicion": "asignadas",
+    "telegramId": 100300400,
+    "telegramUser": "gema_r",
     "avatarBg": "bg-emerald-600",
     "initials": "GR"
   }
