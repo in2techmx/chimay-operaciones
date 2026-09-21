@@ -8576,6 +8576,137 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
     }
 
     // Funciones de Scrum Master Modal
+    // Funciones de Scrum Master Modal & Finanzas
+    function selectFinancialPerspectiveWeb(mode = 'activo_vs_proy') {
+      let cAlDia = 0, cEnProg = 0, cNoIni = 0;
+      let countAlDia = 0, countEnProg = 0, countNoIni = 0;
+      tasksData.forEach(t => {
+        const c = Number(t.costoTotal) || 0;
+        if (t.estado === "Completada") { cAlDia += c; countAlDia++; }
+        else if (t.estado === "En Progreso") { cEnProg += c; countEnProg++; }
+        else { cNoIni += c; countNoIni++; }
+      });
+      const cActivo = cAlDia + cEnProg;
+      const cTotal = cActivo + cNoIni;
+      const pAlDia = cTotal > 0 ? Math.round((cAlDia / cTotal) * 100) : 0;
+      const pEnProg = cTotal > 0 ? Math.round((cEnProg / cTotal) * 100) : 0;
+      const pActivo = cTotal > 0 ? Math.round((cActivo / cTotal) * 100) : 0;
+      const pNoIni = cTotal > 0 ? Math.round((cNoIni / cTotal) * 100) : 0;
+
+      // Actualizar barra de distribución
+      const barAlDia = document.getElementById("finBarAlDia");
+      const barEnProg = document.getElementById("finBarEnCurso");
+      const barProy = document.getElementById("finBarProyectado");
+      if (barAlDia) barAlDia.style.width = pAlDia + "%";
+      if (barEnProg) barEnProg.style.width = pEnProg + "%";
+      if (barProy) barProy.style.width = pNoIni + "%";
+
+      const lblAlDia = document.getElementById("lblFinBarAlDia");
+      const lblEnProg = document.getElementById("lblFinBarEnCurso");
+      const lblProy = document.getElementById("lblFinBarProy");
+      if (lblAlDia) lblAlDia.innerText = `$${(cAlDia/1000).toFixed(1)}k (${pAlDia}%)`;
+      if (lblEnProg) lblEnProg.innerText = `$${(cEnProg/1000).toFixed(1)}k (${pEnProg}%)`;
+      if (lblProy) lblProy.innerText = `$${(cNoIni/1000).toFixed(1)}k (${pNoIni}%)`;
+
+      const totalBadge = document.getElementById("scrumFinTotalBadge");
+      if (totalBadge) totalBadge.innerText = `$${cTotal.toLocaleString('es-MX')} MXN Total`;
+
+      // Estilo de botones
+      const btnMap = {
+        'activo_vs_proy': 'btnFinActivoVsProy',
+        'al_dia': 'btnFinAlDia',
+        'en_curso': 'btnFinEnCurso',
+        'proyectado': 'btnFinProyectado',
+        'total': 'btnFinTotal'
+      };
+      Object.entries(btnMap).forEach(([k, id]) => {
+        const btn = document.getElementById(id);
+        if (btn) {
+          if (k === mode) {
+            btn.className = "fin-pill-btn flex-1 py-1 px-2 rounded-lg transition bg-amber-600 text-white shadow-2xs font-bold cursor-pointer text-center";
+          } else {
+            btn.className = "fin-pill-btn flex-1 py-1 px-2 rounded-lg transition text-stone-600 hover:bg-stone-100 font-bold cursor-pointer text-center";
+          }
+        }
+      });
+
+      // Detalle dinámico según la perspectiva seleccionada
+      const detailsBox = document.getElementById("finPerspectiveDetails");
+      if (!detailsBox) return;
+
+      if (mode === "activo_vs_proy") {
+        detailsBox.innerHTML = `
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200">
+              <span class="text-amber-800 font-bold block text-[11px]">⚡ Tareas Activas (${countAlDia + countEnProg}):</span>
+              <strong class="text-sm font-black text-amber-950">$${cActivo.toLocaleString('es-MX')} MXN</strong>
+              <span class="text-[10px] text-amber-700 block mt-0.5"><strong>${pActivo}%</strong> de la inversión (Al Día + En Curso)</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-stone-100 border border-stone-200">
+              <span class="text-stone-600 font-bold block text-[11px]">⏳ Costo Proyectado (${countNoIni}):</span>
+              <strong class="text-sm font-black text-stone-900">$${cNoIni.toLocaleString('es-MX')} MXN</strong>
+              <span class="text-[10px] text-stone-500 block mt-0.5"><strong>${pNoIni}%</strong> pendiente (No Iniciadas)</span>
+            </div>
+          </div>
+          <p class="text-[11px] text-stone-500 pt-1">
+            ⚖️ <strong>Balance:</strong> El equipo tiene comprometido el <strong>${pActivo}%</strong> del capital mientras que el <strong>${pNoIni}%</strong> está programado para fases posteriores.
+          </p>
+        `;
+      } else if (mode === "al_dia") {
+        detailsBox.innerHTML = `
+          <div class="flex items-center justify-between p-2 rounded-xl bg-emerald-50 border border-emerald-200">
+            <div>
+              <span class="text-emerald-800 font-bold text-xs block">✅ Costo al Día / Real (Tareas Completadas):</span>
+              <span class="text-[11px] text-emerald-700">${countAlDia} entregable(s) concluidos al 100%</span>
+            </div>
+            <strong class="text-base font-black text-emerald-950">$${cAlDia.toLocaleString('es-MX')} MXN (${pAlDia}%)</strong>
+          </div>
+          <p class="text-[11px] text-stone-500 pt-0.5">
+            Capital devengado que ya generó entregables verificables en campo.
+          </p>
+        `;
+      } else if (mode === "en_curso") {
+        detailsBox.innerHTML = `
+          <div class="flex items-center justify-between p-2 rounded-xl bg-amber-50 border border-amber-200">
+            <div>
+              <span class="text-amber-800 font-bold text-xs block">⚡ Costo en Curso (Tareas en Progreso):</span>
+              <span class="text-[11px] text-amber-700">${countEnProg} actividad(es) en ejecución hoy</span>
+            </div>
+            <strong class="text-base font-black text-amber-950">$${cEnProg.toLocaleString('es-MX')} MXN (${pEnProg}%)</strong>
+          </div>
+          <p class="text-[11px] text-stone-500 pt-0.5">
+            Recursos financieros asignados a las tareas activas que se están trabajando actualmente.
+          </p>
+        `;
+      } else if (mode === "proyectado") {
+        detailsBox.innerHTML = `
+          <div class="flex items-center justify-between p-2 rounded-xl bg-stone-100 border border-stone-200">
+            <div>
+              <span class="text-stone-700 font-bold text-xs block">🔮 Costo Proyectado (Sin Sumar Actual):</span>
+              <span class="text-[11px] text-stone-500">${countNoIni} actividades pendientes de iniciar</span>
+            </div>
+            <strong class="text-base font-black text-stone-900">$${cNoIni.toLocaleString('es-MX')} MXN (${pNoIni}%)</strong>
+          </div>
+          <p class="text-[11px] text-stone-500 pt-0.5">
+            Estimación de gasto futuro exclusivamente para tareas que no han comenzado.
+          </p>
+        `;
+      } else if (mode === "total") {
+        detailsBox.innerHTML = `
+          <div class="flex items-center justify-between p-2 rounded-xl bg-purple-50 border border-purple-200">
+            <div>
+              <span class="text-purple-800 font-bold text-xs block">🌐 Presupuesto Total Consolidado (Sumando Actual):</span>
+              <span class="text-[11px] text-purple-700">Activo ($${cActivo.toLocaleString('es-MX')}) + Proyectado ($${cNoIni.toLocaleString('es-MX')})</span>
+            </div>
+            <strong class="text-base font-black text-purple-950">$${cTotal.toLocaleString('es-MX')} MXN (100%)</strong>
+          </div>
+          <p class="text-[11px] text-stone-500 pt-0.5">
+            Inversión total integral requerida para ejecutar la totalidad del WBS del proyecto.
+          </p>
+        `;
+      }
+    }
+
     function openScrumMasterModal() {
       const modal = document.getElementById("scrumMasterModal");
       if (!modal) return;
@@ -8631,6 +8762,10 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       }
 
       if (content) content.innerText = txt;
+
+      // Inicializar componente de inteligencia financiera
+      selectFinancialPerspectiveWeb('activo_vs_proy');
+
       modal.classList.remove("hidden");
     }
 
@@ -8660,10 +8795,41 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
 
       setTimeout(() => {
         const qLower = q.toLowerCase();
+        let cAlDia = 0, cEnProg = 0, cNoIni = 0;
+        tasksData.forEach(t => {
+          const c = Number(t.costoTotal) || 0;
+          if (t.estado === "Completada") cAlDia += c;
+          else if (t.estado === "En Progreso") cEnProg += c;
+          else cNoIni += c;
+        });
+        const cActivo = cAlDia + cEnProg;
+        const cTotal = cActivo + cNoIni;
+        const pActivo = cTotal > 0 ? Math.round((cActivo / cTotal) * 100) : 0;
+        const pNoIni = cTotal > 0 ? Math.round((cNoIni / cTotal) * 100) : 0;
+        const pAlDia = cTotal > 0 ? Math.round((cAlDia / cTotal) * 100) : 0;
+
         let ans = "🤖 **Scrum Master Chimay:**\n\n";
-        if (qLower.includes("presupuesto") || qLower.includes("costo")) {
-          const totalCost = tasksData.reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
-          ans += "El presupuesto total comprometido es de **$" + totalCost.toLocaleString("es-MX") + " MXN** distribuido en " + tasksData.length + " entregables.";
+
+        if (qLower.includes("al dia") || qLower.includes("costo real") || qLower.includes("completad")) {
+          ans += "💰 **Costo al Día / Real (Tareas Completadas):**\n" +
+                 "El monto ejercido es de **$" + cAlDia.toLocaleString("es-MX") + " MXN** (" + pAlDia + "% del presupuesto consolidado). Corresponde a entregables 100% concluidos.";
+        } else if (qLower.includes("activo") || qLower.includes("en curso") || qLower.includes("en progreso")) {
+          ans += "⚡ **Costo de Tareas Activas:**\n" +
+                 "• En Curso Hoy: **$" + cEnProg.toLocaleString("es-MX") + " MXN**\n" +
+                 "• Total Activo Comprometido (Al Día + En Curso): **$" + cActivo.toLocaleString("es-MX") + " MXN** (" + pActivo + "% del total).";
+        } else if (qLower.includes("proyectado") || qLower.includes("no iniciada")) {
+          if (qLower.includes("sumando") || qLower.includes("total")) {
+            ans += "🌐 **Costo Proyectado Total (Sumando Actual):**\n" +
+                   "El presupuesto global planificado es de **$" + cTotal.toLocaleString("es-MX") + " MXN** (Activo: $" + cActivo.toLocaleString("es-MX") + " + Proyectado: $" + cNoIni.toLocaleString("es-MX") + ").";
+          } else {
+            ans += "🔮 **Costo Proyectado (Sin Sumar Actual):**\n" +
+                   "El costo proyectado para tareas aún no iniciadas es de **$" + cNoIni.toLocaleString("es-MX") + " MXN** (" + pNoIni + "% del total).";
+          }
+        } else if (qLower.includes("presupuesto") || qLower.includes("costo") || qLower.includes("balance")) {
+          ans += "📊 **Balance Financiero (Activo vs Proyectado):**\n" +
+                 "• **Tareas Activas (Al Día + En Curso):** $" + cActivo.toLocaleString("es-MX") + " MXN (" + pActivo + "%)\n" +
+                 "• **Costo Proyectado (No Iniciadas):** $" + cNoIni.toLocaleString("es-MX") + " MXN (" + pNoIni + "%)\n" +
+                 "• **Presupuesto Total Consolidado:** $" + cTotal.toLocaleString("es-MX") + " MXN (100%).";
         } else if (qLower.includes("arturo b")) {
           const myTasks = tasksData.filter(t => (t.responsable || "").includes("Arturo B."));
           ans += "Arturo B. tiene **" + myTasks.length + " tareas asignadas** (ej. TSK-PRE-01 completada, TSK-PRE-02 con subtarea de cotización).";
@@ -8672,7 +8838,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           tasksData.forEach(t => { if(t.subtareas) count += t.subtareas.length; });
           ans += "Tenemos **" + count + " subtareas pulverizadas** registradas con trazabilidad individual.";
         } else {
-          ans += "He revisado el estado del proyecto. Contamos con " + tasksData.length + " actividades activas. La ruta crítica está alineada al plan de siembra de chile habanero.";
+          ans += "He revisado el estado del proyecto. Contamos con " + tasksData.length + " actividades activas. Presupuesto Activo: $" + cActivo.toLocaleString("es-MX") + " MXN (" + pActivo + "%) vs Proyectado: $" + cNoIni.toLocaleString("es-MX") + " MXN (" + pNoIni + "%).";
         }
         answerBox.innerText = ans;
       }, 400);
@@ -9376,6 +9542,56 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           </div>
           <div id="scrumStandupContent" class="text-stone-700 leading-relaxed font-sans whitespace-pre-line text-xs">
             Cargando diagnóstico del Scrum Master...
+          </div>
+        </div>
+
+        <!-- Módulo Financiero Interactivo: Activo vs Proyectado (US-CHIMAY-COSTOS-01) -->
+        <div class="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-black text-xs text-stone-800 flex items-center gap-1.5">
+              <i class="fa-solid fa-coins text-amber-600"></i> Inteligencia Financiera: Activo vs Proyectado
+            </span>
+            <span id="scrumFinTotalBadge" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300">
+              $99,200 MXN Total
+            </span>
+          </div>
+
+          <!-- Selector de perspectiva financiera -->
+          <div class="flex flex-wrap gap-1 bg-white p-1 rounded-xl border border-stone-200 text-[11px] font-bold">
+            <button type="button" onclick="selectFinancialPerspectiveWeb('activo_vs_proy')" id="btnFinActivoVsProy" class="fin-pill-btn flex-1 py-1 px-2 rounded-lg transition bg-amber-600 text-white shadow-2xs">
+              ⚖️ Activo vs Proy
+            </button>
+            <button type="button" onclick="selectFinancialPerspectiveWeb('al_dia')" id="btnFinAlDia" class="fin-pill-btn flex-1 py-1 px-2 rounded-lg transition text-stone-600 hover:bg-stone-100">
+              ✅ Al Día (Real)
+            </button>
+            <button type="button" onclick="selectFinancialPerspectiveWeb('en_curso')" id="btnFinEnCurso" class="fin-pill-btn flex-1 py-1 px-2 rounded-lg transition text-stone-600 hover:bg-stone-100">
+              ⚡ En Curso
+            </button>
+            <button type="button" onclick="selectFinancialPerspectiveWeb('proyectado')" id="btnFinProyectado" class="fin-pill-btn flex-1 py-1 px-2 rounded-lg transition text-stone-600 hover:bg-stone-100">
+              🔮 Proyectado
+            </button>
+            <button type="button" onclick="selectFinancialPerspectiveWeb('total')" id="btnFinTotal" class="fin-pill-btn flex-1 py-1 px-2 rounded-lg transition text-stone-600 hover:bg-stone-100">
+              🌐 Total Global
+            </button>
+          </div>
+
+          <!-- Barra de Distribución Tricolor -->
+          <div class="space-y-1">
+            <div class="w-full bg-stone-200 rounded-full h-2.5 flex overflow-hidden">
+              <div id="finBarAlDia" class="bg-emerald-500 h-full transition-all duration-300" style="width: 5%;" title="Al Día: $4,500 MXN"></div>
+              <div id="finBarEnCurso" class="bg-amber-500 h-full transition-all duration-300" style="width: 23%;" title="En Curso: $22,900 MXN"></div>
+              <div id="finBarProyectado" class="bg-stone-300 h-full transition-all duration-300" style="width: 72%;" title="Proyectado: $71,800 MXN"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-stone-400 font-mono font-semibold">
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> Al Día: <strong class="text-stone-700" id="lblFinBarAlDia">$4.5k (5%)</strong></span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span> En Curso: <strong class="text-stone-700" id="lblFinBarEnCurso">$22.9k (23%)</strong></span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-stone-400 inline-block"></span> Proyectado: <strong class="text-stone-700" id="lblFinBarProy">$71.8k (72%)</strong></span>
+            </div>
+          </div>
+
+          <!-- Caja de Explicación Dinámica -->
+          <div id="finPerspectiveDetails" class="p-3 rounded-xl bg-white border border-stone-200/80 text-stone-700 text-xs leading-relaxed space-y-1">
+            <!-- Contenido dinámico renderizado por selectFinancialPerspectiveWeb() -->
           </div>
         </div>
 
