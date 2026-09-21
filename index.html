@@ -8577,10 +8577,72 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
 
     // Funciones de Scrum Master Modal
     // Funciones de Scrum Master Modal & Finanzas
-    function selectFinancialPerspectiveWeb(mode = 'activo_vs_proy') {
+    // Variables de estado del módulo financiero en el modal Scrum Master (US-CHIMAY-COSTOS-01 & 02)
+    let currentFinPerspectiveMode = 'activo_vs_proy';
+    let currentFinEtapa = 'todas';
+
+    function populateScrumFinEtapaSelector() {
+      const select = document.getElementById("selectFinModalEtapa");
+      if (!select) return;
+
+      const etapasSet = new Set();
+      tasksData.forEach(t => {
+        const e = (t.etapa || "").trim();
+        if (e) etapasSet.add(e);
+      });
+      const etapas = Array.from(etapasSet);
+
+      const prev = currentFinEtapa;
+      select.innerHTML = `<option value="todas">✨ Todo el Proyecto (Consolidado - ${tasksData.length} tareas)</option>`;
+      etapas.forEach(et => {
+        const stageTasks = tasksData.filter(t => (t.etapa || "").trim().toLowerCase() === et.toLowerCase());
+        const count = stageTasks.length;
+        const costo = stageTasks.reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
+        const opt = document.createElement("option");
+        opt.value = et;
+        opt.textContent = `📁 ${et} (${count} t | $${(costo/1000).toFixed(1)}k)`;
+        select.appendChild(opt);
+      });
+
+      if (etapas.includes(prev)) {
+        select.value = prev;
+      } else {
+        currentFinEtapa = "todas";
+        select.value = "todas";
+      }
+    }
+
+    function changeFinancialStageWeb(etapaValue) {
+      currentFinEtapa = etapaValue;
+      selectFinancialPerspectiveWeb(currentFinPerspectiveMode, currentFinEtapa);
+    }
+
+    function selectFinancialPerspectiveWeb(mode = currentFinPerspectiveMode, etapa = currentFinEtapa) {
+      currentFinPerspectiveMode = mode;
+      currentFinEtapa = etapa;
+
+      // Sincronizar select en UI si es necesario
+      const select = document.getElementById("selectFinModalEtapa");
+      if (select && select.value !== currentFinEtapa) {
+        select.value = currentFinEtapa;
+      }
+
+      // Filtrar tareas según el alcance
+      let filteredTasks = tasksData;
+      let scopeLabel = "Todo el Proyecto (Consolidado)";
+      const isStageScope = currentFinEtapa && currentFinEtapa !== "todas";
+
+      if (isStageScope) {
+        filteredTasks = tasksData.filter(t => 
+          (t.etapa || "").trim().toLowerCase() === currentFinEtapa.trim().toLowerCase() ||
+          (t.etapaId || "").trim().toLowerCase() === currentFinEtapa.trim().toLowerCase()
+        );
+        scopeLabel = `Etapa: ${currentFinEtapa}`;
+      }
+
       let cAlDia = 0, cEnProg = 0, cNoIni = 0;
       let countAlDia = 0, countEnProg = 0, countNoIni = 0;
-      tasksData.forEach(t => {
+      filteredTasks.forEach(t => {
         const c = Number(t.costoTotal) || 0;
         if (t.estado === "Completada") { cAlDia += c; countAlDia++; }
         else if (t.estado === "En Progreso") { cEnProg += c; countEnProg++; }
@@ -8609,7 +8671,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       if (lblProy) lblProy.innerText = `$${(cNoIni/1000).toFixed(1)}k (${pNoIni}%)`;
 
       const totalBadge = document.getElementById("scrumFinTotalBadge");
-      if (totalBadge) totalBadge.innerText = `$${cTotal.toLocaleString('es-MX')} MXN Total`;
+      if (totalBadge) totalBadge.innerText = `$${cTotal.toLocaleString('es-MX')} MXN (${isStageScope ? currentFinEtapa : 'Total Global'})`;
 
       // Estilo de botones
       const btnMap = {
@@ -8630,12 +8692,15 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         }
       });
 
-      // Detalle dinámico según la perspectiva seleccionada
+      // Detalle dinámico según la perspectiva seleccionada y el alcance
       const detailsBox = document.getElementById("finPerspectiveDetails");
       if (!detailsBox) return;
 
+      const scopeBadgeHtml = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 bg-stone-100 text-stone-700 rounded-md border border-stone-200 mb-1.5"><i class="fa-solid fa-layer-group text-amber-600"></i> ${scopeLabel}</span>`;
+
       if (mode === "activo_vs_proy") {
         detailsBox.innerHTML = `
+          ${scopeBadgeHtml}
           <div class="grid grid-cols-2 gap-2 text-xs">
             <div class="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200">
               <span class="text-amber-800 font-bold block text-[11px]">⚡ Tareas Activas (${countAlDia + countEnProg}):</span>
@@ -8649,11 +8714,12 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             </div>
           </div>
           <p class="text-[11px] text-stone-500 pt-1">
-            ⚖️ <strong>Balance:</strong> El equipo tiene comprometido el <strong>${pActivo}%</strong> del capital mientras que el <strong>${pNoIni}%</strong> está programado para fases posteriores.
+            ⚖️ <strong>Balance:</strong> En este alcance, el <strong>${pActivo}%</strong> está activo/ejercido y el <strong>${pNoIni}%</strong> está programado para inicio posterior.
           </p>
         `;
       } else if (mode === "al_dia") {
         detailsBox.innerHTML = `
+          ${scopeBadgeHtml}
           <div class="flex items-center justify-between p-2 rounded-xl bg-emerald-50 border border-emerald-200">
             <div>
               <span class="text-emerald-800 font-bold text-xs block">✅ Costo al Día / Real (Tareas Completadas):</span>
@@ -8662,11 +8728,12 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             <strong class="text-base font-black text-emerald-950">$${cAlDia.toLocaleString('es-MX')} MXN (${pAlDia}%)</strong>
           </div>
           <p class="text-[11px] text-stone-500 pt-0.5">
-            Capital devengado que ya generó entregables verificables en campo.
+            Capital devengado que ya generó entregables verificables en ${isStageScope ? 'esta etapa' : 'el proyecto'}.
           </p>
         `;
       } else if (mode === "en_curso") {
         detailsBox.innerHTML = `
+          ${scopeBadgeHtml}
           <div class="flex items-center justify-between p-2 rounded-xl bg-amber-50 border border-amber-200">
             <div>
               <span class="text-amber-800 font-bold text-xs block">⚡ Costo en Curso (Tareas en Progreso):</span>
@@ -8675,11 +8742,12 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             <strong class="text-base font-black text-amber-950">$${cEnProg.toLocaleString('es-MX')} MXN (${pEnProg}%)</strong>
           </div>
           <p class="text-[11px] text-stone-500 pt-0.5">
-            Recursos financieros asignados a las tareas activas que se están trabajando actualmente.
+            Recursos asignados a las tareas activas que se están trabajando actualmente en ${isStageScope ? 'esta etapa' : 'el proyecto'}.
           </p>
         `;
       } else if (mode === "proyectado") {
         detailsBox.innerHTML = `
+          ${scopeBadgeHtml}
           <div class="flex items-center justify-between p-2 rounded-xl bg-stone-100 border border-stone-200">
             <div>
               <span class="text-stone-700 font-bold text-xs block">🔮 Costo Proyectado (Sin Sumar Actual):</span>
@@ -8688,11 +8756,12 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             <strong class="text-base font-black text-stone-900">$${cNoIni.toLocaleString('es-MX')} MXN (${pNoIni}%)</strong>
           </div>
           <p class="text-[11px] text-stone-500 pt-0.5">
-            Estimación de gasto futuro exclusivamente para tareas que no han comenzado.
+            Estimación de gasto futuro exclusivamente para tareas no iniciadas en ${isStageScope ? 'esta etapa' : 'el proyecto'}.
           </p>
         `;
       } else if (mode === "total") {
         detailsBox.innerHTML = `
+          ${scopeBadgeHtml}
           <div class="flex items-center justify-between p-2 rounded-xl bg-purple-50 border border-purple-200">
             <div>
               <span class="text-purple-800 font-bold text-xs block">🌐 Presupuesto Total Consolidado (Sumando Actual):</span>
@@ -8701,7 +8770,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             <strong class="text-base font-black text-purple-950">$${cTotal.toLocaleString('es-MX')} MXN (100%)</strong>
           </div>
           <p class="text-[11px] text-stone-500 pt-0.5">
-            Inversión total integral requerida para ejecutar la totalidad del WBS del proyecto.
+            Inversión total requerida para ejecutar la totalidad de los entregables en ${isStageScope ? 'esta etapa' : 'el proyecto'}.
           </p>
         `;
       }
@@ -8763,8 +8832,9 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
 
       if (content) content.innerText = txt;
 
-      // Inicializar componente de inteligencia financiera
-      selectFinancialPerspectiveWeb('activo_vs_proy');
+      // Inicializar componente de inteligencia financiera con selector de etapas
+      populateScrumFinEtapaSelector();
+      selectFinancialPerspectiveWeb('activo_vs_proy', currentFinEtapa);
 
       modal.classList.remove("hidden");
     }
@@ -8795,8 +8865,22 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
 
       setTimeout(() => {
         const qLower = q.toLowerCase();
+        let targetTasks = tasksData;
+        let scopeLabel = "Todo el Proyecto";
+
+        if (qLower.includes("etapa 1") || qLower.includes("propuesta")) {
+          targetTasks = tasksData.filter(t => (t.etapa || '').toLowerCase().includes("propuesta"));
+          scopeLabel = "Etapa 1: Propuesta";
+        } else if (qLower.includes("etapa 2") || qLower.includes("etapa proyecto") || qLower.includes("fase proyecto")) {
+          targetTasks = tasksData.filter(t => (t.etapa || '').toLowerCase().includes("proyecto"));
+          scopeLabel = "Etapa 2: Proyecto";
+        } else if (qLower.includes("etapa 3") || qLower.includes("piloto")) {
+          targetTasks = tasksData.filter(t => (t.etapa || '').toLowerCase().includes("piloto"));
+          scopeLabel = "Etapa 3: Piloto - 1";
+        }
+
         let cAlDia = 0, cEnProg = 0, cNoIni = 0;
-        tasksData.forEach(t => {
+        targetTasks.forEach(t => {
           const c = Number(t.costoTotal) || 0;
           if (t.estado === "Completada") cAlDia += c;
           else if (t.estado === "En Progreso") cEnProg += c;
@@ -8808,11 +8892,11 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         const pNoIni = cTotal > 0 ? Math.round((cNoIni / cTotal) * 100) : 0;
         const pAlDia = cTotal > 0 ? Math.round((cAlDia / cTotal) * 100) : 0;
 
-        let ans = "🤖 **Scrum Master Chimay:**\n\n";
+        let ans = "🤖 **Scrum Master Chimay (" + scopeLabel + "):**\n\n";
 
         if (qLower.includes("al dia") || qLower.includes("costo real") || qLower.includes("completad")) {
           ans += "💰 **Costo al Día / Real (Tareas Completadas):**\n" +
-                 "El monto ejercido es de **$" + cAlDia.toLocaleString("es-MX") + " MXN** (" + pAlDia + "% del presupuesto consolidado). Corresponde a entregables 100% concluidos.";
+                 "El monto ejercido es de **$" + cAlDia.toLocaleString("es-MX") + " MXN** (" + pAlDia + "% del presupuesto). Corresponde a entregables 100% concluidos.";
         } else if (qLower.includes("activo") || qLower.includes("en curso") || qLower.includes("en progreso")) {
           ans += "⚡ **Costo de Tareas Activas:**\n" +
                  "• En Curso Hoy: **$" + cEnProg.toLocaleString("es-MX") + " MXN**\n" +
@@ -8829,16 +8913,16 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           ans += "📊 **Balance Financiero (Activo vs Proyectado):**\n" +
                  "• **Tareas Activas (Al Día + En Curso):** $" + cActivo.toLocaleString("es-MX") + " MXN (" + pActivo + "%)\n" +
                  "• **Costo Proyectado (No Iniciadas):** $" + cNoIni.toLocaleString("es-MX") + " MXN (" + pNoIni + "%)\n" +
-                 "• **Presupuesto Total Consolidado:** $" + cTotal.toLocaleString("es-MX") + " MXN (100%).";
+                 "• **Presupuesto Consolidado:** $" + cTotal.toLocaleString("es-MX") + " MXN (100%).";
         } else if (qLower.includes("arturo b")) {
-          const myTasks = tasksData.filter(t => (t.responsable || "").includes("Arturo B."));
-          ans += "Arturo B. tiene **" + myTasks.length + " tareas asignadas** (ej. TSK-PRE-01 completada, TSK-PRE-02 con subtarea de cotización).";
+          const myTasks = targetTasks.filter(t => (t.responsable || "").includes("Arturo B."));
+          ans += "Arturo B. tiene **" + myTasks.length + " tareas asignadas** en este alcance (ej. TSK-PRE-01 completada, TSK-PRE-02 con subtarea de cotización).";
         } else if (qLower.includes("subtarea")) {
           let count = 0;
-          tasksData.forEach(t => { if(t.subtareas) count += t.subtareas.length; });
+          targetTasks.forEach(t => { if(t.subtareas) count += t.subtareas.length; });
           ans += "Tenemos **" + count + " subtareas pulverizadas** registradas con trazabilidad individual.";
         } else {
-          ans += "He revisado el estado del proyecto. Contamos con " + tasksData.length + " actividades activas. Presupuesto Activo: $" + cActivo.toLocaleString("es-MX") + " MXN (" + pActivo + "%) vs Proyectado: $" + cNoIni.toLocaleString("es-MX") + " MXN (" + pNoIni + "%).";
+          ans += "He revisado el estado del proyecto (" + scopeLabel + "). Contamos con " + targetTasks.length + " actividades activas. Presupuesto Activo: $" + cActivo.toLocaleString("es-MX") + " MXN (" + pActivo + "%) vs Proyectado: $" + cNoIni.toLocaleString("es-MX") + " MXN (" + pNoIni + "%).";
         }
         answerBox.innerText = ans;
       }, 400);
@@ -9545,7 +9629,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           </div>
         </div>
 
-        <!-- Módulo Financiero Interactivo: Activo vs Proyectado (US-CHIMAY-COSTOS-01) -->
+        <!-- Módulo Financiero Interactivo: Activo vs Proyectado (US-CHIMAY-COSTOS-01 & US-CHIMAY-COSTOS-02) -->
         <div class="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-3">
           <div class="flex items-center justify-between">
             <span class="font-black text-xs text-stone-800 flex items-center gap-1.5">
@@ -9554,6 +9638,17 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             <span id="scrumFinTotalBadge" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300">
               $99,200 MXN Total
             </span>
+          </div>
+
+          <!-- Filtro de Etapa / Alcance -->
+          <div class="flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-xl border border-stone-200 shadow-2xs">
+            <label for="selectFinModalEtapa" class="text-[11px] font-bold text-stone-600 flex items-center gap-1.5 shrink-0">
+              <i class="fa-solid fa-filter text-amber-600"></i> Alcance / Etapa:
+            </label>
+            <select id="selectFinModalEtapa" onchange="changeFinancialStageWeb(this.value)" class="w-full bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1 text-xs text-stone-800 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500/20 cursor-pointer">
+              <option value="todas">✨ Todo el Proyecto (Consolidado)</option>
+              <!-- Las opciones se sincronizan automáticamente desde tasksData -->
+            </select>
           </div>
 
           <!-- Selector de perspectiva financiera -->

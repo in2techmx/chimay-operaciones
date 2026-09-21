@@ -130,7 +130,8 @@ function compileProjectContext() {
           const taskObj = {
             id: t.id,
             wbs: t.wbs,
-            etapa: t.etapa || etapa.name,
+            etapaId: t.etapaId || etapa.id,
+            etapa: t.etapa || etapa.nombre || etapa.name,
             name: t.name,
             responsable: t.responsable,
             estado: t.estado || "No Iniciada",
@@ -169,8 +170,43 @@ function compileProjectContext() {
   const enProgreso = allTasks.filter(t => t.estado === "En Progreso");
   const noIniciadas = allTasks.filter(t => t.estado === "No Iniciada");
 
-  // Finanzas consolidadas
+  // Finanzas consolidadas globales
   const finanzas = calculateProjectFinances(allTasks);
+
+  // Finanzas por cada etapa del proyecto (US-CHIMAY-COSTOS-02)
+  const finanzasPorEtapa = {};
+  const etapasInfo = [];
+
+  for (const proj of projects) {
+    if (proj.etapas && Array.isArray(proj.etapas)) {
+      for (const etapa of proj.etapas) {
+        const etapaNombre = etapa.nombre || etapa.name || etapa.id;
+        const stageTasks = allTasks.filter(t => 
+          (t.etapaId && t.etapaId.toUpperCase() === etapa.id.toUpperCase()) ||
+          (t.etapa && t.etapa.trim().toLowerCase() === etapaNombre.trim().toLowerCase())
+        );
+        const stageFin = calculateProjectFinances(stageTasks);
+        finanzasPorEtapa[etapa.id] = {
+          id: etapa.id,
+          nombre: etapaNombre,
+          slug: etapa.slug,
+          wbsCode: etapa.wbsCode,
+          totalTareas: stageTasks.length,
+          tareas: stageTasks,
+          finanzas: stageFin
+        };
+        etapasInfo.push({
+          id: etapa.id,
+          nombre: etapaNombre,
+          slug: etapa.slug,
+          wbsCode: etapa.wbsCode,
+          totalTareas: stageTasks.length,
+          finanzas: stageFin,
+          tareas: stageTasks
+        });
+      }
+    }
+  }
 
   // Cuellos de botella y riesgos
   // 1. Tareas vencidas no completadas
@@ -217,6 +253,8 @@ function compileProjectContext() {
       totalHoras
     },
     finanzas,
+    finanzasPorEtapa,
+    etapasInfo,
     vencidas,
     criticasEnRiesgo,
     inicianPronto,
@@ -419,41 +457,82 @@ function buildHeuristicDailyStandup(ctx) {
 /**
  * Responde preguntas del equipo sobre el proyecto usando IA y contexto en vivo
  */
+/**
+ * Detecta si una consulta hace referencia a una etapa específica del proyecto
+ */
+function findStageInText(text, etapasInfo = []) {
+  if (!text || !Array.isArray(etapasInfo) || etapasInfo.length === 0) return null;
+  const qNorm = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  for (const et of etapasInfo) {
+    const nameNorm = (et.nombre || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const idNorm = (et.id || "").toLowerCase();
+    const numMatch = et.id.match(/\d+/);
+    const num = numMatch ? numMatch[0] : "";
+    const numSingle = num ? String(parseInt(num, 10)) : "";
+
+    // Evitar falsos positivos con la palabra genérica "proyecto"
+    if (nameNorm === "proyecto") {
+      if (qNorm.includes("etapa proyecto") || qNorm.includes("fase proyecto") || qNorm.includes("etapa 2") || qNorm.includes("etapa-02") || qNorm.includes("etapa 02") || qNorm.includes("fase 2")) {
+        return et;
+      }
+    } else {
+      if (nameNorm && qNorm.includes(nameNorm)) return et;
+    }
+    if (qNorm.includes(idNorm) || qNorm.includes(idNorm.replace('-', ' '))) return et;
+    if (num && (qNorm.includes(`etapa ${num}`) || qNorm.includes(`etapa ${numSingle}`) || qNorm.includes(`etapa-${num}`) || qNorm.includes(`fase ${num}`) || qNorm.includes(`fase ${numSingle}`))) {
+      return et;
+    }
+  }
+  return null;
+}
+
+/**
+ * Responde preguntas del equipo sobre el proyecto usando IA y contexto en vivo
+ */
 async function askScrumMaster(userQuestion, userName = "Equipo") {
   const context = compileProjectContext();
   const fin = context.finanzas;
   const apiKey = getGeminiApiKey();
 
+  // Detectar si la pregunta se refiere a una etapa particular
+  const targetStage = findStageInText(userQuestion, context.etapasInfo);
+  const activeFin = targetStage ? targetStage.finanzas : fin;
+  const scopeTitle = targetStage ? `Etapa ${targetStage.id.replace('ETAPA-', '')}: ${targetStage.nombre}` : `Todo el Proyecto (Consolidado)`;
+  const isStageScope = !!targetStage;
+
   if (apiKey) {
     const systemPrompt = `Eres el Scrum Master y Asesor Financiero Ágil de Proyecto Chimay (IN2TECHMX).
-Conoces todas las tareas, subtareas, costos, responsables, fechas y documentos.
-Tienes pleno dominio de las distintas perspectivas de costo:
+Conoces todas las tareas, subtareas, costos, responsables, fechas, documentos y etapas de trabajo.
+Tienes pleno dominio de las distintas perspectivas de costo, tanto para el proyecto en general como para una etapa individual:
 1. Costo al Día / Real: Suma de tareas con estado Completada.
 2. Costo en Curso: Suma de tareas con estado En Progreso.
 3. Costo Activo Total: Tareas Completadas + En Progreso.
 4. Costo Proyectado (sin sumar actual): Solo tareas con estado No Iniciada (remanente por devengar).
-5. Costo Total Global (sumando actual): Tareas Activas + No Iniciadas (inversión total de inicio a fin).
+5. Costo Total Global (sumando actual): Tareas Activas + No Iniciadas (inversión total).
 Responde de forma concisa, precisa y ejecutiva en Markdown compatible con Telegram.`;
 
     const userPrompt = `Contexto del Proyecto:
 ${JSON.stringify({
   metricas: context.resumenMetricas,
-  finanzas: {
-    costoAlDia_Completadas: fin.costoAlDia,
-    costoEnCurso_EnProgreso: fin.costoEnProgreso,
-    costoActivoTotal: fin.costoActivoTotal,
-    costoProyectado_NoIniciadas_SinActual: fin.costoProyectado,
-    costoTotalGlobal_SumandoActual: fin.costoTotalGlobal,
+  alcanceSeleccionado: scopeTitle,
+  finanzasActivas: {
+    costoAlDia_Completadas: activeFin.costoAlDia,
+    costoEnCurso_EnProgreso: activeFin.costoEnProgreso,
+    costoActivoTotal: activeFin.costoActivoTotal,
+    costoProyectado_NoIniciadas_SinActual: activeFin.costoProyectado,
+    costoTotalGlobal_SumandoActual: activeFin.costoTotalGlobal,
     porcentajes: {
-      pctAlDia: fin.pctAlDia,
-      pctEnCurso: fin.pctEnCurso,
-      pctActivoTotal: fin.pctActivoTotal,
-      pctProyectado: fin.pctProyectado
+      pctAlDia: activeFin.pctAlDia,
+      pctEnCurso: activeFin.pctEnCurso,
+      pctActivoTotal: activeFin.pctActivoTotal,
+      pctProyectado: activeFin.pctProyectado
     }
   },
-  enProgreso: context.enProgreso.map(t => ({ id: t.id, name: t.name, resp: t.responsable, costo: t.costoTotal, progress: t.progress })),
-  completadas: fin.tareasCompletadas.map(t => ({ id: t.id, name: t.name, resp: t.responsable, costo: t.costoTotal })),
-  noIniciadas: fin.tareasNoIniciadas.map(t => ({ id: t.id, name: t.name, resp: t.responsable, costo: t.costoTotal }))
+  finanzasPorEtapa: context.finanzasPorEtapa,
+  enProgreso: context.enProgreso.map(t => ({ id: t.id, name: t.name, resp: t.responsable, costo: t.costoTotal, progress: t.progress, etapa: t.etapa })),
+  completadas: activeFin.tareasCompletadas.map(t => ({ id: t.id, name: t.name, resp: t.responsable, costo: t.costoTotal, etapa: t.etapa })),
+  noIniciadas: activeFin.tareasNoIniciadas.map(t => ({ id: t.id, name: t.name, resp: t.responsable, costo: t.costoTotal, etapa: t.etapa }))
 }, null, 2)}
 
 Pregunta de ${userName}: "${userQuestion}"`;
@@ -465,72 +544,92 @@ Pregunta de ${userName}: "${userQuestion}"`;
   // Respuesta heurística determinista completa si no hay API Key o falla
   const qNorm = userQuestion.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
+  // Comparativa de todas las etapas
+  if (!isStageScope && (qNorm.includes("por etapa") || qNorm.includes("comparar etapas") || qNorm.includes("indicador por etapa") || qNorm.includes("desglose por etapa"))) {
+    let msg = `📊 *Indicador Financiero por Etapa — Proyecto Chimay*\n\n`;
+    context.etapasInfo.forEach((et, idx) => {
+      const f = et.finanzas;
+      msg += `📁 *${idx + 1}. Etapa ${et.id.replace('ETAPA-', '')}: ${et.nombre}*\n`;
+      msg += `   • *Presupuesto Total:* \`$${f.costoTotalGlobal.toLocaleString('es-MX')} MXN\` (${et.totalTareas} tareas)\n`;
+      msg += `   • ⚡ *Activo:* \`$${f.costoActivoTotal.toLocaleString('es-MX')} MXN\` (${f.pctActivoTotal}% | Al Día: $${f.costoAlDia.toLocaleString('es-MX')} + En Curso: $${f.costoEnProgreso.toLocaleString('es-MX')})\n`;
+      msg += `   • ⏳ *Proyectado (No Iniciadas):* \`$${f.costoProyectado.toLocaleString('es-MX')} MXN\` (${f.pctProyectado}%)\n\n`;
+    });
+    msg += `🌐 *Presupuesto Consolidado de Todo el Proyecto:* \`$${fin.costoTotalGlobal.toLocaleString('es-MX')} MXN\`\n\n`;
+    msg += `_💡 Puedes consultar los 5 criterios de una sola etapa escribiendo ej: "costo etapa 1" o "activo vs proyectado etapa propuesta"._`;
+    return msg;
+  }
+
   // A. Costo al Día / Costo Real (Tareas Completadas)
   if (qNorm.includes("al dia") || qNorm.includes("costo real") || qNorm.includes("ejercido") || (qNorm.includes("completad") && qNorm.includes("cost"))) {
-    return `💰 *Costo al Día / Real (Tareas Completadas):*\n\n` +
-      `• *Monto Ejercido:* \`$${fin.costoAlDia.toLocaleString('es-MX')} MXN\`\n` +
-      `• *Representa:* el *${fin.pctAlDia}%* del presupuesto global consolidado.\n` +
-      `• *Entregables Concluidos al 100% (${fin.tareasCompletadas.length}):*\n` +
-      (fin.tareasCompletadas.map(t => `   ✅ *${t.id}:* ${t.name} ($${Number(t.costoTotal).toLocaleString('es-MX')} MXN • ${t.responsable})`).join('\n') || '   _Sin tareas completadas aún._') + `\n\n` +
+    return `💰 *Costo al Día / Real (Tareas Completadas)*\n` +
+      `📁 *Alcance:* *${scopeTitle}*\n\n` +
+      `• *Monto Ejercido:* \`$${activeFin.costoAlDia.toLocaleString('es-MX')} MXN\`\n` +
+      `• *Representa:* el *${activeFin.pctAlDia}%* del presupuesto de ${isStageScope ? 'esta etapa' : 'todo el proyecto'}.\n` +
+      `• *Entregables Concluidos al 100% (${activeFin.tareasCompletadas.length}):*\n` +
+      (activeFin.tareasCompletadas.map(t => `   ✅ *${t.id}:* ${t.name} ($${Number(t.costoTotal).toLocaleString('es-MX')} MXN • ${t.responsable})`).join('\n') || '   _Sin tareas completadas aún en este alcance._') + `\n\n` +
       `_💡 Si deseas ver también lo que se está ejecutando hoy, consulta por el "costo activo"._`;
   }
 
   // B. Costo Activo / En Curso / Activo vs Proyectado
   if (qNorm.includes("activo") || qNorm.includes("en curso") || qNorm.includes("en progreso") || qNorm.includes("activas")) {
     if (qNorm.includes("vs") || qNorm.includes("proyectado") || qNorm.includes("comparar") || qNorm.includes("diferencia")) {
-      return `⚖️ *Balance Financiero: Tareas Activas vs Costo Proyectado*\n\n` +
+      return `⚖️ *Balance Financiero: Tareas Activas vs Costo Proyectado*\n` +
+        `📁 *Alcance:* *${scopeTitle}*\n\n` +
         `⚡ *1. Tareas Activas (En Curso + Concluidas):*\n` +
-        `   • Monto Total Activo: \`$${fin.costoActivoTotal.toLocaleString('es-MX')} MXN\` (*${fin.pctActivoTotal}%* del total)\n` +
-        `   • Al Día (Completadas): \`$${fin.costoAlDia.toLocaleString('es-MX')} MXN\` (${fin.pctAlDia}%)\n` +
-        `   • En Curso (En Progreso): \`$${fin.costoEnProgreso.toLocaleString('es-MX')} MXN\` (${fin.pctEnCurso}%)\n\n` +
+        `   • Monto Total Activo: \`$${activeFin.costoActivoTotal.toLocaleString('es-MX')} MXN\` (*${activeFin.pctActivoTotal}%*)\n` +
+        `   • Al Día (Completadas): \`$${activeFin.costoAlDia.toLocaleString('es-MX')} MXN\` (${activeFin.pctAlDia}%)\n` +
+        `   • En Curso (En Progreso): \`$${activeFin.costoEnProgreso.toLocaleString('es-MX')} MXN\` (${activeFin.pctEnCurso}%)\n\n` +
         `⏳ *2. Costo Proyectado (No Iniciadas - Sin Sumar Actual):*\n` +
-        `   • Monto Proyectado Futuro: \`$${fin.costoProyectado.toLocaleString('es-MX')} MXN\` (*${fin.pctProyectado}%* del total)\n` +
-        `   • Tareas por Iniciar: ${fin.tareasNoIniciadas.length} actividades planificadas.\n\n` +
-        `🌐 *Presupuesto Total Consolidado (Sumando Actual):*\n` +
-        `   • \`$${fin.costoTotalGlobal.toLocaleString('es-MX')} MXN\` (100%)`;
+        `   • Monto Proyectado Futuro: \`$${activeFin.costoProyectado.toLocaleString('es-MX')} MXN\` (*${activeFin.pctProyectado}%*)\n` +
+        `   • Tareas por Iniciar: ${activeFin.tareasNoIniciadas.length} actividades planificadas.\n\n` +
+        `🌐 *Presupuesto Total (${isStageScope ? 'Etapa' : 'Consolidado'}):*\n` +
+        `   • \`$${activeFin.costoTotalGlobal.toLocaleString('es-MX')} MXN\` (100%)`;
     }
 
-    return `⚡ *Costo de Tareas Activas (En Ejecución & Concluidas):*\n\n` +
-      `• *En Curso Hoy:* \`$${fin.costoEnProgreso.toLocaleString('es-MX')} MXN\` (${fin.pctEnCurso}% en ${fin.tareasEnProgreso.length} tarea(s))\n` +
-      `• *Al Día (Completadas):* \`$${fin.costoAlDia.toLocaleString('es-MX')} MXN\` (${fin.pctAlDia}%)\n` +
-      `• *Total Activo Comprometido:* \`$${fin.costoActivoTotal.toLocaleString('es-MX')} MXN\` (*${fin.pctActivoTotal}%* del presupuesto global).\n\n` +
-      `_💡 El costo proyectado no iniciado es de $${fin.costoProyectado.toLocaleString('es-MX')} MXN (${fin.pctProyectado}%)._`;
+    return `⚡ *Costo de Tareas Activas (En Ejecución & Concluidas)*\n` +
+      `📁 *Alcance:* *${scopeTitle}*\n\n` +
+      `• *En Curso Hoy:* \`$${activeFin.costoEnProgreso.toLocaleString('es-MX')} MXN\` (${activeFin.pctEnCurso}% en ${activeFin.tareasEnProgreso.length} tarea(s))\n` +
+      `• *Al Día (Completadas):* \`$${activeFin.costoAlDia.toLocaleString('es-MX')} MXN\` (${activeFin.pctAlDia}%)\n` +
+      `• *Total Activo Comprometido:* \`$${activeFin.costoActivoTotal.toLocaleString('es-MX')} MXN\` (*${activeFin.pctActivoTotal}%* del presupuesto de ${isStageScope ? 'la etapa' : 'el proyecto'}).\n\n` +
+      `_💡 El costo proyectado no iniciado es de $${activeFin.costoProyectado.toLocaleString('es-MX')} MXN (${activeFin.pctProyectado}%)._`;
   }
 
   // C. Costo Proyectado (No Iniciadas / Sin sumar o sumando actual)
   if (qNorm.includes("proyectado") || qNorm.includes("no iniciada") || qNorm.includes("futuro") || qNorm.includes("por iniciar")) {
     if (qNorm.includes("sumando") || qNorm.includes("con el actual") || qNorm.includes("total")) {
-      return `🌐 *Costo Proyectado Total (Sumando el Actual):*\n\n` +
-        `• *Presupuesto Global Consolidado:* \`$${fin.costoTotalGlobal.toLocaleString('es-MX')} MXN\`\n` +
+      return `🌐 *Costo Proyectado Total (Sumando el Actual)*\n` +
+        `📁 *Alcance:* *${scopeTitle}*\n\n` +
+        `• *Presupuesto Total:* \`$${activeFin.costoTotalGlobal.toLocaleString('es-MX')} MXN\`\n` +
         `• *Composición:*\n` +
-        `   - Activo Comprometido (Concluidas + En Curso): \`$${fin.costoActivoTotal.toLocaleString('es-MX')} MXN\` (${fin.pctActivoTotal}%)\n` +
-        `   - Por Iniciar en Futuras Etapas: \`$${fin.costoProyectado.toLocaleString('es-MX')} MXN\` (${fin.pctProyectado}%)\n\n` +
-        `_💡 Si buscas solo lo que falta por iniciar sin sumar lo actual, es de $${fin.costoProyectado.toLocaleString('es-MX')} MXN._`;
+        `   - Activo Comprometido (Concluidas + En Curso): \`$${activeFin.costoActivoTotal.toLocaleString('es-MX')} MXN\` (${activeFin.pctActivoTotal}%)\n` +
+        `   - Por Iniciar: \`$${activeFin.costoProyectado.toLocaleString('es-MX')} MXN\` (${activeFin.pctProyectado}%)\n\n` +
+        `_💡 Si buscas solo lo que falta por iniciar sin sumar lo actual, es de $${activeFin.costoProyectado.toLocaleString('es-MX')} MXN._`;
     }
 
-    return `🔮 *Costo Proyectado (Sin Sumar Actual - Tareas No Iniciadas):*\n\n` +
-      `• *Monto por Devengar:* \`$${fin.costoProyectado.toLocaleString('es-MX')} MXN\`\n` +
-      `• *Representa:* el *${fin.pctProyectado}%* del presupuesto total (${fin.tareasNoIniciadas.length} tareas pendientes de arrancar).\n` +
+    return `🔮 *Costo Proyectado (Sin Sumar Actual - Tareas No Iniciadas)*\n` +
+      `📁 *Alcance:* *${scopeTitle}*\n\n` +
+      `• *Monto por Devengar:* \`$${activeFin.costoProyectado.toLocaleString('es-MX')} MXN\`\n` +
+      `• *Representa:* el *${activeFin.pctProyectado}%* del presupuesto (${activeFin.tareasNoIniciadas.length} tareas pendientes de arrancar).\n` +
       `• *Entregables Futuros:*\n` +
-      fin.tareasNoIniciadas.slice(0, 4).map(t => `   ⏳ *${t.id}:* ${t.name} ($${Number(t.costoTotal).toLocaleString('es-MX')} MXN • ${t.responsable})`).join('\n') + `\n\n` +
-      `_💡 Si deseas el total proyectado sumando el gasto actual, este asciende a $${fin.costoTotalGlobal.toLocaleString('es-MX')} MXN._`;
+      (activeFin.tareasNoIniciadas.slice(0, 4).map(t => `   ⏳ *${t.id}:* ${t.name} ($${Number(t.costoTotal).toLocaleString('es-MX')} MXN • ${t.responsable})`).join('\n') || '   _No hay tareas pendientes por iniciar en este alcance._') + `\n\n` +
+      `_💡 Si deseas el total proyectado sumando el gasto actual, este asciende a $${activeFin.costoTotalGlobal.toLocaleString('es-MX')} MXN._`;
   }
 
-  // D. Balance General de Presupuesto / Costos
-  if (qNorm.includes("presupuesto") || qNorm.includes("costo") || qNorm.includes("dinero") || qNorm.includes("inversion") || qNorm.includes("finanzas") || qNorm.includes("balance")) {
-    return `💰 *Balance de Costos y Presupuesto — Proyecto Chimay*\n\n` +
-      `El proyecto cuenta con distintas formas de visualizar los costos según el criterio de análisis:\n\n` +
+  // D. Balance General de Presupuesto / Costos (Global o de Etapa)
+  if (qNorm.includes("presupuesto") || qNorm.includes("costo") || qNorm.includes("dinero") || qNorm.includes("inversion") || qNorm.includes("finanzas") || qNorm.includes("balance") || isStageScope) {
+    return `💰 *Indicador Financiero — ${scopeTitle}*\n\n` +
+      `Criterios financieros calculados para este alcance:\n\n` +
       `1️⃣ *Costo al Día (Completadas / Real):*\n` +
-      `   • \`$${fin.costoAlDia.toLocaleString('es-MX')} MXN\` (${fin.pctAlDia}% ejercido)\n\n` +
+      `   • \`$${activeFin.costoAlDia.toLocaleString('es-MX')} MXN\` (${activeFin.pctAlDia}% ejercido)\n\n` +
       `2️⃣ *Costo en Curso (En Progreso Hoy):*\n` +
-      `   • \`$${fin.costoEnProgreso.toLocaleString('es-MX')} MXN\` (${fin.pctEnCurso}% en ejecución activa)\n\n` +
+      `   • \`$${activeFin.costoEnProgreso.toLocaleString('es-MX')} MXN\` (${activeFin.pctEnCurso}% en ejecución activa)\n\n` +
       `3️⃣ *Total Tareas Activas (Al Día + En Curso):*\n` +
-      `   • \`$${fin.costoActivoTotal.toLocaleString('es-MX')} MXN\` (${fin.pctActivoTotal}% comprometido)\n\n` +
+      `   • \`$${activeFin.costoActivoTotal.toLocaleString('es-MX')} MXN\` (${activeFin.pctActivoTotal}% comprometido)\n\n` +
       `4️⃣ *Costo Proyectado (Sin Sumar Actual - No Iniciadas):*\n` +
-      `   • \`$${fin.costoProyectado.toLocaleString('es-MX')} MXN\` (${fin.pctProyectado}% por devengar)\n\n` +
-      `5️⃣ *Presupuesto Total Global (Sumando Actual):*\n` +
-      `   • \`$${fin.costoTotalGlobal.toLocaleString('es-MX')} MXN\` (100% de la inversión planificada)\n\n` +
-      `_💡 Puedes preguntarme cualquiera en específico (ej: "¿cuál es el costo al día?" o "activo vs proyectado")._`;
+      `   • \`$${activeFin.costoProyectado.toLocaleString('es-MX')} MXN\` (${activeFin.pctProyectado}% por devengar)\n\n` +
+      `5️⃣ *Presupuesto Total (${isStageScope ? 'Etapa' : 'Global'}):*\n` +
+      `   • \`$${activeFin.costoTotalGlobal.toLocaleString('es-MX')} MXN\` (100% de la inversión planificada)\n\n` +
+      `_💡 Puedes consultar cualquier criterio individual diciendo ej: "activo vs proyectado ${isStageScope ? targetStage.nombre.toLowerCase() : ''}"._`;
   }
 
   if (qNorm.includes("riesgo") || qNorm.includes("atras") || qNorm.includes("cuello") || qNorm.includes("demor")) {
