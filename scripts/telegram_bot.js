@@ -106,7 +106,7 @@ function getAuthorizedUsers() {
   const loaded = loadJson(USERS_FILE, []);
   if (loaded && Array.isArray(loaded) && loaded.length > 0) return loaded;
   return [
-    { id: "USR-01", nombre: "Arturo A.", email: "arnaiz.art@gmail.com", usuario: "arnaiz.art", rol: "Web Master (Master Admon)", puedeEditar: true, alcanceEdicion: "todas", telegramUser: "in2techmx" },
+    { id: "USR-01", nombre: "Arturo A.", email: "arnaiz.art@gmail.com", usuario: "arnaiz.art", rol: "Web Master (Master Admon)", puedeEditar: true, alcanceEdicion: "todas", telegramId: 8272587658, telegramUser: "in2techmx" },
     { id: "USR-02", nombre: "Arturo B.", email: "arturo.b@in2tech.mx", usuario: "arturo.b", rol: "Gerente Operativo", puedeEditar: true, alcanceEdicion: "todas", telegramUser: "arturo_b" },
     { id: "USR-03", nombre: "Gema R.", email: "gema.r@in2tech.mx", usuario: "gema.r", rol: "Coordinadora de Proyectos", puedeEditar: true, alcanceEdicion: "todas", telegramUser: "gema_r" }
   ];
