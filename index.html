@@ -4748,6 +4748,10 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
             }
           } catch (aiErr) {
             console.warn("Fallo AI remoto, aplicando motor local de contingencia:", aiErr);
+            const statusEl = document.getElementById("aiGatewaySaveStatus");
+            if (statusEl) {
+              statusEl.innerText = `Aviso: API ${activeAiProvider} no respondió (${aiErr.message || 'error de conexión'}). Usando motor local.`;
+            }
           }
         }
 
@@ -4756,6 +4760,47 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
         }
 
         generatedProjectTasks = tasks;
+
+        // INYECCIÓN AUTOMÁTICA DIRECTA EN CRONOGRAMA
+        tasksData.push(...tasks);
+
+        // Guardar en LocalStorage
+        try {
+          let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+          customTasks.push(...tasks);
+          localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
+        } catch(e) {}
+
+        // Sincronizar automáticamente con Google Sheets con contrato corregido (fechaLimite)
+        if (webAppUrl) {
+          syncTasksToGoogleSheets(tasks);
+        }
+
+        // Actualizar selectores y vistas maestras
+        populateEtapasDropdown();
+        populateRecursosDropdown();
+        refreshActiveViews();
+
+        // Notificación en bandeja Jira-style
+        const email = currentUser ? currentUser.email : "arturo.dlb.r@gmail.com";
+        const notifKey = `chimay_notifications_${email}`;
+        try {
+          let notifs = JSON.parse(localStorage.getItem(notifKey) || "[]");
+          notifs.unshift({
+            id: `notif-proj-${Date.now()}`,
+            category: "assignment",
+            taskId: tasks[0].id,
+            taskName: `Nuevo Lote Agéntico (${tasks.length} tareas)`,
+            author: "Planificador Agéntico IA",
+            text: `Se han generado e inyectado exitosamente ${tasks.length} tareas en el cronograma maestro.`,
+            reason: "Descomposición automática WBS completada.",
+            timestamp: "Hace un momento",
+            read: false
+          });
+          localStorage.setItem(notifKey, JSON.stringify(notifs));
+          initNotifications();
+        } catch(e) {}
+
         renderGeneratedProjectPreview(tasks);
 
       } catch (err) {
@@ -4770,6 +4815,55 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
       }
     }
 
+    // Sincronizador robusto con Google Sheets (Apps Script Webhook)
+    function syncTasksToGoogleSheets(tasksList) {
+      if (!webAppUrl || !Array.isArray(tasksList) || tasksList.length === 0) return;
+      tasksList.forEach(t => {
+        try {
+          fetch(webAppUrl, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              accion: "crear",
+              id: t.id,
+              nombre: t.name,
+              etapa: t.etapa,
+              responsable: t.responsable,
+              horas: Number(t.horas) || 0,
+              costoPersonal: Number(t.costoPersonal) || 0,
+              costoMateriales: Number(t.costoMateriales) || 0,
+              costoTerceros: Number(t.costoTerceros) || 0,
+              costoTotal: Number(t.costoTotal) || 0,
+              fechaInicio: t.start,
+              fechaLimite: t.end,  // Estándar oficial de Codigo.gs
+              fechaFin: t.end,     // Compatibilidad retroactiva
+              prioridad: t.prioridad || "Media",
+              dependencias: t.dependencies || ""
+            })
+          }).catch(e => console.warn("Sync Sheets warning:", e));
+        } catch(e) {}
+      });
+    }
+
+    // Exportación formal a Git-as-a-Database (JSON de tareas)
+    function downloadGeneratedTasksJson() {
+      if (!generatedProjectTasks || generatedProjectTasks.length === 0) {
+        alert("No hay tareas generadas para exportar.");
+        return;
+      }
+      const jsonStr = JSON.stringify(generatedProjectTasks, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `tareas_chimay_ia_${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
     function renderGeneratedProjectPreview(tasks) {
       const resultsBox = document.getElementById("agenticoProjectResults");
       if (!resultsBox) return;
@@ -4781,20 +4875,27 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
       const totalTerc = tasks.reduce((a, b) => a + (Number(b.costoTerceros) || 0), 0);
 
       resultsBox.innerHTML = `
-        <div class="bg-purple-50/60 rounded-2xl p-5 border border-purple-200 space-y-4">
+        <div class="bg-purple-50/60 rounded-2xl p-5 border border-purple-200 space-y-4 animate-in fade-in duration-200">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-purple-200/70 pb-3">
             <div>
-              <div class="flex items-center gap-2">
-                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-700 text-white">Propuesta Agéntica Generada</span>
-                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">${tasks.length} Tareas WBS</span>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white flex items-center gap-1 shadow-2xs">
+                  <i class="fa-solid fa-circle-check"></i> ${tasks.length} Tareas Creadas e Inyectadas
+                </span>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-300">WBS Listo</span>
               </div>
-              <h3 class="text-base font-black text-stone-900 mt-1">Desglose Operativo & Cronograma Propuesto</h3>
-              <p class="text-xs text-stone-500">Revisa la estructuración antes de inyectarla de forma permanente en el cronograma maestro y Google Sheets.</p>
+              <h3 class="text-base font-black text-stone-900 mt-1">Desglose Operativo & Cronograma Creado</h3>
+              <p class="text-xs text-stone-500">Las ${tasks.length} tareas ya están integradas de forma activa en el cronograma maestro y sincronizadas con Google Sheets.</p>
             </div>
             
-            <button onclick="applyGeneratedProject()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition shadow-md flex items-center gap-2 cursor-pointer shrink-0">
-              <i class="fa-solid fa-cloud-arrow-up text-sm"></i> Aplicar y Crear en Cronograma & Google Sheets
-            </button>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button onclick="downloadGeneratedTasksJson()" class="px-3 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0" title="Descargar archivo JSON para Git-as-a-Database">
+                <i class="fa-solid fa-download text-xs"></i> Exportar JSON Git
+              </button>
+              <button onclick="transitionToView('todos')" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition shadow-md flex items-center gap-1.5 cursor-pointer shrink-0">
+                <i class="fa-solid fa-chart-gantt text-xs"></i> Ver en Cronograma Maestro
+              </button>
+            </div>
           </div>
 
           <!-- Métricas Resumen -->
@@ -4854,72 +4955,9 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
       `;
     }
 
-    // Inyectar Proyecto Generado en Base de Datos y Google Sheets
+    // Inyectar Proyecto Generado en Base de Datos y Google Sheets (Compatibilidad retroactiva)
     async function applyGeneratedProject() {
       if (!generatedProjectTasks || generatedProjectTasks.length === 0) return;
-
-      const count = generatedProjectTasks.length;
-      
-      // Agregar a tasksData
-      tasksData.push(...generatedProjectTasks);
-
-      // Guardar en Custom Tasks de LocalStorage
-      try {
-        let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
-        customTasks.push(...generatedProjectTasks);
-        localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
-      } catch(e) {}
-
-      // Sincronizar con Google Sheets en segundo plano
-      if (webAppUrl) {
-        try {
-          for (const t of generatedProjectTasks) {
-            fetch(webAppUrl, {
-              method: "POST",
-              mode: "no-cors",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                accion: "crear",
-                nombre: t.name,
-                etapa: t.etapa,
-                responsable: t.responsable,
-                horas: t.horas,
-                costoMateriales: t.costoMateriales,
-                costoTerceros: t.costoTerceros,
-                fechaInicio: t.start,
-                fechaFin: t.end,
-                prioridad: t.prioridad,
-                dependencias: t.dependencies
-              })
-            }).catch(() => {});
-          }
-        } catch(e) {}
-      }
-
-      // Notificación
-      const email = currentUser ? currentUser.email : "arturo.dlb.r@gmail.com";
-      const notifKey = `chimay_notifications_${email}`;
-      try {
-        let notifs = JSON.parse(localStorage.getItem(notifKey) || "[]");
-        notifs.unshift({
-          id: `notif-proj-${Date.now()}`,
-          category: "assignment",
-          taskId: generatedProjectTasks[0].id,
-          taskName: `Nuevo Proyecto Agéntico (${count} tareas)`,
-          author: "Planificador Agéntico IA",
-          text: `Se han generado y creado exitosamente ${count} tareas en el cronograma maestro.`,
-          reason: "Descomposición automática WBS completada.",
-          timestamp: "Hace un momento",
-          read: false
-        });
-        localStorage.setItem(notifKey, JSON.stringify(notifs));
-        initNotifications();
-      } catch(e) {}
-
-      alert(`🚀 ¡Éxito! Se han creado ${count} tareas estructuradas en el proyecto. Pasando al Cronograma Maestro.`);
-      
-      populateEtapasDropdown();
-      populateRecursosDropdown();
       transitionToView("todos");
     }
 
@@ -5011,24 +5049,25 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
       }
 
       // 4. CREAR TAREA
-      if (pLower.includes("agregar") || pLower.includes("crear") || pLower.includes("nueva tarea") || pLower.includes("incorporar") || pLower.includes("notario") || pLower.includes("revisar")) {
-        let etapaTarget = "Etapa 2: Infraestructura Hidráulica";
-        if (pLower.includes("etapa 1") || pLower.includes("legal") || pLower.includes("gobernanza") || pLower.includes("notario")) {
-          etapaTarget = "Etapa 1: Legal y Gobernanza";
-        } else if (pLower.includes("etapa 2") || pLower.includes("hidráulica") || pLower.includes("riego") || pLower.includes("obra")) {
-          etapaTarget = "Etapa 2: Infraestructura Hidráulica";
-        } else if (pLower.includes("etapa 3") || pLower.includes("sensores") || pLower.includes("tecnolog") || pLower.includes("red")) {
-          etapaTarget = "Etapa 3: Redes y Sensores";
-        } else if (pLower.includes("etapa 4") || pLower.includes("biofábrica") || pLower.includes("cultivo") || pLower.includes("hongo")) {
-          etapaTarget = "Etapa 4: Biofábrica y Cultivo";
+      if (pLower.includes("agregar") || pLower.includes("crear") || pLower.includes("nueva tarea") || pLower.includes("incorporar") || pLower.includes("notario") || pLower.includes("revisar") || pLower.includes("generar") || pLower.includes("planear") || pLower.includes("planificar") || pLower.includes("diseñar") || pLower.includes("proponer") || pLower.includes("siembra") || pLower.includes("cultivo") || pLower.includes("riego") || pLower.includes("solar") || pLower.includes("hongo") || pLower.includes("microgreen") || pLower.includes("pozo")) {
+        const availableEtapas = getAllEtapas();
+        let etapaTarget = availableEtapas[1] || availableEtapas[0] || "Etapa 2: Infraestructura Hidráulica";
+        if (pLower.includes("etapa 1") || pLower.includes("legal") || pLower.includes("gobernanza") || pLower.includes("notario") || pLower.includes("propuesta")) {
+          etapaTarget = availableEtapas.find(e => /legal|gobernanza|propuesta/i.test(e)) || availableEtapas[0] || "Etapa 1: Legal y Gobernanza";
+        } else if (pLower.includes("etapa 2") || pLower.includes("hidráulica") || pLower.includes("riego") || pLower.includes("obra") || pLower.includes("pozo")) {
+          etapaTarget = availableEtapas.find(e => /hidráulica|obra|riego|infraestructura|proyecto/i.test(e)) || availableEtapas[1] || "Etapa 2: Infraestructura Hidráulica";
+        } else if (pLower.includes("etapa 3") || pLower.includes("sensores") || pLower.includes("tecnolog") || pLower.includes("red") || pLower.includes("solar") || pLower.includes("piloto")) {
+          etapaTarget = availableEtapas.find(e => /redes|sensores|solar|piloto/i.test(e)) || availableEtapas[2] || "Etapa 3: Redes y Sensores";
+        } else if (pLower.includes("etapa 4") || pLower.includes("biofábrica") || pLower.includes("cultivo") || pLower.includes("hongo") || pLower.includes("siembra") || pLower.includes("microgreen")) {
+          etapaTarget = availableEtapas.find(e => /cultivo|biofábrica|siembra|comercial/i.test(e)) || availableEtapas[availableEtapas.length - 1] || "Etapa 4: Biofábrica y Cultivo";
         }
 
         let respTarget = "Arturo B.";
         if (pLower.includes("gema") || pLower.includes("lic") || pLower.includes("abogada") || pLower.includes("notar")) {
           respTarget = "Gema R.";
-        } else if (pLower.includes("chiyo") || pLower.includes("don chiyo") || pLower.includes("campo")) {
+        } else if (pLower.includes("chiyo") || pLower.includes("don chiyo") || pLower.includes("campo") || pLower.includes("siembra") || pLower.includes("riego")) {
           respTarget = "Don Chiyo";
-        } else if (pLower.includes("arturo a") || pLower.includes("sensores") || pLower.includes("redes")) {
+        } else if (pLower.includes("arturo a") || pLower.includes("sensores") || pLower.includes("redes") || pLower.includes("web") || pLower.includes("financ")) {
           respTarget = "Arturo A.";
         }
 
@@ -5038,9 +5077,12 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
           taskName = paraQueMatch[1].trim();
           taskName = taskName.charAt(0).toUpperCase() + taskName.slice(1);
         } else {
-          taskName = prompt.replace(/agregar una tarea en la etapa \d+ para que /i, "")
+          taskName = prompt.replace(/^(generar|crear|agregar|incorporar|planificar|planear|diseñar|proponer)\s+(una\s+|las\s+)?(tarea\s+|tareas\s+)?(en\s+la\s+etapa\s+\d+\s+)?(para\s+que\s+|para\s+)?/i, "")
+                           .replace(/agregar una tarea en la etapa \d+ para que /i, "")
                            .replace(/agregar tarea para /i, "")
-                           .replace(/crear tarea /i, "").trim();
+                           .replace(/crear tarea /i, "")
+                           .replace(/generar tarea /i, "")
+                           .trim();
           taskName = taskName.charAt(0).toUpperCase() + taskName.slice(1);
         }
 
@@ -5093,6 +5135,10 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
           customTasks.push(newTask);
           localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
         } catch(e) {}
+
+        if (webAppUrl) {
+          syncTasksToGoogleSheets([newTask]);
+        }
 
         populateEtapasDropdown();
         populateRecursosDropdown();
@@ -5164,11 +5210,153 @@ CERO comentarios, CERO etiquetas HTML, CERO código fuera del JSON.`;
 
         if (activeAiProvider !== "local") {
           try {
-            execution = localEngineExecuteCommand(cmd);
-          } catch(e) {
-            execution = localEngineExecuteCommand(cmd);
+            const etapasDisponibles = getAllEtapas();
+            const copilotoSys = `[POLÍTICA DE SEGURIDAD AS - GATE 2 ACTIVA / ENTORNO SANDBOX CERRADO]:
+Eres el Copiloto Operativo y Agente Director de Desarrollo de IN2TECHMX para el Rancho San Pedro Chimay.
+Tu trabajo es interpretar la instrucción del usuario en lenguaje natural y traducirla EXCLUSIVAMENTE a un objeto JSON estructurado con una acción válida.
+Especialistas disponibles: "Arturo B." ($160/h), "Gema R." ($200/h), "Arturo A." ($140/h), "Don Chiyo" ($90/h).
+Etapas disponibles: ${etapasDisponibles.map(e => `"${e}"`).join(', ')}.
+
+FORMATOS JSON PERMITIDOS (DEBES ELEGIR EL MÁS ADECUADO SEGÚN LA ORDEN):
+1. Si pide crear o generar una tarea:
+{"intent": "CREAR_TAREA", "name": "Nombre conciso de la tarea", "etapa": "${etapasDisponibles[0] || 'Etapa 1'}", "responsable": "Arturo B.", "horas": 15, "costoMateriales": 0, "costoTerceros": 0, "dias": 7, "reasoning": "Explicación breve del criterio"}
+2. Si pide modificar la fecha de una tarea (ej: TSK-03):
+{"intent": "MODIFICAR_FECHA", "taskId": "TSK-XX", "targetDate": "YYYY-MM-DD", "reasoning": "Motivo del cambio"}
+3. Si pide marcar completada o finalizar una tarea:
+{"intent": "COMPLETAR_TAREA", "taskId": "TSK-XX", "reasoning": "Confirmación de cierre"}
+4. Si pide reportar bloqueo, retraso o impedimento:
+{"intent": "REPORTAR_BLOQUEO", "taskId": "TSK-XX", "motivo": "Descripción del bloqueo", "reasoning": "Alerta operativa"}
+5. Si es una consulta o solicitud informativa:
+{"intent": "CONSULTA_OPERATIVA", "respuesta": "Respuesta clara y ejecutiva", "reasoning": "Análisis"}
+
+REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni etiquetas script.`;
+
+            const rawAi = await callAiGateway(copilotoSys, cmd);
+            if (rawAi) {
+              const clean = rawAi.replace(/^```json/m, "").replace(/^```/m, "").trim();
+              const parsed = JSON.parse(clean);
+
+              if (parsed.intent === "CREAR_TAREA") {
+                let maxNum = 0;
+                tasksData.forEach(t => {
+                  const m = String(t.id).match(/TSK-(\d+)/i);
+                  if (m) {
+                    const n = parseInt(m[1], 10);
+                    if (n > maxNum) maxNum = n;
+                  }
+                });
+                const newId = `TSK-${String(maxNum + 1).padStart(2, '0')}`;
+                const resp = (parsed.responsable && TEAM_INFO[parsed.responsable]) ? parsed.responsable : "Arturo B.";
+                const rate = TEAM_INFO[resp]?.costoHora || 150;
+                const horas = Number(parsed.horas) || 15;
+                const cPers = horas * rate;
+                const cMat = Number(parsed.costoMateriales) || 0;
+                const cTerc = Number(parsed.costoTerceros) || 0;
+                const cTotal = cPers + cMat + cTerc;
+                const sDate = new Date().toISOString().split('T')[0];
+                const eDateObj = new Date();
+                eDateObj.setDate(eDateObj.getDate() + (Number(parsed.dias) || 7));
+                const eDate = eDateObj.toISOString().split('T')[0];
+                const etapa = parsed.etapa || etapasDisponibles[0] || "Etapa 1: Operaciones";
+                const projId = (currentPortfolioProject && currentPortfolioProject !== "all") ? currentPortfolioProject : "PRJ-01";
+
+                const newTask = validateTaskSchema({
+                  id: newId,
+                  name: parsed.name || "Nueva Tarea Generada por IA",
+                  etapa: etapa,
+                  responsable: resp,
+                  horas: horas,
+                  costoPersonal: cPers,
+                  costoMateriales: cMat,
+                  costoTerceros: cTerc,
+                  costoTotal: cTotal,
+                  start: sDate,
+                  end: eDate,
+                  progress: 0,
+                  estado: "No Iniciada",
+                  prioridad: "Media",
+                  projectId: projId,
+                  dependencies: ""
+                });
+
+                tasksData.push(newTask);
+                try {
+                  let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+                  customTasks.push(newTask);
+                  localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
+                } catch(e) {}
+
+                if (webAppUrl) syncTasksToGoogleSheets([newTask]);
+
+                populateEtapasDropdown();
+                populateRecursosDropdown();
+                refreshActiveViews();
+
+                execution = {
+                  intent: "CREAR_TAREA",
+                  reasoning: parsed.reasoning || `Agente ${activeAiProvider.toUpperCase()} estructuró la tarea con éxito.`,
+                  status: "success",
+                  taskId: newId,
+                  resultHtml: `<div class="p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl">
+                    <p class="font-bold text-emerald-900 flex items-center gap-1.5"><i class="fa-solid fa-sparkles text-emerald-600"></i> Tarea <a href="javascript:openTaskModal('${newId}')" class="underline font-mono font-black">${newId}</a> creada por Agente ${getProviderDisplayName(activeAiProvider)}:</p>
+                    <p class="text-xs text-stone-800 font-bold mt-0.5">"${newTask.name}"</p>
+                    <p class="text-[11px] text-stone-500 mt-1">📁 ${newTask.etapa} &bull; 👤 ${newTask.responsable} &bull; ⏱️ ${newTask.horas}h &bull; 💰 $${newTask.costoTotal.toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN &bull; 📅 ${newTask.start} al ${newTask.end}</p>
+                  </div>`
+                };
+              } else if (parsed.intent === "COMPLETAR_TAREA" && parsed.taskId) {
+                const task = tasksData.find(t => t.id === parsed.taskId.toUpperCase());
+                if (task) {
+                  task.estado = "Completada";
+                  task.progress = 100;
+                  refreshActiveViews();
+                  execution = {
+                    intent: "COMPLETAR_TAREA",
+                    reasoning: parsed.reasoning || `Tarea ${task.id} completada al 100%.`,
+                    status: "success",
+                    taskId: task.id,
+                    resultHtml: `<p class="text-emerald-800 font-bold flex items-center gap-1.5"><i class="fa-solid fa-circle-check text-emerald-600"></i> Tarea <a href="javascript:openTaskModal('${task.id}')" class="underline font-mono">${task.id}</a> marcada como <strong>Completada (100%)</strong>.</p>`
+                  };
+                }
+              } else if (parsed.intent === "MODIFICAR_FECHA" && parsed.taskId && parsed.targetDate) {
+                const task = tasksData.find(t => t.id === parsed.taskId.toUpperCase());
+                if (task) {
+                  const oldEnd = task.end;
+                  task.end = parsed.targetDate;
+                  if (new Date(task.end) < new Date(task.start)) task.start = task.end;
+                  refreshActiveViews();
+                  execution = {
+                    intent: "MODIFICAR_FECHA",
+                    reasoning: parsed.reasoning || `Fecha modificada a ${parsed.targetDate}.`,
+                    status: "success",
+                    taskId: task.id,
+                    resultHtml: `<p class="text-indigo-800 font-bold flex items-center gap-1.5"><i class="fa-solid fa-calendar-check text-indigo-600"></i> Fecha de <a href="javascript:openTaskModal('${task.id}')" class="underline font-mono">${task.id}</a> actualizada al <strong>${parsed.targetDate}</strong> (antes: ${oldEnd}).</p>`
+                  };
+                }
+              } else if (parsed.intent === "REPORTAR_BLOQUEO" && parsed.taskId) {
+                const tId = parsed.taskId.toUpperCase();
+                addImpediment(tId, parsed.motivo || "Impedimento reportado vía copiloto IA");
+                execution = {
+                  intent: "REPORTAR_BLOQUEO",
+                  reasoning: parsed.reasoning || `Impedimento registrado en ${tId}.`,
+                  status: "success",
+                  taskId: tId,
+                  resultHtml: `<p class="text-rose-800 font-bold flex items-center gap-1.5"><i class="fa-solid fa-flag text-rose-600"></i> Impedimento registrado en <a href="javascript:openTaskModal('${tId}')" class="underline font-mono">${tId}</a>: "${parsed.motivo}". Semáforo rojo activado.</p>`
+                };
+              } else if (parsed.intent === "CONSULTA_OPERATIVA") {
+                execution = {
+                  intent: "CONSULTA_OPERATIVA",
+                  reasoning: parsed.reasoning || "Consulta analizada por IA.",
+                  status: "info",
+                  resultHtml: `<p class="text-stone-700">${parsed.respuesta || "Consulta procesada."}</p>`
+                };
+              }
+            }
+          } catch(aiErr) {
+            console.warn("Fallo LLM remoto en copiloto, recurriendo a motor local:", aiErr);
           }
-        } else {
+        }
+
+        if (!execution) {
           execution = localEngineExecuteCommand(cmd);
         }
 
