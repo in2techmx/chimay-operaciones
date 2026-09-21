@@ -356,8 +356,13 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
         <!-- Botón Directo Vista Global -->
-        <button id="btnVistaGlobal" onclick="selectRecurso('todos')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-emerald-800 text-white shadow-sm hover:bg-emerald-900">
+        <button id="btnVistaGlobal" onclick="selectRecurso('todos')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-emerald-800 text-white shadow-sm hover:bg-emerald-900 cursor-pointer">
           <i class="fa-solid fa-globe text-emerald-300"></i> Vista Global
+        </button>
+
+        <!-- Botón Directo Informes & Costos (Reporting) -->
+        <button id="btnVistaReporting" onclick="selectRecurso('reporting')" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer" title="Reporte de Tareas y Costos Jerárquicos">
+          <i class="fa-solid fa-chart-pie text-emerald-600"></i> Informes & Costos
         </button>
 
         <!-- Botón Planificador Agéntico IA -->
@@ -757,6 +762,7 @@
       if (container) {
         if (currentView === "agentico") renderAgenticoView(container);
         else if (currentView === "todos") renderGlobalView(container);
+        else if (currentView === "reporting") renderReportingView(container);
         else renderSpecialistView(container, currentView);
       }
       updateEtapaBarInfo();
@@ -955,6 +961,7 @@
       if (!container) return;
       if (currentView === "todos") renderGlobalView(container);
       else if (currentView === "agentico") renderAgenticoView(container);
+      else if (currentView === "reporting") renderReportingView(container);
       else renderSpecialistView(container, currentView);
       updateEtapaBarInfo();
     }
@@ -1637,8 +1644,7 @@
         applyRoleBasedUI();
         const container = document.getElementById("viewContainer");
         if (container) {
-          if (currentView === "todos") renderGlobalView(container);
-          else renderSpecialistView(container, currentView);
+          refreshActiveViews();
         }
       } else {
         if (landing) {
@@ -2315,8 +2321,7 @@
       populateRecursosDropdown();
       const container = document.getElementById("viewContainer");
       if (container) {
-        if (currentView === "todos") renderGlobalView(container);
-        else renderSpecialistView(container, currentView);
+        refreshActiveViews();
       }
       updateEtapaBarInfo();
       closeCreateTaskModal();
@@ -2507,6 +2512,8 @@ Sincronizando con Google Sheets...`);
       // Actualizar en tasksData
       const taskIdx = tasksData.findIndex(t => t.id === id);
       if (taskIdx !== -1) {
+        const prevTask = tasksData[taskIdx];
+        const dateChanged = Boolean(prevTask.start && prevTask.end && (prevTask.start !== start || prevTask.end !== end));
         tasksData[taskIdx] = {
           ...tasksData[taskIdx],
           name: name,
@@ -2521,7 +2528,10 @@ Sincronizando con Google Sheets...`);
           end: end,
           progress: progress,
           estado: estado,
-          prioridad: prioridad
+          prioridad: prioridad,
+          fechaModificada: Boolean(prevTask.fechaModificada || dateChanged),
+          fechaOriginalStart: prevTask.fechaOriginalStart || prevTask.start,
+          fechaOriginalEnd: prevTask.fechaOriginalEnd || prevTask.end
         };
       }
 
@@ -2565,6 +2575,7 @@ Sincronizando con Google Sheets...`);
       const container = document.getElementById("viewContainer");
       if (container) {
         if (currentView === "todos") renderGlobalView(container);
+        else if (currentView === "reporting") renderReportingView(container);
         else renderSpecialistView(container, currentView);
       }
       updateEtapaBarInfo();
@@ -4067,8 +4078,12 @@ Los archivos JSON han sido preparados.`);
       currentView = recursoValue;
       
       const select = document.getElementById("selectRecurso");
-      if (select && select.value !== recursoValue) {
-        select.value = recursoValue;
+      if (select) {
+        if (recursoValue === "todos" || recursoValue === "agentico" || recursoValue === "reporting") {
+          select.value = "todos";
+        } else {
+          select.value = recursoValue;
+        }
       }
 
       updateNavButtonsState(recursoValue);
@@ -4079,14 +4094,27 @@ Los archivos JSON han sido preparados.`);
     function updateNavButtonsState(viewId) {
       const btnGlobal = document.getElementById("btnVistaGlobal");
       const btnAgentico = document.getElementById("btnVistaAgentico");
+      const btnReporting = document.getElementById("btnVistaReporting");
       const select = document.getElementById("selectRecurso");
+
+      if (btnReporting) {
+        if (viewId === "reporting") {
+          btnReporting.className = "px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 whitespace-nowrap bg-emerald-800 text-white shadow-md ring-2 ring-emerald-400 cursor-pointer";
+          const icon = btnReporting.querySelector("i");
+          if (icon) icon.className = "fa-solid fa-chart-pie text-emerald-300";
+        } else {
+          btnReporting.className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer";
+          const icon = btnReporting.querySelector("i");
+          if (icon) icon.className = "fa-solid fa-chart-pie text-emerald-600";
+        }
+      }
 
       if (viewId === "agentico") {
         if (btnAgentico) {
           btnAgentico.className = "px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 whitespace-nowrap bg-gradient-to-r from-purple-700 via-indigo-700 to-emerald-800 text-white shadow-md ring-2 ring-purple-400 cursor-pointer";
         }
         if (btnGlobal) {
-          btnGlobal.className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1.5 whitespace-nowrap transition";
+          btnGlobal.className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer";
         }
         if (select) {
           select.className = "w-full bg-white border border-stone-300 rounded-xl pl-3 pr-8 py-1.5 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-purple-500/30 shadow-2xs cursor-pointer appearance-none transition";
@@ -4096,7 +4124,17 @@ Los archivos JSON han sido preparados.`);
           btnAgentico.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-gradient-to-r from-purple-700 via-indigo-700 to-emerald-800 text-white shadow-sm hover:brightness-110 cursor-pointer opacity-90";
         }
         if (btnGlobal) {
-          btnGlobal.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-800 text-white shadow-sm flex items-center gap-1.5 whitespace-nowrap transition hover:bg-emerald-900";
+          btnGlobal.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-800 text-white shadow-sm flex items-center gap-1.5 whitespace-nowrap transition hover:bg-emerald-900 cursor-pointer";
+        }
+        if (select) {
+          select.className = "w-full bg-white border border-stone-300 hover:border-emerald-600 focus:border-emerald-600 rounded-xl pl-3 pr-8 py-1.5 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 shadow-2xs cursor-pointer appearance-none transition";
+        }
+      } else if (viewId === "reporting") {
+        if (btnAgentico) {
+          btnAgentico.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-gradient-to-r from-purple-700 via-indigo-700 to-emerald-800 text-white shadow-sm hover:brightness-110 cursor-pointer opacity-90";
+        }
+        if (btnGlobal) {
+          btnGlobal.className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer";
         }
         if (select) {
           select.className = "w-full bg-white border border-stone-300 hover:border-emerald-600 focus:border-emerald-600 rounded-xl pl-3 pr-8 py-1.5 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 shadow-2xs cursor-pointer appearance-none transition";
@@ -4106,7 +4144,7 @@ Los archivos JSON han sido preparados.`);
           btnAgentico.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-gradient-to-r from-purple-700 via-indigo-700 to-emerald-800 text-white shadow-sm hover:brightness-110 cursor-pointer opacity-90";
         }
         if (btnGlobal) {
-          btnGlobal.className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1.5 whitespace-nowrap transition";
+          btnGlobal.className = "px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer";
         }
         if (select) {
           select.className = "w-full bg-emerald-50/80 border border-emerald-600 rounded-xl pl-3 pr-8 py-1.5 text-xs font-black text-emerald-950 ring-2 ring-emerald-500/30 shadow-2xs cursor-pointer appearance-none transition";
@@ -4134,6 +4172,8 @@ Los archivos JSON han sido preparados.`);
           renderAgenticoView(container);
         } else if (viewId === "todos") {
           renderGlobalView(container);
+        } else if (viewId === "reporting") {
+          renderReportingView(container);
         } else {
           renderSpecialistView(container, viewId);
         }
@@ -5773,6 +5813,960 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       }
     }
 
+    
+    // =========================================================================
+    // 0.38 MÓDULO DE REPORTING & DRILLDOWN JERÁRQUICO (US-CHIMAY-REP-01)
+    // Cálculos 100% reales sin valores hardcoded ni inventados (Protocolo IN2TECHMX)
+    // =========================================================================
+    let reportingFilterPeriod = "month";     // "all" | "month" | "week" | "custom"
+    let reportingFilterCategory = "all";   // "all" | "completada" | "progreso" | "vencida" | "por_iniciar" | "reprogramada"
+    let reportingActiveTab = "all";        // "all" | "costs" | "tasks"
+    let reportingCustomStart = "";
+    let reportingCustomEnd = "";
+    let reportingSearchQuery = "";
+    let reportingExpandedStages = {};
+    let reportingExpandedTasks = {};
+
+    function formatReportingLocalDate(d) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function getReportingDateRange(period, customStart, customEnd) {
+      const now = new Date();
+      let start = null;
+      let end = null;
+      let label = "Todo el Histórico";
+
+      if (period === "week") {
+        const day = now.getDay();
+        const diffToMon = now.getDate() - day + (day === 0 ? -6 : 1);
+        const mon = new Date(now.getFullYear(), now.getMonth(), diffToMon);
+        const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
+        start = formatReportingLocalDate(mon);
+        end = formatReportingLocalDate(sun);
+        label = `Esta Semana (${start} al ${end})`;
+      } else if (period === "month") {
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        start = formatReportingLocalDate(firstDay);
+        end = formatReportingLocalDate(lastDay);
+        const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        label = `Este Mes (${monthNames[now.getMonth()]} ${now.getFullYear()} • ${start} al ${end})`;
+      } else if (period === "custom") {
+        start = customStart || "";
+        end = customEnd || "";
+        label = (start && end) ? `Rango Personalizado: ${start} al ${end}` : (start ? `Desde ${start}` : (end ? `Hasta ${end}` : "Rango Personalizado"));
+      }
+      return { start, end, label };
+    }
+
+    function isTaskInPeriod(task, periodStart, periodEnd) {
+      if (!periodStart && !periodEnd) return true;
+      const tStart = task.start || task.end || "1970-01-01";
+      const tEnd = task.end || task.start || "2099-12-31";
+      if (periodStart && tEnd < periodStart) return false;
+      if (periodEnd && tStart > periodEnd) return false;
+      return true;
+    }
+
+    function isTaskOverdue(task, todayStr) {
+      if (!todayStr) todayStr = formatReportingLocalDate(new Date());
+      if (task.estado === "Completada") return false;
+      if (!task.end) return false;
+      return task.end < todayStr;
+    }
+
+    function getTaskDelayDays(task, todayStr) {
+      if (!isTaskOverdue(task, todayStr)) return 0;
+      const dToday = new Date(todayStr + "T00:00:00");
+      const dEnd = new Date(task.end + "T00:00:00");
+      const diff = dToday - dEnd;
+      return Math.max(1, Math.round(diff / (1000 * 60 * 60 * 24)));
+    }
+
+    function isTaskRescheduled(task) {
+      if (task.fechaModificada) return true;
+      if (task.fechaOriginalEnd && task.fechaOriginalEnd !== task.end) return true;
+      if (typeof taskComments !== "undefined" && taskComments[task.id]) {
+        return taskComments[task.id].some(c => {
+          const txt = (c.text || "").toLowerCase();
+          return txt.includes("reprogram") || txt.includes("cambio de fecha") || txt.includes("actualiz") || txt.includes("postergada");
+        });
+      }
+      return false;
+    }
+
+    function computeReportingMetrics() {
+      const todayStr = formatReportingLocalDate(new Date());
+      const range = getReportingDateRange(reportingFilterPeriod, reportingCustomStart, reportingCustomEnd);
+
+      // Base real de tareas del proyecto activo
+      const allTasks = getVisibleTasks();
+      const periodTasks = allTasks.filter(t => isTaskInPeriod(t, range.start, range.end));
+
+      // 1. Salud Operativa de Tareas en el periodo
+      const completadas = periodTasks.filter(t => t.estado === "Completada");
+      const enProgreso = periodTasks.filter(t => t.estado === "En Progreso");
+      const vencidas = periodTasks.filter(t => isTaskOverdue(t, todayStr));
+      const porIniciar = periodTasks.filter(t => t.estado === "No Iniciada" && (!t.end || t.end >= todayStr));
+      const reprogramadas = periodTasks.filter(t => isTaskRescheduled(t));
+
+      // 2. Costos reales de salud de tareas
+      const costCompletadas = completadas.reduce((s, t) => s + (Number(t.costoTotal) || 0), 0);
+      const costEnProgreso = enProgreso.reduce((s, t) => s + (Number(t.costoTotal) || 0), 0);
+      const costVencidas = vencidas.reduce((s, t) => s + (Number(t.costoTotal) || 0), 0);
+      const costPorIniciar = porIniciar.reduce((s, t) => s + (Number(t.costoTotal) || 0), 0);
+      const costReprogramadas = reprogramadas.reduce((s, t) => s + (Number(t.costoTotal) || 0), 0);
+
+      // 3. Métricas Financieras del Periodo
+      const programadoTotal = periodTasks.reduce((s, t) => s + (Number(t.costoTotal) || 0), 0);
+      const programadoPersonal = periodTasks.reduce((s, t) => s + (Number(t.costoPersonal) || 0), 0);
+      const programadoMateriales = periodTasks.reduce((s, t) => s + (Number(t.costoMateriales) || 0), 0);
+      const programadoTerceros = periodTasks.reduce((s, t) => s + (Number(t.costoTerceros) || 0), 0);
+      const horasProgramadas = periodTasks.reduce((s, t) => s + (Number(t.horas) || 0), 0);
+
+      let devengadoPersonal = 0;
+      let devengadoMateriales = 0;
+      let devengadoTerceros = 0;
+      let devengadoTotal = 0;
+
+      periodTasks.forEach(t => {
+        let factor = 0;
+        if (t.estado === "Completada") {
+          factor = 1.0;
+        } else if (t.estado === "En Progreso") {
+          const progVal = (typeof t.progress === "number" && t.progress > 0) ? t.progress : 50;
+          factor = progVal / 100;
+        }
+        devengadoPersonal += (Number(t.costoPersonal) || 0) * factor;
+        devengadoMateriales += (Number(t.costoMateriales) || 0) * factor;
+        devengadoTerceros += (Number(t.costoTerceros) || 0) * factor;
+        devengadoTotal += (Number(t.costoTotal) || 0) * factor;
+      });
+
+      const saldoPendiente = Math.max(0, programadoTotal - devengadoTotal);
+      const pctDevengado = programadoTotal > 0 ? ((devengadoTotal / programadoTotal) * 100).toFixed(1) : "0.0";
+
+      // 4. Árbol Jerárquico: Agrupación real por Fases (Etapas)
+      const fasesMap = {};
+      periodTasks.forEach(t => {
+        const fKey = (t.etapa || "General").trim();
+        if (!fasesMap[fKey]) {
+          fasesMap[fKey] = {
+            name: fKey,
+            tareas: [],
+            costoPersonal: 0,
+            costoMateriales: 0,
+            costoTerceros: 0,
+            costoTotal: 0,
+            horas: 0,
+            completadas: 0,
+            enProgreso: 0,
+            vencidas: 0,
+            porIniciar: 0
+          };
+        }
+        const fase = fasesMap[fKey];
+        fase.tareas.push(t);
+        fase.costoPersonal += Number(t.costoPersonal) || 0;
+        fase.costoMateriales += Number(t.costoMateriales) || 0;
+        fase.costoTerceros += Number(t.costoTerceros) || 0;
+        fase.costoTotal += Number(t.costoTotal) || 0;
+        fase.horas += Number(t.horas) || 0;
+        if (t.estado === "Completada") fase.completadas++;
+        else if (t.estado === "En Progreso") fase.enProgreso++;
+        else if (isTaskOverdue(t, todayStr)) fase.vencidas++;
+        else fase.porIniciar++;
+      });
+
+      return {
+        todayStr,
+        range,
+        allTasks,
+        periodTasks,
+        counts: {
+          total: periodTasks.length,
+          completadas: completadas.length,
+          enProgreso: enProgreso.length,
+          vencidas: vencidas.length,
+          porIniciar: porIniciar.length,
+          reprogramadas: reprogramadas.length
+        },
+        costs: {
+          completadas: costCompletadas,
+          enProgreso: costEnProgreso,
+          vencidas: costVencidas,
+          porIniciar: costPorIniciar,
+          reprogramadas: costReprogramadas
+        },
+        financials: {
+          programadoTotal,
+          programadoPersonal,
+          programadoMateriales,
+          programadoTerceros,
+          horasProgramadas,
+          devengadoTotal,
+          devengadoPersonal,
+          devengadoMateriales,
+          devengadoTerceros,
+          saldoPendiente,
+          pctDevengado
+        },
+        fasesMap
+      };
+    }
+
+    function getFilteredReportingTasks(metrics) {
+      let list = metrics.periodTasks;
+      const cat = reportingFilterCategory;
+      const todayStr = metrics.todayStr;
+
+      if (cat === "completada") {
+        list = list.filter(t => t.estado === "Completada");
+      } else if (cat === "progreso") {
+        list = list.filter(t => t.estado === "En Progreso");
+      } else if (cat === "vencida") {
+        list = list.filter(t => isTaskOverdue(t, todayStr));
+      } else if (cat === "por_iniciar") {
+        list = list.filter(t => t.estado === "No Iniciada" && (!t.end || t.end >= todayStr));
+      } else if (cat === "reprogramada") {
+        list = list.filter(t => isTaskRescheduled(t));
+      }
+
+      if (reportingSearchQuery && reportingSearchQuery.trim()) {
+        const q = reportingSearchQuery.trim().toLowerCase();
+        list = list.filter(t => 
+          (t.name && t.name.toLowerCase().includes(q)) ||
+          (t.id && t.id.toLowerCase().includes(q)) ||
+          (t.wbs && String(t.wbs).toLowerCase().includes(q)) ||
+          (t.responsable && t.responsable.toLowerCase().includes(q)) ||
+          (t.etapa && t.etapa.toLowerCase().includes(q))
+        );
+      }
+
+      return list;
+    }
+
+    function setReportingPeriod(period) {
+      reportingFilterPeriod = period;
+      renderReportingView(document.getElementById("viewContainer"));
+    }
+
+    function applyReportingCustomDates() {
+      const inpStart = document.getElementById("reportingInpStart");
+      const inpEnd = document.getElementById("reportingInpEnd");
+      if (inpStart) reportingCustomStart = inpStart.value;
+      if (inpEnd) reportingCustomEnd = inpEnd.value;
+      renderReportingView(document.getElementById("viewContainer"));
+    }
+
+    function setReportingCategory(category) {
+      reportingFilterCategory = (reportingFilterCategory === category) ? "all" : category;
+      renderReportingView(document.getElementById("viewContainer"));
+    }
+
+    function setReportingTab(tab) {
+      reportingActiveTab = tab;
+      renderReportingView(document.getElementById("viewContainer"));
+    }
+
+    function handleReportingSearch(val) {
+      reportingSearchQuery = val;
+      renderReportingView(document.getElementById("viewContainer"));
+    }
+
+    function toggleReportingStage(stageName) {
+      reportingExpandedStages[stageName] = !reportingExpandedStages[stageName];
+      renderReportingView(document.getElementById("viewContainer"));
+    }
+
+    function toggleReportingTask(taskId) {
+      reportingExpandedTasks[taskId] = !reportingExpandedTasks[taskId];
+      renderReportingView(document.getElementById("viewContainer"));
+    }
+
+    function toggleAllReportingStages(expand) {
+      const metrics = computeReportingMetrics();
+      Object.keys(metrics.fasesMap).forEach(k => {
+        reportingExpandedStages[k] = expand;
+        metrics.fasesMap[k].tareas.forEach(t => {
+          reportingExpandedTasks[t.id] = expand;
+        });
+      });
+      renderReportingView(document.getElementById("viewContainer"));
+    }
+
+    function exportReportingToCsv() {
+      const metrics = computeReportingMetrics();
+      const tasks = metrics.periodTasks;
+      const todayStr = metrics.todayStr;
+
+      let csvContent = "\uFEFF"; // UTF-8 BOM para Excel en español
+      csvContent += "Fase / Etapa,Código WBS,ID Tarea,Nombre del Entregable,Responsable,Tarifa Hora,Horas Estimadas,Costo Personal Interno,Costo Servicios Terceros,Costo Materiales e Insumos,Costo Total,Fecha Inicio,Fecha Fin,Estado,Avance %,Salud Operativa,Dias Desviacion,Gasto Devengado,Saldo Pendiente\n";
+
+      tasks.forEach(t => {
+        const isOverdue = isTaskOverdue(t, todayStr);
+        const isReprog = isTaskRescheduled(t);
+        const delayDays = getTaskDelayDays(t, todayStr);
+        let salud = t.estado;
+        if (isOverdue) salud = `Vencida (${delayDays} días atraso)`;
+        if (isReprog) salud += " [Reprogramada]";
+
+        let factor = (t.estado === "Completada") ? 1.0 : (t.estado === "En Progreso" ? ((t.progress || 50) / 100) : 0);
+        const devengado = (Number(t.costoTotal) || 0) * factor;
+        const saldo = (Number(t.costoTotal) || 0) - devengado;
+
+        const rate = (t.horas > 0 && t.costoPersonal > 0) ? Math.round(t.costoPersonal / t.horas) : ((TEAM_INFO[t.responsable] && TEAM_INFO[t.responsable].costoHora) ? TEAM_INFO[t.responsable].costoHora : (t.responsable && t.responsable.includes("Chiyo") ? 140 : 200));
+
+        const row = [
+          `"${(t.etapa || 'General').replace(/"/g, '""')}"`,
+          `"${(t.wbs || '').replace(/"/g, '""')}"`,
+          `"${t.id}"`,
+          `"${(t.name || '').replace(/"/g, '""')}"`,
+          `"${(t.responsable || '').replace(/"/g, '""')}"`,
+          rate,
+          Number(t.horas) || 0,
+          Number(t.costoPersonal) || 0,
+          Number(t.costoTerceros) || 0,
+          Number(t.costoMateriales) || 0,
+          Number(t.costoTotal) || 0,
+          `"${t.start || ''}"`,
+          `"${t.end || ''}"`,
+          `"${t.estado || ''}"`,
+          t.progress || 0,
+          `"${salud}"`,
+          delayDays,
+          devengado,
+          saldo
+        ];
+        csvContent += row.join(",") + "\n";
+      });
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `reporte_operaciones_chimay_${reportingFilterPeriod}_${todayStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Sub-renderizador: Árbol Jerárquico de Costos (Fase ➔ Tarea ➔ Conceptos Tripartitos)
+    function renderReportingCostTreeHtml(metrics, totalAllPresupuesto) {
+      const fasesKeys = Object.keys(metrics.fasesMap);
+      if (fasesKeys.length === 0) {
+        return `
+          <div class="bg-white p-8 rounded-2xl border border-stone-200 text-center space-y-2">
+            <div class="w-12 h-12 rounded-full bg-stone-100 text-stone-400 mx-auto flex items-center justify-center text-lg"><i class="fa-solid fa-folder-open"></i></div>
+            <h4 class="text-sm font-bold text-stone-700">No hay tareas ni costos en el periodo seleccionado</h4>
+            <p class="text-xs text-stone-400">Intenta cambiar el filtro a "Todo el Histórico" o seleccionar un rango más amplio.</p>
+          </div>
+        `;
+      }
+
+      let html = `
+        <div class="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
+          <div class="p-4 bg-stone-50 border-b border-stone-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <h3 class="text-sm font-black text-stone-900 flex items-center gap-2">
+                <i class="fa-solid fa-sitemap text-emerald-700"></i> Árbol Jerárquico de Costos por Fase ➔ Tarea ➔ Concepto
+              </h3>
+              <p class="text-xs text-stone-500 mt-0.5">
+                Desglose tripartito real: Personal Interno (${TEAM_INFO['Arturo B.']?.costoHora || 200}/h), Servicios Externos y Materiales e Insumos.
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="toggleAllReportingStages(true)" class="px-2.5 py-1 rounded-lg bg-white border border-stone-300 text-stone-700 hover:bg-stone-100 text-xs font-bold transition shadow-2xs cursor-pointer">
+                <i class="fa-solid fa-angles-down text-emerald-700"></i> Expandir Todo
+              </button>
+              <button onclick="toggleAllReportingStages(false)" class="px-2.5 py-1 rounded-lg bg-white border border-stone-300 text-stone-700 hover:bg-stone-100 text-xs font-bold transition shadow-2xs cursor-pointer">
+                <i class="fa-solid fa-angles-up text-stone-500"></i> Colapsar Todo
+              </button>
+            </div>
+          </div>
+
+          <div class="divide-y divide-stone-200">
+      `;
+
+      fasesKeys.forEach(fKey => {
+        const fase = metrics.fasesMap[fKey];
+        const isExp = reportingExpandedStages[fKey] !== false; // Abierto por defecto
+        const pctFase = totalAllPresupuesto > 0 ? ((fase.costoTotal / totalAllPresupuesto) * 100).toFixed(1) : "0.0";
+
+        html += `
+          <div class="transition">
+            <!-- Nivel 1: Fase / Etapa -->
+            <div onclick="toggleReportingStage('${fKey.replace(/'/g, "\\'")}')" class="p-4 bg-stone-50/70 hover:bg-stone-100/80 cursor-pointer flex flex-col md:flex-row items-start md:items-center justify-between gap-3 select-none">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg ${isExp ? 'bg-emerald-800 text-white' : 'bg-stone-200 text-stone-700'} flex items-center justify-center text-xs font-bold transition shadow-2xs">
+                  <i class="fa-solid ${isExp ? 'fa-chevron-down' : 'fa-chevron-right'}"></i>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <h4 class="text-sm font-black text-stone-900">${fase.name}</h4>
+                    <span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-white border border-stone-200 text-stone-600">
+                      ${fase.tareas.length} tareas • ${fase.horas} hrs
+                    </span>
+                    <span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      ${pctFase}% del Presupuesto
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-3 text-xs text-stone-500 mt-1 flex-wrap font-medium">
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Personal: $${fase.costoPersonal.toLocaleString("es-MX", {minimumFractionDigits: 2})}</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> Terceros: $${fase.costoTerceros.toLocaleString("es-MX", {minimumFractionDigits: 2})}</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Materiales: $${fase.costoMateriales.toLocaleString("es-MX", {minimumFractionDigits: 2})}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="text-right flex-shrink-0 self-end md:self-center">
+                <div class="text-base font-black text-stone-900">
+                  $${fase.costoTotal.toLocaleString("es-MX", {minimumFractionDigits: 2})} <span class="text-xs font-bold text-stone-400">MXN</span>
+                </div>
+                <div class="text-[10px] text-stone-400 font-semibold">
+                  ${fase.completadas} completadas • ${fase.enProgreso} en progreso • ${fase.vencidas} vencidas
+                </div>
+              </div>
+            </div>
+
+            <!-- Nivel 2: Tareas dentro de la Fase -->
+            ${isExp ? `
+              <div class="bg-white pl-4 sm:pl-10 pr-4 py-2 divide-y divide-stone-100">
+                ${fase.tareas.map(t => {
+                  const isTaskExp = reportingExpandedTasks[t.id] === true;
+                  const isOverdue = isTaskOverdue(t, metrics.todayStr);
+                  const delayDays = getTaskDelayDays(t, metrics.todayStr);
+                  const isReprog = isTaskRescheduled(t);
+
+                  const specRate = (t.horas > 0 && t.costoPersonal > 0) ? Math.round(t.costoPersonal / t.horas) : ((TEAM_INFO[t.responsable] && TEAM_INFO[t.responsable].costoHora) ? TEAM_INFO[t.responsable].costoHora : (t.responsable && t.responsable.includes("Chiyo") ? 140 : 200));
+
+                  return `
+                    <div class="py-3">
+                      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+                        <div class="flex items-start gap-2.5 flex-1 min-w-0">
+                          <button onclick="toggleReportingTask('${t.id}')" class="mt-0.5 w-6 h-6 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center text-[10px] flex-shrink-0 cursor-pointer transition" title="Ver desglose por conceptos">
+                            <i class="fa-solid ${isTaskExp ? 'fa-minus' : 'fa-plus'}"></i>
+                          </button>
+                          <div class="min-w-0">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                              <span class="font-mono text-xs font-black text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">${t.wbs ? t.wbs + ' • ' : ''}${t.id}</span>
+                              <a href="javascript:openTaskModal('${t.id}')" class="text-xs font-bold text-stone-900 hover:text-emerald-700 hover:underline truncate" title="Abrir modal de tarea">
+                                ${escapeHtml(t.name)}
+                              </a>
+                              ${isOverdue ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-300"><i class="fa-solid fa-triangle-exclamation"></i> Vencida (${delayDays}d)</span>` : ''}
+                              ${isReprog ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-300"><i class="fa-solid fa-calendar-days"></i> Reprogramada</span>` : ''}
+                            </div>
+                            <div class="flex items-center gap-3 text-[11px] text-stone-500 mt-1 flex-wrap">
+                              <span><i class="fa-solid fa-user text-stone-400"></i> ${escapeHtml(t.responsable || 'Sin Asignar')}</span>
+                              <span><i class="fa-regular fa-clock text-stone-400"></i> ${t.horas || 0} hrs</span>
+                              <span><i class="fa-solid fa-calendar-range text-stone-400"></i> ${t.start || '--'} al ${t.end || '--'}</span>
+                              <span class="font-semibold text-stone-600">Estado: <span class="${t.estado === 'Completada' ? 'text-emerald-700' : (t.estado === 'En Progreso' ? 'text-amber-700' : 'text-stone-500')} font-bold">${t.estado}</span></span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 self-end md:self-center flex-shrink-0">
+                          <div class="text-right">
+                            <div class="text-xs font-black text-stone-900">
+                              $${(Number(t.costoTotal) || 0).toLocaleString("es-MX", {minimumFractionDigits: 2})} <span class="text-[10px] font-bold text-stone-400">MXN</span>
+                            </div>
+                            <div class="text-[10px] text-stone-400">
+                              P: $${(t.costoPersonal||0).toLocaleString('es-MX')} | T: $${(t.costoTerceros||0).toLocaleString('es-MX')} | M: $${(t.costoMateriales||0).toLocaleString('es-MX')}
+                            </div>
+                          </div>
+                          <button onclick="openTaskModal('${t.id}')" class="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-emerald-50 hover:text-emerald-700 border border-stone-200 text-stone-600 text-xs font-bold transition cursor-pointer" title="Gestionar tarea">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Nivel 3: Concepto Tripartito (Personal, Terceros, Materiales) -->
+                      ${isTaskExp ? `
+                        <div class="mt-2.5 p-3 rounded-xl bg-stone-50/90 border border-stone-200/90 space-y-2 text-xs">
+                          <div class="text-[11px] font-black uppercase text-stone-500 tracking-wider flex items-center justify-between border-b border-stone-200 pb-1">
+                            <span>Desglose por Conceptos (Nivel 3)</span>
+                            <span class="text-emerald-700 font-bold"><i class="fa-solid fa-shield-check"></i> Verificación: Suma de Conceptos = Total</span>
+                          </div>
+                          <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1">
+                            <!-- Concepto 1: Recurso Interno -->
+                            <div class="p-2.5 rounded-lg bg-white border border-stone-200 shadow-2xs">
+                              <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold uppercase text-blue-700">1. Horas Recurso Interno</span>
+                                <span class="text-[10px] text-stone-400">${t.responsable}</span>
+                              </div>
+                              <div class="text-sm font-black text-stone-900 mt-1">
+                                $${(Number(t.costoPersonal) || 0).toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN
+                              </div>
+                              <p class="text-[10px] text-stone-500 mt-0.5">
+                                ${t.horas || 0} hrs estimadas @ $${specRate}/h
+                              </p>
+                            </div>
+
+                            <!-- Concepto 2: Recurso Externo / Terceros -->
+                            <div class="p-2.5 rounded-lg bg-white border border-stone-200 shadow-2xs">
+                              <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold uppercase text-indigo-700">2. Servicios Terceros / Externos</span>
+                                <span class="text-[10px] text-stone-400">Contratistas</span>
+                              </div>
+                              <div class="text-sm font-black text-stone-900 mt-1">
+                                $${(Number(t.costoTerceros) || 0).toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN
+                              </div>
+                              <p class="text-[10px] text-stone-500 mt-0.5">
+                                ${t.costoTerceros > 0 ? "Contratación y servicios especializados de terceros" : "Sin contratación externa requerida"}
+                              </p>
+                            </div>
+
+                            <!-- Concepto 3: Materiales e Insumos -->
+                            <div class="p-2.5 rounded-lg bg-white border border-stone-200 shadow-2xs">
+                              <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold uppercase text-amber-700">3. Materiales e Insumos</span>
+                                <span class="text-[10px] text-stone-400">Equipos & Bio</span>
+                              </div>
+                              <div class="text-sm font-black text-stone-900 mt-1">
+                                $${(Number(t.costoMateriales) || 0).toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN
+                              </div>
+                              <p class="text-[10px] text-stone-500 mt-0.5">
+                                ${t.costoMateriales > 0 ? "Insumos, paneles solares, biofábrica o infraestructura" : "Sin materiales presupuestados"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ` : ''}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+
+      html += `
+          </div>
+        </div>
+      `;
+
+      return html;
+    }
+
+    // Sub-renderizador: Tabla Drilldown de Salud de Tareas
+    function renderReportingTaskTableHtml(filteredTasks, metrics) {
+      if (filteredTasks.length === 0) {
+        return `
+          <div class="bg-white p-8 rounded-2xl border border-stone-200 text-center space-y-2">
+            <div class="w-12 h-12 rounded-full bg-stone-100 text-stone-400 mx-auto flex items-center justify-center text-lg"><i class="fa-solid fa-list-check"></i></div>
+            <h4 class="text-sm font-bold text-stone-700">No hay tareas que coincidan con los filtros activos</h4>
+            <p class="text-xs text-stone-400">Filtro de categoría: "${reportingFilterCategory}" | Búsqueda: "${reportingSearchQuery || 'ninguna'}"</p>
+            <button onclick="reportingFilterCategory='all'; reportingSearchQuery=''; renderReportingView(document.getElementById('viewContainer'));" class="px-3 py-1 rounded-lg bg-emerald-700 text-white text-xs font-bold cursor-pointer transition">
+              Restablecer Filtros
+            </button>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
+          <div class="p-4 bg-stone-50 border-b border-stone-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <h3 class="text-sm font-black text-stone-900 flex items-center gap-2">
+                <i class="fa-solid fa-list-check text-emerald-700"></i> Drilldown de Salud Operativa (${filteredTasks.length} Tareas)
+              </h3>
+              <p class="text-xs text-stone-500 mt-0.5">
+                ${reportingFilterCategory !== 'all' ? `Filtrando por categoría: <strong class="text-emerald-800 uppercase font-bold">${reportingFilterCategory}</strong>` : 'Mostrando todas las tareas del periodo con auditoría de vencimiento y reprogramaciones.'}
+              </p>
+            </div>
+            <div class="text-xs font-bold text-stone-600">
+              Total Inversión Visible: <strong class="text-stone-900 font-black">$${filteredTasks.reduce((s, t) => s + (Number(t.costoTotal) || 0), 0).toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN</strong>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-stone-100/80 border-b border-stone-200 text-[11px] font-bold text-stone-600 uppercase tracking-wider">
+                  <th class="py-3 px-3">WBS / ID</th>
+                  <th class="py-3 px-3">Tarea / Entregable</th>
+                  <th class="py-3 px-3">Responsable</th>
+                  <th class="py-3 px-3">Fechas (Inicio ➔ Fin)</th>
+                  <th class="py-3 px-3">Estado Operativo</th>
+                  <th class="py-3 px-3 text-right">Personal</th>
+                  <th class="py-3 px-3 text-right">Terceros</th>
+                  <th class="py-3 px-3 text-right">Materiales</th>
+                  <th class="py-3 px-3 text-right">Costo Total</th>
+                  <th class="py-3 px-3 text-center">Acción</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-stone-100">
+                ${filteredTasks.map(t => {
+                  const isOverdue = isTaskOverdue(t, metrics.todayStr);
+                  const delayDays = getTaskDelayDays(t, metrics.todayStr);
+                  const isReprog = isTaskRescheduled(t);
+
+                  return `
+                    <tr class="hover:bg-stone-50/80 transition group">
+                      <td class="py-2.5 px-3 font-mono font-bold text-emerald-800 whitespace-nowrap">
+                        ${t.wbs ? `<span class="text-stone-400 font-normal mr-1">${t.wbs}</span>` : ''}${t.id}
+                      </td>
+                      <td class="py-2.5 px-3 min-w-[220px]">
+                        <div class="font-bold text-stone-900 group-hover:text-emerald-800 transition">
+                          ${escapeHtml(t.name)}
+                        </div>
+                        <div class="text-[10px] text-stone-400 mt-0.5">
+                          Etapa: ${escapeHtml(t.etapa || 'General')}
+                        </div>
+                      </td>
+                      <td class="py-2.5 px-3 whitespace-nowrap">
+                        <span class="font-semibold text-stone-700">${escapeHtml(t.responsable || 'Sin Asignar')}</span>
+                        <div class="text-[10px] text-stone-400">${t.horas || 0} hrs</div>
+                      </td>
+                      <td class="py-2.5 px-3 whitespace-nowrap font-mono text-[11px] text-stone-600">
+                        <div>${t.start || '--'}</div>
+                        <div class="text-stone-400">➔ ${t.end || '--'}</div>
+                      </td>
+                      <td class="py-2.5 px-3 whitespace-nowrap">
+                        <div class="space-y-1">
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${t.estado === 'Completada' ? 'bg-emerald-100 text-emerald-800' : (t.estado === 'En Progreso' ? 'bg-amber-100 text-amber-800' : 'bg-stone-200 text-stone-700')}">
+                            ${t.estado}
+                          </span>
+                          ${isOverdue ? `<div><span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-300"><i class="fa-solid fa-triangle-exclamation"></i> Vencida (${delayDays}d)</span></div>` : ''}
+                          ${isReprog ? `<div><span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-300"><i class="fa-solid fa-calendar-days"></i> Reprogramada</span></div>` : ''}
+                        </div>
+                      </td>
+                      <td class="py-2.5 px-3 text-right font-mono text-stone-700 whitespace-nowrap">
+                        $${(Number(t.costoPersonal) || 0).toLocaleString("es-MX", {minimumFractionDigits: 2})}
+                      </td>
+                      <td class="py-2.5 px-3 text-right font-mono text-stone-700 whitespace-nowrap">
+                        $${(Number(t.costoTerceros) || 0).toLocaleString("es-MX", {minimumFractionDigits: 2})}
+                      </td>
+                      <td class="py-2.5 px-3 text-right font-mono text-stone-700 whitespace-nowrap">
+                        $${(Number(t.costoMateriales) || 0).toLocaleString("es-MX", {minimumFractionDigits: 2})}
+                      </td>
+                      <td class="py-2.5 px-3 text-right font-mono font-black text-stone-900 whitespace-nowrap">
+                        $${(Number(t.costoTotal) || 0).toLocaleString("es-MX", {minimumFractionDigits: 2})}
+                      </td>
+                      <td class="py-2.5 px-3 text-center whitespace-nowrap">
+                        <button onclick="openTaskModal('${t.id}')" class="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-emerald-700 hover:text-white text-stone-700 text-xs font-bold transition shadow-2xs cursor-pointer" title="Ver detalle de tarea">
+                          Ver Tarea
+                        </button>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    // Renderizador Principal de la Vista de Reporting
+    function renderReportingView(container) {
+      if (!container) container = document.getElementById("viewContainer");
+      if (!container) return;
+
+      const metrics = computeReportingMetrics();
+      const filteredTasks = getFilteredReportingTasks(metrics);
+      const totalAllPresupuesto = metrics.allTasks.reduce((s, t) => s + (Number(t.costoTotal) || 0), 0);
+
+      const isAll = reportingFilterPeriod === "all";
+      const isMonth = reportingFilterPeriod === "month";
+      const isWeek = reportingFilterPeriod === "week";
+      const isCustom = reportingFilterPeriod === "custom";
+
+      const totalP = metrics.counts.total || 1;
+      const pctComp = ((metrics.counts.completadas / totalP) * 100).toFixed(0);
+      const pctProg = ((metrics.counts.enProgreso / totalP) * 100).toFixed(0);
+      const pctVenc = ((metrics.counts.vencidas / totalP) * 100).toFixed(0);
+      const pctPorIni = ((metrics.counts.porIniciar / totalP) * 100).toFixed(0);
+      const pctReprog = ((metrics.counts.reprogramadas / totalP) * 100).toFixed(0);
+
+      container.innerHTML = `
+        <div class="space-y-6">
+          <!-- 1. Encabezado Ejecutivo & Barra de Controles de Periodo -->
+          <div class="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-emerald-700 to-teal-800 text-white shadow-xs">
+                  <i class="fa-solid fa-chart-pie"></i> Reporting & Analítica Operativa
+                </span>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-stone-100 text-stone-700 border border-stone-300/60">
+                  ${currentPortfolioProject === "all" ? "Portafolio Consolidado" : (currentPortfolioProject || "PRJ-01")}
+                </span>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <i class="fa-regular fa-clock"></i> ${metrics.range.label}
+                </span>
+              </div>
+              <h2 class="text-xl font-black text-stone-900 mt-1">Centro de Informes de Operaciones & Desglose de Costos</h2>
+              <p class="text-xs text-stone-500 mt-0.5">
+                Auditoría en tiempo real de salud de entregables, cumplimiento de cronograma y árbol jerárquico tripartito de costos (Personal, Terceros, Materiales).
+              </p>
+            </div>
+
+            <!-- Botones de Acción Global -->
+            <div class="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-start lg:justify-end">
+              <button onclick="exportReportingToCsv()" class="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer" title="Descargar reporte completo en formato CSV compatible con Excel">
+                <i class="fa-solid fa-file-csv"></i> Exportar CSV
+              </button>
+              <button onclick="window.print()" class="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition shadow-2xs border border-stone-300/60 cursor-pointer" title="Imprimir o guardar como PDF">
+                <i class="fa-solid fa-print"></i> Imprimir
+              </button>
+              <button onclick="renderReportingView(document.getElementById('viewContainer'))" class="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1.5 transition shadow-2xs border border-stone-300/60 cursor-pointer" title="Recalcular métricas desde la base de datos">
+                <i class="fa-solid fa-rotate"></i> Actualizar
+              </button>
+            </div>
+          </div>
+
+          <!-- 2. Filtro Temporal por Periodo (Semana / Mes / Histórico / Rango Personalizado) -->
+          <div class="bg-stone-50/90 p-4 rounded-2xl border border-stone-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-bold text-stone-700 flex items-center gap-1.5 mr-1">
+                <i class="fa-solid fa-calendar-week text-emerald-700"></i> Periodo Temporal:
+              </span>
+              <div class="inline-flex rounded-xl border border-stone-300 p-1 bg-white shadow-2xs text-xs font-bold">
+                <button onclick="setReportingPeriod('week')" class="px-3 py-1 rounded-lg transition cursor-pointer ${isWeek ? 'bg-emerald-800 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}">
+                  Esta Semana
+                </button>
+                <button onclick="setReportingPeriod('month')" class="px-3 py-1 rounded-lg transition cursor-pointer ${isMonth ? 'bg-emerald-800 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}">
+                  Este Mes
+                </button>
+                <button onclick="setReportingPeriod('all')" class="px-3 py-1 rounded-lg transition cursor-pointer ${isAll ? 'bg-emerald-800 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}">
+                  Todo el Histórico
+                </button>
+                <button onclick="setReportingPeriod('custom')" class="px-3 py-1 rounded-lg transition cursor-pointer ${isCustom ? 'bg-emerald-800 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'}">
+                  Personalizado
+                </button>
+              </div>
+            </div>
+
+            <!-- Selector de Rango Personalizado (Condicional) -->
+            ${isCustom ? `
+              <div class="flex items-center gap-2 flex-wrap bg-white px-3 py-1.5 rounded-xl border border-stone-300 shadow-2xs">
+                <label class="text-xs font-semibold text-stone-600">Desde:</label>
+                <input type="date" id="reportingInpStart" value="${reportingCustomStart}" class="text-xs border border-stone-300 rounded px-2 py-0.5 focus:ring-1 focus:ring-emerald-500">
+                <label class="text-xs font-semibold text-stone-600">Hasta:</label>
+                <input type="date" id="reportingInpEnd" value="${reportingCustomEnd}" class="text-xs border border-stone-300 rounded px-2 py-0.5 focus:ring-1 focus:ring-emerald-500">
+                <button onclick="applyReportingCustomDates()" class="px-2.5 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold cursor-pointer transition">
+                  Aplicar
+                </button>
+              </div>
+            ` : `
+              <div class="text-xs text-stone-500 font-medium">
+                Mostrando: <strong class="text-stone-800 font-bold">${metrics.counts.total} tareas</strong> en esta ventana de tiempo.
+              </div>
+            `}
+          </div>
+
+          <!-- 3. Tarjetas KPI Interactivas de Salud de Tareas (Filtro Dinámico al Clic) -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1.5">
+                <i class="fa-solid fa-heart-pulse text-emerald-600"></i> Salud Operativa de Entregables (Haz clic para filtrar)
+              </h3>
+              ${reportingFilterCategory !== "all" ? `
+                <button onclick="setReportingCategory('all')" class="text-xs font-bold text-rose-600 hover:text-rose-800 underline cursor-pointer flex items-center gap-1">
+                  <i class="fa-solid fa-xmark"></i> Quitar filtro (${reportingFilterCategory})
+                </button>
+              ` : ''}
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              <!-- Tarjeta 1: Completadas -->
+              <div onclick="setReportingCategory('completada')" class="p-4 rounded-2xl border transition cursor-pointer ${reportingFilterCategory === 'completada' ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-400/50 shadow-md' : 'bg-white border-stone-200 hover:border-emerald-300 shadow-xs hover:shadow-sm'}">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Completadas</span>
+                  <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs"><i class="fa-solid fa-circle-check"></i></div>
+                </div>
+                <div class="mt-2 flex items-baseline justify-between">
+                  <span class="text-2xl font-black text-emerald-900">${metrics.counts.completadas}</span>
+                  <span class="text-xs font-bold text-emerald-700">${pctComp}%</span>
+                </div>
+                <div class="mt-1 text-[11px] font-bold text-stone-600">
+                  $${metrics.costs.completadas.toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN
+                </div>
+                <p class="text-[10px] text-stone-400 mt-0.5">Entregables cerrados 100%</p>
+              </div>
+
+              <!-- Tarjeta 2: En Progreso -->
+              <div onclick="setReportingCategory('progreso')" class="p-4 rounded-2xl border transition cursor-pointer ${reportingFilterCategory === 'progreso' ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-400/50 shadow-md' : 'bg-white border-stone-200 hover:border-amber-300 shadow-xs hover:shadow-sm'}">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-amber-700">En Progreso</span>
+                  <div class="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-xs"><i class="fa-solid fa-spinner animate-spin"></i></div>
+                </div>
+                <div class="mt-2 flex items-baseline justify-between">
+                  <span class="text-2xl font-black text-amber-900">${metrics.counts.enProgreso}</span>
+                  <span class="text-xs font-bold text-amber-700">${pctProg}%</span>
+                </div>
+                <div class="mt-1 text-[11px] font-bold text-stone-600">
+                  $${metrics.costs.enProgreso.toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN
+                </div>
+                <p class="text-[10px] text-stone-400 mt-0.5">En ejecución activa</p>
+              </div>
+
+              <!-- Tarjeta 3: Vencidas / No Terminadas -->
+              <div onclick="setReportingCategory('vencida')" class="p-4 rounded-2xl border transition cursor-pointer ${reportingFilterCategory === 'vencida' ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-400/50 shadow-md' : 'bg-white border-stone-200 hover:border-rose-300 shadow-xs hover:shadow-sm'}">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-rose-700">Vencidas</span>
+                  <div class="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center text-xs"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                </div>
+                <div class="mt-2 flex items-baseline justify-between">
+                  <span class="text-2xl font-black text-rose-900">${metrics.counts.vencidas}</span>
+                  <span class="text-xs font-bold text-rose-700">${pctVenc}%</span>
+                </div>
+                <div class="mt-1 text-[11px] font-bold text-stone-600">
+                  $${metrics.costs.vencidas.toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN
+                </div>
+                <p class="text-[10px] text-stone-400 mt-0.5">Debieron terminar y no concluyeron</p>
+              </div>
+
+              <!-- Tarjeta 4: Por Iniciar -->
+              <div onclick="setReportingCategory('por_iniciar')" class="p-4 rounded-2xl border transition cursor-pointer ${reportingFilterCategory === 'por_iniciar' ? 'bg-slate-100 border-slate-500 ring-2 ring-slate-400/50 shadow-md' : 'bg-white border-stone-200 hover:border-slate-300 shadow-xs hover:shadow-sm'}">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-700">Por Iniciar</span>
+                  <div class="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-xs"><i class="fa-solid fa-hourglass-start"></i></div>
+                </div>
+                <div class="mt-2 flex items-baseline justify-between">
+                  <span class="text-2xl font-black text-slate-900">${metrics.counts.porIniciar}</span>
+                  <span class="text-xs font-bold text-slate-700">${pctPorIni}%</span>
+                </div>
+                <div class="mt-1 text-[11px] font-bold text-stone-600">
+                  $${metrics.costs.porIniciar.toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN
+                </div>
+                <p class="text-[10px] text-stone-400 mt-0.5">Programadas en cola</p>
+              </div>
+
+              <!-- Tarjeta 5: Cambiadas de Fecha / Reprogramadas -->
+              <div onclick="setReportingCategory('reprogramada')" class="p-4 rounded-2xl border transition cursor-pointer ${reportingFilterCategory === 'reprogramada' ? 'bg-purple-50 border-purple-500 ring-2 ring-purple-400/50 shadow-md' : 'bg-white border-stone-200 hover:border-purple-300 shadow-xs hover:shadow-sm'}">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-purple-700">Reprogramadas</span>
+                  <div class="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xs"><i class="fa-solid fa-calendar-days"></i></div>
+                </div>
+                <div class="mt-2 flex items-baseline justify-between">
+                  <span class="text-2xl font-black text-purple-900">${metrics.counts.reprogramadas}</span>
+                  <span class="text-xs font-bold text-purple-700">${pctReprog}%</span>
+                </div>
+                <div class="mt-1 text-[11px] font-bold text-stone-600">
+                  $${metrics.costs.reprogramadas.toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN
+                </div>
+                <p class="text-[10px] text-stone-400 mt-0.5">Fechas modificadas</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Balance Presupuestal y Gasto Devengado en el Periodo -->
+          <div class="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <div>
+                <h3 class="text-sm font-black text-stone-900 flex items-center gap-2">
+                  <i class="fa-solid fa-sack-dollar text-emerald-600"></i> Balance Financiero del Periodo: ${metrics.range.label}
+                </h3>
+                <p class="text-xs text-stone-500 mt-0.5">
+                  Cálculo real de inversión programada vs. gasto efectivamente devengado según avance físico de entregables.
+                </p>
+              </div>
+              <div class="px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800">
+                Avance Presupuestal: ${metrics.financials.pctDevengado}% Devengado
+              </div>
+            </div>
+
+            <!-- 3 Métricas Principales de Gasto -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="p-3.5 rounded-xl bg-stone-50 border border-stone-200">
+                <span class="text-[11px] font-bold uppercase text-stone-500">Inversión Programada en el Periodo</span>
+                <p class="text-2xl font-black text-stone-900 mt-1">
+                  $${metrics.financials.programadoTotal.toLocaleString("es-MX", {minimumFractionDigits: 2})} <span class="text-xs font-bold text-stone-400">MXN</span>
+                </p>
+                <p class="text-[11px] text-stone-500 mt-0.5">${metrics.financials.horasProgramadas} horas estimadas de labor</p>
+              </div>
+
+              <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200">
+                <span class="text-[11px] font-bold uppercase text-emerald-800">Gasto Real Devengado (Gastado)</span>
+                <p class="text-2xl font-black text-emerald-900 mt-1">
+                  $${metrics.financials.devengadoTotal.toLocaleString("es-MX", {minimumFractionDigits: 2})} <span class="text-xs font-bold text-emerald-600">MXN</span>
+                </p>
+                <p class="text-[11px] text-emerald-700 mt-0.5">Ejecutado por avance físico real</p>
+              </div>
+
+              <div class="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200">
+                <span class="text-[11px] font-bold uppercase text-amber-800">Saldo Pendiente por Devengar</span>
+                <p class="text-2xl font-black text-amber-900 mt-1">
+                  $${metrics.financials.saldoPendiente.toLocaleString("es-MX", {minimumFractionDigits: 2})} <span class="text-xs font-bold text-amber-600">MXN</span>
+                </p>
+                <p class="text-[11px] text-amber-700 mt-0.5">Por ejercer en tareas restantes</p>
+              </div>
+            </div>
+
+            <!-- Desglose Tripartito del Gasto Devengado en el Periodo -->
+            <div class="p-4 rounded-xl bg-stone-50/80 border border-stone-200 space-y-2">
+              <div class="flex justify-between items-center text-xs font-bold text-stone-700">
+                <span>Desglose del Gasto Devengado por Concepto en este Periodo:</span>
+                <span class="text-emerald-700 font-black">Total: $${metrics.financials.devengadoTotal.toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN</span>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                <div class="flex items-center gap-2 bg-white p-2.5 rounded-lg border border-stone-200 shadow-2xs">
+                  <div class="w-7 h-7 rounded-md bg-blue-100 text-blue-700 flex items-center justify-center text-xs"><i class="fa-solid fa-user-clock"></i></div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-[10px] font-bold text-stone-500 uppercase">Horas Recurso Interno</p>
+                    <p class="text-sm font-black text-stone-800">$${metrics.financials.devengadoPersonal.toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 bg-white p-2.5 rounded-lg border border-stone-200 shadow-2xs">
+                  <div class="w-7 h-7 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs"><i class="fa-solid fa-handshake"></i></div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-[10px] font-bold text-stone-500 uppercase">Horas Recurso Externo / Terceros</p>
+                    <p class="text-sm font-black text-stone-800">$${metrics.financials.devengadoTerceros.toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 bg-white p-2.5 rounded-lg border border-stone-200 shadow-2xs">
+                  <div class="w-7 h-7 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center text-xs"><i class="fa-solid fa-boxes-stacked"></i></div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-[10px] font-bold text-stone-500 uppercase">Materiales e Insumos</p>
+                    <p class="text-sm font-black text-stone-800">$${metrics.financials.devengadoMateriales.toLocaleString("es-MX", {minimumFractionDigits: 2})} MXN</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Selector de Sub-Vistas (Tabs: Árbol de Costos vs Drilldown de Tareas) -->
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-stone-200 pb-3">
+            <div class="inline-flex rounded-xl border border-stone-200 p-1 bg-stone-100 text-xs font-bold">
+              <button onclick="setReportingTab('all')" class="px-3.5 py-1.5 rounded-lg transition cursor-pointer ${reportingActiveTab === 'all' ? 'bg-white shadow-xs text-emerald-900' : 'text-stone-600 hover:text-stone-900'}">
+                <i class="fa-solid fa-table-list"></i> Vista Completa (Árbol + Tareas)
+              </button>
+              <button onclick="setReportingTab('costs')" class="px-3.5 py-1.5 rounded-lg transition cursor-pointer ${reportingActiveTab === 'costs' ? 'bg-white shadow-xs text-emerald-900' : 'text-stone-600 hover:text-stone-900'}">
+                <i class="fa-solid fa-sitemap"></i> Árbol Jerárquico de Costos
+              </button>
+              <button onclick="setReportingTab('tasks')" class="px-3.5 py-1.5 rounded-lg transition cursor-pointer ${reportingActiveTab === 'tasks' ? 'bg-white shadow-xs text-emerald-900' : 'text-stone-600 hover:text-stone-900'}">
+                <i class="fa-solid fa-list-check"></i> Drilldown de Salud de Tareas (${filteredTasks.length})
+              </button>
+            </div>
+
+            <!-- Buscador en tiempo real -->
+            <div class="relative w-full sm:w-64">
+              <input type="text" placeholder="Buscar tarea, WBS, responsable..." value="${reportingSearchQuery}" oninput="handleReportingSearch(this.value)" class="w-full bg-white border border-stone-300 rounded-xl pl-8 pr-3 py-1.5 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 shadow-2xs">
+              <i class="fa-solid fa-magnifying-glass text-stone-400 text-xs absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+              ${reportingSearchQuery ? `
+                <button onclick="handleReportingSearch('')" class="text-stone-400 hover:text-stone-600 absolute right-2.5 top-1/2 -translate-y-1/2 text-xs">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- 6. Sub-Vista: Árbol Jerárquico de Costos (Fase ➔ Tarea ➔ Conceptos) -->
+          ${(reportingActiveTab === "all" || reportingActiveTab === "costs") ? renderReportingCostTreeHtml(metrics, totalAllPresupuesto) : ""}
+
+          <!-- 7. Sub-Vista: Drilldown de Tareas por Estado -->
+          ${(reportingActiveTab === "all" || reportingActiveTab === "tasks") ? renderReportingTaskTableHtml(filteredTasks, metrics) : ""}
+        </div>
+      `;
+    }
+
+
     // Renderizado de la Ventana 2: Especialista Individual (Aislada, Cero Anidamiento)
     function renderSpecialistView(container, specialistName) {
       const info = TEAM_INFO[specialistName] || {
@@ -6354,8 +7348,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           populateRecursosDropdown();
           const container = document.getElementById("viewContainer");
           if (container) {
-            if (currentView === "todos") renderGlobalView(container);
-            else renderSpecialistView(container, currentView);
+            refreshActiveViews();
           }
           const lbl = document.getElementById("lastSyncLabel");
           if (lbl) {
