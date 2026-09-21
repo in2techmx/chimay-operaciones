@@ -1,0 +1,23 @@
+{
+  "name": "chimay-operaciones",
+  "version": "1.0.0",
+  "description": "Centro de Operaciones Chimay - Git-as-a-Database y Asistente Telegram 24/7",
+  "main": "index.html",
+  "scripts": {
+    "start": "node scripts/telegram_bot.js",
+    "set-webhook": "node scripts/set_webhook.js",
+    "test": "node scratch/gate1_test.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "git-as-a-database",
+    "telegram-bot",
+    "in2techmx",
+    "operaciones",
+    "serverless"
+  ],
+  "author": "in2techmx",
+  "license": "ISC"
+}

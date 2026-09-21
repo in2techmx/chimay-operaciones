@@ -68,18 +68,40 @@ Si requieres reconfigurar el bot o regenerar el token:
 
 ## 4. Modo de Ejecución del Bot
 
-### Opción A: Ejecución como Servicio Local / Daemon (Long Polling)
-No requiere abrir puertos, ni configurar webhooks ni certificados SSL:
+### Opción A: Despliegue 24/7 en la Nube (Vercel Serverless Webhook - Recomendado)
+Esta opción permite que **@ChimayOpsBot** responda **día y noche los 365 días del año** sin depender de ninguna computadora local:
 
+1. **Importar el Repositorio en Vercel (Gratis):**
+   * Entra a [https://vercel.com](https://vercel.com) e inicia sesión con tu cuenta de GitHub (`in2techmx`).
+   * Haz clic en **"Add New Project"** y selecciona el repositorio **`in2techmx/chimay-operaciones`**.
+   * En la sección **Environment Variables**, agrega:
+     * `TELEGRAM_BOT_TOKEN`: El token secreto entregado por `@BotFather`.
+     * `GITHUB_TOKEN`: Tu Personal Access Token (PAT) de GitHub para registrar los commits automáticamente.
+   * Haz clic en **"Deploy"**. En 20 segundos Vercel te dará tu URL pública (ejemplo: `https://chimay-operaciones.vercel.app`).
+
+2. **Vincular el Webhook con Telegram (1 solo paso):**
+   Abre una terminal o tu navegador y abre:
+   ```bash
+   https://api.telegram.org/bot<TU_BOT_TOKEN>/setWebhook?url=https://tu-proyecto.vercel.app/api/telegram
+   ```
+   *O ejecuta el script:*
+   ```powershell
+   node scripts/set_webhook.js https://tu-proyecto.vercel.app/api/telegram
+   ```
+   **¡Listo!** A partir de ese momento, Telegram enviará cada mensaje directamente a tu servidor en la nube y el bot responderá de inmediato 24/7.
+
+---
+
+### Opción B: Ejecución como Servicio Local (Long Polling)
+Para pruebas o desarrollo local en tu computadora:
 ```powershell
-# Definir el Token de Telegram provisto por @BotFather
-$env:TELEGRAM_BOT_TOKEN="1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ"
-
-# Iniciar el bot en la terminal
+# Iniciar el bot en la terminal (autocarga variables desde tu archivo .env)
 node scripts/telegram_bot.js
 ```
 
-### Opción B: Consola y Simulador Integrado en la Web
+---
+
+### Opción C: Consola y Simulador Integrado en la Web
 En la página [chimay-operaciones](https://in2techmx.github.io/chimay-operaciones/):
 1. Clic en el botón **Telegram** de la barra de navegación superior.
 2. Abrir la pestaña **"Consola / Simulador Web"**.
