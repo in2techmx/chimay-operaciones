@@ -383,6 +383,7 @@
           <div class="relative min-w-[200px] sm:min-w-[270px]">
             <select id="selectRecurso" onchange="selectRecurso(this.value)" class="w-full bg-white border border-stone-300 hover:border-emerald-600 focus:border-emerald-600 rounded-xl pl-3 pr-8 py-1.5 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 shadow-2xs cursor-pointer appearance-none transition">
               <option value="todos">👥 Todos los Recursos (Equipo Completo)</option>
+              <option value="reporting">📊 Informes & Costos (Drilldown & Árbol)</option>
             </select>
             <i class="fa-solid fa-chevron-down text-[10px] text-stone-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
           </div>
@@ -4053,7 +4054,8 @@ Los archivos JSON han sido preparados.`);
       const especialistas = Array.from(respSet).sort();
 
       const prevSelection = currentView;
-      select.innerHTML = `<option value="todos">👥 Todos los Recursos (Equipo Completo - ${tasksData.length} tareas)</option>`;
+      select.innerHTML = `<option value="todos">👥 Todos los Recursos (Equipo Completo - ${tasksData.length} tareas)</option>
+                          <option value="reporting">📊 Informes & Costos (Drilldown y Árbol)</option>`;
 
       especialistas.forEach(esp => {
         const count = tasksData.filter(t => (t.responsable || "").includes(esp)).length;
@@ -4065,7 +4067,7 @@ Los archivos JSON han sido preparados.`);
         select.appendChild(opt);
       });
 
-      if (especialistas.includes(prevSelection)) {
+      if (especialistas.includes(prevSelection) || prevSelection === "reporting") {
         select.value = prevSelection;
       } else {
         select.value = "todos";
@@ -4079,7 +4081,7 @@ Los archivos JSON han sido preparados.`);
       
       const select = document.getElementById("selectRecurso");
       if (select) {
-        if (recursoValue === "todos" || recursoValue === "agentico" || recursoValue === "reporting") {
+        if (recursoValue === "agentico") {
           select.value = "todos";
         } else {
           select.value = recursoValue;
