@@ -21,11 +21,16 @@ Este documento detalla la arquitectura, normas de seguridad y modo de operación
 
 3. **Chat Universal y Colaborativo:**
    - **Cualquier usuario autorizado puede chatear en cualquier tarea** enviando `[ID]: [mensaje]`.
+   - **Modo Conversación Enfocada:** Mediante `/tarea [ID]` o el botón *Abrir en Telegram* de la web, se entra al hilo directo de la tarea para chatear fluidamente sin necesidad de prefijos.
    - La nota queda asentada en `data/proyectos/[PRJ]/comentarios.json` con fecha, hora, autor y canal "Telegram", visible de inmediato en la web.
 
 4. **Creación Universal de Tareas con Auto-Asignación:**
    - **Cualquier usuario autorizado puede dar de alta tareas** enviando `crear [nombre de la tarea]`.
    - El sistema genera el código WBS consecutivo y **asigna automáticamente como responsable al usuario que la envió**.
+
+5. **Soporte Documental (Facturas, Hojas de Recepción, Oficios Sellados):**
+   - Se pueden cargar archivos (PDF, JPG, PNG) desde la web o enviándolos directamente al bot de Telegram dentro del hilo de la tarea.
+   - Los documentos se indexan en `data/adjuntos.json` y se respaldan en `data/adjuntos/[taskId]/` bajo Git-as-a-Database.
 
 ---
 
@@ -35,6 +40,9 @@ Este documento detalla la arquitectura, normas de seguridad y modo de operación
 |---|---|---|---|
 | **Menú / Ayuda** | `/start`, `ayuda`, `menu` | Cualquier usuario autorizado | Muestra instrucciones y botones interactivos. |
 | **Mis Tareas** | `mis tareas`, `pendientes`, `/tareas` | Cualquier usuario autorizado | Lista entregables asignados con botones de acción rápida. |
+| **Entrar a Hilo de Tarea** | `/tarea TSK-PRE-01` o deep-link web | Cualquier usuario autorizado | Activa conversación enfocada en la tarea sin prefijos. |
+| **Salir de Hilo** | `/salir`, `menu` | Cualquier usuario autorizado | Regresa al menú principal del bot. |
+| **Adjuntar Soporte** | Enviar PDF o Foto (con caption) | Cualquier usuario autorizado | Descarga archivo en `data/adjuntos/`, indexa en `adjuntos.json` y commitea. |
 | **Completar Tarea** | `completar TSK-PRE-01` | **Solo el Responsable** | Modifica `estado: "Completada"`, avance 100% y genera commit en Git. |
 | **Iniciar Tarea** | `iniciar TSK-PRE-01` | **Solo el Responsable** | Modifica `estado: "En Progreso"`, avance 50% y genera commit en Git. |
 | **Comentar en Bitácora** | `TSK-PRE-01: Se aplicó abono` | **Cualquier integrante** | Agrega comentario a `comentarios.json` y genera commit en Git. |

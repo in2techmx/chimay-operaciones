@@ -22,6 +22,40 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 const DATA_DIR = path.join(REPO_ROOT, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'usuarios.json');
 const PROJECTS_FILE = path.join(DATA_DIR, 'proyectos.json');
+const ATTACHMENTS_FILE = path.join(DATA_DIR, 'adjuntos.json');
+
+// Memoria de sesiones para hilos de tareas enfocadas (1-a-1)
+const userSessions = {}; // from.id -> { activeTaskId: "TSK-01" }
+
+function addProjectAttachment(taskId, attachmentObj) {
+  let data = loadJson(ATTACHMENTS_FILE, {});
+  if (!data || typeof data !== 'object') data = {};
+  if (!data[taskId]) data[taskId] = [];
+  data[taskId].push(attachmentObj);
+  saveJson(ATTACHMENTS_FILE, data);
+  return attachmentObj;
+}
+
+function downloadTelegramFile(botToken, fileId, destPath) {
+  try {
+    https.get(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`, res => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(d);
+          if (json.ok && json.result && json.result.file_path) {
+            const fileUrl = `https://api.telegram.org/file/bot${botToken}/${json.result.file_path}`;
+            const fileStream = fs.createWriteStream(destPath);
+            https.get(fileUrl, fileRes => {
+              fileRes.pipe(fileStream);
+            });
+          }
+        } catch (e) {}
+      });
+    }).on('error', () => {});
+  } catch (err) {}
+}
 
 // Utilidades de Archivos JSON
 function loadJson(filePath, defaultValue = null) {
@@ -239,7 +273,7 @@ function tryGitCommit(commitMessage, authorUser) {
 }
 
 // Procesador Central de Mensajes de Telegram
-function processTelegramMessage(from, text) {
+function processTelegramMessage(from, text, messageObj = null, botToken = null) {
   const rawText = (text || "").trim();
   const lower = rawText.toLowerCase();
 
@@ -253,7 +287,172 @@ function processTelegramMessage(from, text) {
     };
   }
 
-  // 2. Comando: /start, ayuda, menu
+  // 2. Modo Tarea Enfocada: /start task_[ID] o /tarea [ID]
+  const matchDeepLink = rawText.match(/^\/start\s+task_([a-z0-9\-]+)/i);
+  const matchTareaCmd = rawText.match(/^\/tarea(?:\s+([a-z0-9\-]+))?$/i);
+
+  if (matchDeepLink || (matchTareaCmd && matchTareaCmd[1])) {
+    const targetId = (matchDeepLink ? matchDeepLink[1] : matchTareaCmd[1]).toUpperCase();
+    const task = findTaskById(targetId);
+    if (!task) {
+      return {
+        authorized: true,
+        text: `⚠️ No se encontró la tarea *${targetId}*. Escribe *mis tareas* para consultar tus entregables disponibles.`
+      };
+    }
+    userSessions[from.id] = { activeTaskId: task.id };
+    return {
+      authorized: true,
+      text: `💬 *Modo Conversación Activo: ${task.id}*\n` +
+            `📝 *${task.name}*\n` +
+            `👤 *Responsable:* ${task.responsable}\n` +
+            `📊 *Estado:* ${task.estado} (${task.progress || 0}%)\n\n` +
+            `Todos los mensajes o documentos de soporte (PDFs, fotos de remisiones, facturas) que envíes ahora se vincularán directamente a esta tarea.\n\n` +
+            `👉 Escribe tu mensaje o envía una foto/archivo de soporte.\n` +
+            `_(Para salir de este hilo, envía /salir o /menu)_`,
+      keyboard: [
+        [{ text: "✅ Completar Tarea", callback_data: `completar_${task.id}` }, { text: "🚀 Iniciar Tarea", callback_data: `iniciar_${task.id}` }],
+        [{ text: "🔙 Salir del Hilo", callback_data: "cmd_salir_tarea" }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }]
+      ]
+    };
+  }
+
+  // 3. Salir del hilo enfocado: /salir o cmd_salir_tarea
+  if (lower === "/salir" || lower === "/salir_tarea" || lower === "salir" || lower === "cmd_salir_tarea") {
+    if (userSessions[from.id]) {
+      const prevTask = userSessions[from.id].activeTaskId;
+      delete userSessions[from.id];
+      return {
+        authorized: true,
+        text: `🔙 *Has salido del hilo de ${prevTask}.*\nAhora estás en el menú principal.\n\nEscribe *mis tareas*, *reporte* o *ayuda*.`
+      };
+    }
+  }
+
+  // 4. Recepción de Archivos de Soporte (Documentos / Fotos)
+  if (messageObj && (messageObj.document || (messageObj.photo && messageObj.photo.length > 0))) {
+    let targetId = userSessions[from.id] ? userSessions[from.id].activeTaskId : null;
+    let captionText = (messageObj.caption || "").trim();
+
+    const matchCaptionTask = captionText.match(/^(?:tsk-[a-z0-9\-]+)/i);
+    if (matchCaptionTask) {
+      targetId = matchCaptionTask[0].toUpperCase();
+      captionText = captionText.replace(/^(?:tsk-[a-z0-9\-]+)[:\s]*/i, '').trim();
+    }
+
+    if (!targetId) {
+      return {
+        authorized: true,
+        text: `📎 *Archivo recibido pero no vinculado:*\n` +
+              `Para adjuntar este archivo a una tarea, entra primero escribiendo:\n` +
+              `\`/tarea [ID]\` (ej. \`/tarea TSK-PRE-01\`)\n` +
+              `o envía el archivo escribiendo el ID en el pie de foto (ej. \`TSK-01: Factura de insumos\`).`
+      };
+    }
+
+    const task = findTaskById(targetId);
+    if (!task) {
+      return {
+        authorized: true,
+        text: `⚠️ No se encontró la tarea *${targetId}* para vincular este archivo.`
+      };
+    }
+
+    let fileId = "";
+    let fileName = "";
+    let fileSizeStr = "1 MB";
+    let tipo = "document";
+
+    if (messageObj.document) {
+      fileId = messageObj.document.file_id;
+      fileName = messageObj.document.file_name || `Doc_${Date.now()}.pdf`;
+      const sizeBytes = messageObj.document.file_size || 0;
+      fileSizeStr = sizeBytes > 1024 * 1024 ? (sizeBytes / (1024 * 1024)).toFixed(1) + " MB" : Math.round(sizeBytes / 1024) + " KB";
+      tipo = fileName.toLowerCase().endsWith(".pdf") ? "pdf" : "document";
+    } else if (messageObj.photo && messageObj.photo.length > 0) {
+      const bestPhoto = messageObj.photo[messageObj.photo.length - 1];
+      fileId = bestPhoto.file_id;
+      fileName = `Foto_${task.id}_${Date.now()}.jpg`;
+      const sizeBytes = bestPhoto.file_size || 0;
+      fileSizeStr = sizeBytes > 1024 * 1024 ? (sizeBytes / (1024 * 1024)).toFixed(1) + " MB" : Math.round(sizeBytes / 1024) + " KB";
+      tipo = "image";
+    }
+
+    let categoria = "Documentación de Soporte";
+    const capLower = (captionText + " " + fileName).toLowerCase();
+    if (capLower.includes("factura") || capLower.includes("ticket") || capLower.includes("nota") || capLower.includes("recibo")) {
+      categoria = "Factura / Ticket";
+    } else if (capLower.includes("recepcion") || capLower.includes("remision") || capLower.includes("entrega")) {
+      categoria = "Hoja de Recepción";
+    } else if (capLower.includes("sellado") || capLower.includes("oficio") || capLower.includes("permiso") || capLower.includes("acta")) {
+      categoria = "Documentación Oficial Sellada";
+    } else if (capLower.includes("comunicado") || capLower.includes("aviso") || capLower.includes("minuta")) {
+      categoria = "Comunicado Oficial";
+    } else if (tipo === "image") {
+      categoria = "Fotografía de Campo";
+    }
+
+    const attachId = `ATT-${Date.now()}`;
+    const targetFolder = path.join(DATA_DIR, 'adjuntos', task.id);
+    if (!fs.existsSync(targetFolder)) {
+      fs.mkdirSync(targetFolder, { recursive: true });
+    }
+    const relativePath = `data/adjuntos/${task.id}/${fileName}`;
+    const localFilePath = path.join(targetFolder, fileName);
+
+    if (botToken && fileId) {
+      downloadTelegramFile(botToken, fileId, localFilePath);
+    }
+
+    const newAttach = {
+      id: attachId,
+      taskId: task.id,
+      name: fileName,
+      categoria: categoria,
+      tipo: tipo,
+      tamano: fileSizeStr,
+      fecha: new Date().toISOString(),
+      autor: user.nombre,
+      canal: "Telegram",
+      url: relativePath,
+      nota: captionText || undefined
+    };
+    addProjectAttachment(task.id, newAttach);
+
+    const noteText = `📎 Adjuntó archivo de soporte: ${fileName} [${categoria}]${captionText ? ' — ' + captionText : ''}`;
+    addProjectComment(task._projId, task.id, user.nombre, noteText);
+    tryGitCommit(`feat(adjuntos): nuevo soporte ${fileName} en ${task.id} via Telegram [${user.nombre}]`, user);
+
+    return {
+      authorized: true,
+      text: `✅ *¡Archivo de soporte registrado y respaldado!*\n\n` +
+            `📌 *Tarea:* \`${task.id}\`\n` +
+            `📄 *Archivo:* \`${fileName}\`\n` +
+            `🏷️ *Categoría:* ${categoria}\n` +
+            `👤 *Subido por:* ${user.nombre}\n` +
+            `📦 *Tamaño:* ${fileSizeStr}\n\n` +
+            `_🐙 Respaldado en Git-as-a-Database y visible en el Centro de Operaciones Web._`
+    };
+  }
+
+  // 5. Si está en sesión activa de tarea y envió texto normal (sin ser comando reservado)
+  const isCommand = lower.startsWith("/") || lower === "mis tareas" || lower === "reporte" || lower === "ayuda" || lower === "menu" || lower.startsWith("crear ") || lower.startsWith("completar ") || lower.startsWith("iniciar ");
+  if (userSessions[from.id] && !isCommand) {
+    const activeTaskId = userSessions[from.id].activeTaskId;
+    const task = findTaskById(activeTaskId);
+    if (task) {
+      addProjectComment(task._projId, task.id, user.nombre, rawText);
+      tryGitCommit(`feat(data): nuevo comentario en ${task.id} por ${user.nombre} via Telegram`, user);
+      return {
+        authorized: true,
+        text: `💬 *Comentario publicado en ${task.id}:*\n\n"${rawText}"\n\n` +
+              `👤 *Autor:* ${user.nombre}\n` +
+              `_(Sigues en el hilo de ${task.id}. Envía /salir para terminar)_`
+      };
+    }
+  }
+
+  // 6. Comando: /start, ayuda, menu
   if (lower === "/start" || lower === "ayuda" || lower === "/ayuda" || lower === "menu") {
     return {
       authorized: true,
@@ -537,7 +736,7 @@ function handleTelegramUpdate(update, botToken = null) {
 
   if (!message) return null;
 
-  const reply = processTelegramMessage(message.from, message.text);
+  const reply = processTelegramMessage(message.from, message.text, message, botToken);
 
   if (botToken && message.chat && message.chat.id) {
     sendTelegramResponse(botToken, message.chat.id, reply);

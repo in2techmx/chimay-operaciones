@@ -8170,7 +8170,248 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
     setInterval(() => {
       if (webAppUrl) fetchTasksFromSheets();
     }, 30000);
-  </script>
+  
+    // =========================================================================
+    // 0.40 GESTIÓN DE ARCHIVOS DE SOPORTE DOCUMENTAL (US-CHIMAY-TEL-02)
+    // =========================================================================
+    let taskAttachments = loadInitialTaskAttachments();
+
+    function loadInitialTaskAttachments() {
+      try {
+        const saved = localStorage.getItem("chimay_task_attachments");
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+      return {
+        "TSK-PRE-01": [
+          {
+            id: "ATT-PRE-01-01",
+            taskId: "TSK-PRE-01",
+            name: "Oficio_Permiso_Conagua_Sellado.pdf",
+            categoria: "Documentación Oficial Sellada",
+            tipo: "pdf",
+            tamano: "1.4 MB",
+            fecha: "2026-09-18T10:30:00Z",
+            autor: "Arturo B.",
+            canal: "Web",
+            url: "data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9Db3VudCAxCi9LaWRzIFsgMyAwIFIgXQo+PgplbmRvYmoKMSAwIG9iago8PAovVGl0bGUgKE9maWNpbyBDb25hZ3VhIFNlbGxhZG8pCi9DcmVhdG9yIChDaGltYXkgT3BlcmFjaW9uZXMpCj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9QYXJlbnQgNCAwIFIKL01lZGlhQm94IFsgMCAwIDYxMiA3OTIgXQovQ29udGVudHMgNSAwIFIKL1Jlc291cmNlcyA8PAovRm9udCA8PAovRjEgNiAwIFIKPj4KPj4KPj4KZW5kb2JqCjUgMCBvYmoKPDwKL0xlbmd0aCA4NQo+PgpzdHJlYW0KQlQKL0YxIDI0IFRmCjEwMCA3MDAgVGROCihPZmljaW8gQ29uYWd1YSBTZWxsYWRvIC0gUHJveWVjdG8gQ2hpbWF5KSBUagogCi9GMSAxMiBUZgowIC0zMCBUZE4KKERvY3VtZW50byBPZmljaWFsIFJlc3BhbGRhZG8gZW4gR2l0LWFzLWEtRGF0YWJhc2UpIFRqCkVUCmVuZHN0cmVhbQplbmRvYmoKNiAwIG9iago8PAovVHlwZSAvRm9udAovU3VidHlwZSAvVHlwZTEKL0Jhc2VGb250IC9IZWx2ZXRpY2EKPj4KZW5kb2JqCnhyZWYKMCA3CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDA4OSAwMDAwMCBuIAowMDAwMDAwMTcwIDAwMDAwIG4gCjAwMDAwMDAxNzAgMDAwMDAgbiAKMDAwMDAwMDAxMCAwMDAwMCBuIAowMDAwMDAwMjc1IDAwMDAwIG4gCjAwMDAwMDA0MTAgMDAwMDAgbiAKdHJhaWxlcgo8PAovU2l6ZSA3Ci9Sb290IDQgMCBSCi9JbmZvIDEgMCBSCj4+CnN0YXJ0eHJlZgpwNDg1CiUlRU9GCg=="
+          },
+          {
+            id: "ATT-PRE-01-02",
+            taskId: "TSK-PRE-01",
+            name: "Hoja_Recepcion_Insumos_Topografia.jpg",
+            categoria: "Hoja de Recepción",
+            tipo: "image",
+            tamano: "620 KB",
+            fecha: "2026-09-19T14:15:00Z",
+            autor: "Gema R.",
+            canal: "Telegram",
+            url: "data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'600\' height=\'400\' style=\'background:%23f8fafc\'><rect width=\'600\' height=\'400\' fill=\'%23f1f5f9\'/><rect x=\'20\' y=\'20\' width=\'560\' height=\'360\' rx=\'12\' fill=\'white\' stroke=\'%23cbd5e1\' stroke-width=\'2\'/><text x=\'40\' y=\'60\' font-family=\'sans-serif\' font-size=\'18\' font-weight=\'bold\' fill=\'%230f172a\'>HOJA DE RECEPCION DE MATERIALES</text><text x=\'40\' y=\'90\' font-family=\'sans-serif\' font-size=\'12\' fill=\'%2364748b\'>Proyecto Chimay &bull; TSK-PRE-01</text><line x1=\'40\' y1=\'110\' x2=\'560\' y2=\'110\' stroke=\'%23e2e8f0\' stroke-width=\'1.5\'/><text x=\'40\' y=\'145\' font-family=\'sans-serif\' font-size=\'13\' fill=\'%23334155\'>Insumo: Equipo Topogr&aacute;fico y Marcadores de Lindero</text><text x=\'40\' y=\'175\' font-family=\'sans-serif\' font-size=\'13\' fill=\'%23334155\'>Recibi&oacute;: Arturo B. | Proveedor: Geosistemas MX</text><text x=\'40\' y=\'205\' font-family=\'sans-serif\' font-size=\'13\' fill=\'%23334155\'>Estado: Sellado y Cotejado en Campo</text><rect x=\'400\' y=\'250\' width=\'140\' height=\'90\' rx=\'8\' fill=\'%23f0fdf4\' stroke=\'%2386efac\' stroke-width=\'1.5\'/><text x=\'470\' y=\'295\' font-family=\'sans-serif\' font-size=\'14\' font-weight=\'bold\' fill=\'%2315803d\' text-anchor=\'middle\'>SELLADO</text><text x=\'470\' y=\'315\' font-family=\'sans-serif\' font-size=\'10\' fill=\'%23166534\' text-anchor=\'middle\'>RECEPCION OK</text></svg>"
+          }
+        ]
+      };
+    }
+
+    function saveTaskAttachments() {
+      try {
+        localStorage.setItem("chimay_task_attachments", JSON.stringify(taskAttachments));
+      } catch (e) {
+        console.error("Error guardando adjuntos:", e);
+      }
+    }
+
+    function renderTaskAttachments(taskId) {
+      const listEl = document.getElementById("taskAttachmentsList");
+      const badgeEl = document.getElementById("taskAttachmentsCountBadge");
+      if (!listEl) return;
+
+      const list = taskAttachments[taskId] || [];
+      if (badgeEl) {
+        badgeEl.textContent = list.length + " doc" + (list.length === 1 ? "" : "s");
+      }
+
+      if (list.length === 0) {
+        listEl.innerHTML = `
+          <div class="py-4 text-center text-stone-400 space-y-1">
+            <i class="fa-solid fa-folder-open text-xl text-stone-300"></i>
+            <p class="text-[11px] font-bold text-stone-600">Sin documentos de soporte.</p>
+            <p class="text-[10px] text-stone-400">Adjunta facturas, hojas de recepción u oficios sellados.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const catBadges = {
+        "Factura / Ticket": "bg-emerald-100 text-emerald-800 border-emerald-200",
+        "Hoja de Recepción": "bg-sky-100 text-sky-800 border-sky-200",
+        "Documentación Oficial Sellada": "bg-purple-100 text-purple-800 border-purple-200",
+        "Comunicado Oficial": "bg-amber-100 text-amber-800 border-amber-200",
+        "Fotografía de Campo": "bg-blue-100 text-blue-800 border-blue-200",
+        "Otro Documento": "bg-stone-100 text-stone-800 border-stone-200"
+      };
+
+      listEl.innerHTML = list.map(att => {
+        const isPdf = att.tipo === "pdf" || att.name.toLowerCase().endsWith(".pdf");
+        const isImg = att.tipo === "image" || att.name.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+        const iconClass = isPdf ? "fa-solid fa-file-pdf text-rose-600" : (isImg ? "fa-solid fa-file-image text-sky-600" : "fa-solid fa-file-lines text-stone-600");
+        const catBadge = catBadges[att.categoria] || "bg-stone-100 text-stone-700 border-stone-200";
+        const canalBadge = att.canal === "Telegram" 
+          ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-sky-100 text-sky-800 border border-sky-200 flex items-center gap-0.5"><i class="fa-brands fa-telegram"></i> Telegram</span>'
+          : '<span class="text-[9px] px-1.5 py-0.2 rounded bg-stone-100 text-stone-600 border border-stone-200">Web</span>';
+
+        return `
+          <div class="p-2.5 bg-stone-50 hover:bg-stone-100/80 rounded-xl border border-stone-200 flex items-center justify-between gap-2 transition shadow-2xs">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+              <span class="w-8 h-8 rounded-lg bg-white border border-stone-200 flex items-center justify-center text-sm shrink-0 shadow-2xs">
+                <i class="${iconClass}"></i>
+              </span>
+              <div class="min-w-0 flex-1">
+                <span class="text-xs font-bold text-stone-900 block truncate" title="${escapeHtml(att.name)}">${escapeHtml(att.name)}</span>
+                <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
+                  <span class="px-1.5 py-0.2 rounded text-[9px] font-bold border ${catBadge}">${escapeHtml(att.categoria)}</span>
+                  <span class="text-[10px] text-stone-400">${att.tamano || '1 MB'}</span>
+                  <span class="text-[10px] text-stone-400">&bull;</span>
+                  <span class="text-[10px] text-stone-500">${escapeHtml(att.autor || 'Equipo')}</span>
+                  ${canalBadge}
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button type="button" onclick="previewAttachment('${att.id}', '${taskId}')" class="px-2 py-1 rounded-lg bg-white hover:bg-stone-200 border border-stone-200 text-stone-700 font-bold text-[11px] transition cursor-pointer shadow-2xs" title="Previsualizar">
+                <i class="fa-regular fa-eye"></i>
+              </button>
+              <a href="${att.url}" download="${att.name}" class="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold text-[11px] transition shadow-2xs" title="Descargar">
+                <i class="fa-solid fa-download"></i>
+              </a>
+              <button type="button" onclick="deleteTaskAttachment('${att.id}', '${taskId}')" class="p-1 text-stone-400 hover:text-rose-600 transition text-[11px]" title="Eliminar adjunto">
+                <i class="fa-regular fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function uploadTaskAttachment() {
+      const fileInput = document.getElementById("fileInputAttachment");
+      const catSelect = document.getElementById("selectAttachCategory");
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        alert("Por favor selecciona un archivo para adjuntar (PDF, JPG, PNG, etc.).");
+        return;
+      }
+      if (!selectedTaskId) {
+        alert("No hay tarea seleccionada.");
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const categoria = catSelect ? catSelect.value : "Otro Documento";
+      const authorName = currentUser ? (currentUser.nombre || currentUser.name || "Arturo B.") : "Arturo B.";
+      const sizeStr = file.size > 1024 * 1024 ? (file.size / (1024 * 1024)).toFixed(1) + " MB" : Math.round(file.size / 1024) + " KB";
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      const isImg = file.type.startsWith("image/") || file.name.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+      const tipo = isPdf ? "pdf" : (isImg ? "image" : "document");
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        if (!taskAttachments[selectedTaskId]) taskAttachments[selectedTaskId] = [];
+
+        const newAttach = {
+          id: "ATT-" + Date.now(),
+          taskId: selectedTaskId,
+          name: file.name,
+          categoria: categoria,
+          tipo: tipo,
+          tamano: sizeStr,
+          fecha: new Date().toISOString(),
+          autor: authorName,
+          canal: "Web",
+          url: dataUrl
+        };
+
+        taskAttachments[selectedTaskId].push(newAttach);
+        saveTaskAttachments();
+
+        // Agregar nota en la bitácora
+        if (!taskComments[selectedTaskId]) taskComments[selectedTaskId] = [];
+        taskComments[selectedTaskId].push({
+          id: "COM-" + Date.now(),
+          taskId: selectedTaskId,
+          author: authorName,
+          rol: (currentUser && currentUser.rol) || "Especialista",
+          text: `📎 Adjuntó archivo de soporte: ${file.name} [${categoria}]`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          canal: "Web"
+        });
+        localStorage.setItem("chimay_task_comments", JSON.stringify(taskComments));
+
+        fileInput.value = "";
+        renderTaskAttachments(selectedTaskId);
+        renderTaskChat(selectedTaskId);
+        alert(`¡Documento "${file.name}" adjuntado exitosamente a la tarea!`);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function previewAttachment(attachId, taskId) {
+      const list = taskAttachments[taskId] || [];
+      const att = list.find(a => a.id === attachId);
+      if (!att) return;
+
+      const modal = document.getElementById("previewAttachmentModal");
+      const titleEl = document.getElementById("previewAttachTitle");
+      const metaEl = document.getElementById("previewAttachMeta");
+      const containerEl = document.getElementById("previewAttachContainer");
+      const downloadBtn = document.getElementById("previewAttachDownloadBtn");
+      const iconEl = document.getElementById("previewAttachIcon");
+
+      if (!modal) return;
+
+      titleEl.textContent = att.name;
+      metaEl.textContent = `${att.categoria} • ${att.tamano} • Subido por ${att.autor || 'Equipo'} (${att.canal || 'Web'})`;
+      downloadBtn.href = att.url;
+      downloadBtn.download = att.name;
+
+      const isPdf = att.tipo === "pdf" || att.name.toLowerCase().endsWith(".pdf");
+      const isImg = att.tipo === "image" || att.name.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+
+      if (isPdf) {
+        iconEl.innerHTML = '<i class="fa-solid fa-file-pdf text-rose-600"></i>';
+        containerEl.innerHTML = `<iframe src="${att.url}" class="w-full h-[500px] rounded-xl border border-stone-200 bg-white" title="${escapeHtml(att.name)}"></iframe>`;
+      } else if (isImg) {
+        iconEl.innerHTML = '<i class="fa-solid fa-file-image text-sky-600"></i>';
+        containerEl.innerHTML = `<img src="${att.url}" alt="${escapeHtml(att.name)}" class="max-w-full max-h-[500px] object-contain rounded-xl shadow-md border border-stone-200 bg-white">`;
+      } else {
+        iconEl.innerHTML = '<i class="fa-solid fa-file-lines text-stone-600"></i>';
+        containerEl.innerHTML = `
+          <div class="p-8 text-center space-y-3">
+            <i class="fa-solid fa-file-arrow-down text-4xl text-stone-400"></i>
+            <p class="text-xs font-bold text-stone-700">Este formato de archivo no tiene previsualización directa en el navegador.</p>
+            <a href="${att.url}" download="${att.name}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-700 text-white font-bold text-xs shadow-sm">
+              <i class="fa-solid fa-download"></i> Descargar Archivo (${att.tamano})
+            </a>
+          </div>
+        `;
+      }
+
+      modal.classList.remove("hidden");
+    }
+
+    function closeAttachmentPreview() {
+      const modal = document.getElementById("previewAttachmentModal");
+      if (modal) modal.classList.add("hidden");
+    }
+
+    function deleteTaskAttachment(attachId, taskId) {
+      if (!confirm("¿Deseas eliminar este archivo de soporte de la tarea?")) return;
+      if (taskAttachments[taskId]) {
+        taskAttachments[taskId] = taskAttachments[taskId].filter(a => a.id !== attachId);
+        saveTaskAttachments();
+        renderTaskAttachments(taskId);
+      }
+    }
+
+    </script>
   <!-- Modal Crear Nueva Tarea (Web Interface) -->
   <div id="createTaskModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[92vh] overflow-y-auto">
@@ -8806,6 +9047,35 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           </div>
         </div>
       </form>
+    </div>
+  </div>
+
+
+  <!-- Modal de Previsualización de Archivo de Soporte -->
+  <div id="previewAttachmentModal" class="fixed inset-0 bg-stone-900/70 backdrop-blur-xs hidden z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-4xl w-full p-5 shadow-2xl border border-stone-200 flex flex-col max-h-[92vh] overflow-hidden my-auto animate-in fade-in zoom-in duration-150">
+      <div class="flex items-center justify-between border-b border-stone-100 pb-3 shrink-0">
+        <div class="flex items-center gap-2.5">
+          <span id="previewAttachIcon" class="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-sm shadow-2xs">
+            <i class="fa-solid fa-file-pdf"></i>
+          </span>
+          <div>
+            <h3 id="previewAttachTitle" class="text-sm sm:text-base font-black text-stone-900 truncate max-w-md">Nombre del Archivo</h3>
+            <span id="previewAttachMeta" class="text-[11px] text-stone-500 font-medium">Categoría &bull; Tamaño &bull; Autor</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <a id="previewAttachDownloadBtn" href="#" download="" class="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition">
+            <i class="fa-solid fa-download text-xs"></i> Descargar
+          </a>
+          <button onclick="closeAttachmentPreview()" class="text-stone-400 hover:text-stone-700 text-xl p-1.5 rounded-xl hover:bg-stone-100 transition">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+      <div id="previewAttachContainer" class="flex-1 overflow-auto p-3 flex items-center justify-center bg-stone-100/70 rounded-2xl mt-3 min-h-[380px]">
+        <!-- Contenido previsualizado: img o iframe -->
+      </div>
     </div>
   </div>
 
