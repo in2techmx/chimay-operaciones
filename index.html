@@ -7516,11 +7516,25 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       }
     }
 
+    function saveTelegramBotUsername(newVal) {
+      if (!newVal) return;
+      const clean = newVal.trim().replace(/^@/, '');
+      if (!clean) {
+        alert("Por favor ingresa un nombre de usuario válido de bot (ej. MiBot_bot).");
+        return;
+      }
+      telegramBotUsername = clean;
+      localStorage.setItem("chimay_telegram_bot_user", clean);
+      switchTelegramTab('conexion');
+    }
+
     function renderTelegramConexionTab(container) {
-      const botUrl = "https://t.me/" + telegramBotUsername.replace('@', '');
+      const cleanBot = telegramBotUsername.trim().replace(/^@/, '');
+      const botUrl = "https://t.me/" + cleanBot;
       const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(botUrl);
       const activeUser = currentUser ? (currentUser.nombre || currentUser.name || "Arturo B.") : "Arturo B.";
       const activeConfig = (usersConfig && usersConfig[activeUser]) || (TEAM_INFO && TEAM_INFO[activeUser]) || {};
+      const isDefaultBot = (cleanBot.toLowerCase() === "chimayoperacionesbot");
 
       container.innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -7531,7 +7545,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                 <span class="px-2.5 py-1 rounded-lg text-xs font-black bg-sky-600 text-white flex items-center gap-1.5 shadow-2xs">
                   <i class="fa-brands fa-telegram"></i> Bot Oficial
                 </span>
-                <span class="text-xs text-stone-500 font-mono">@${escapeHtml(telegramBotUsername)}</span>
+                <span class="text-xs text-stone-600 font-mono font-bold">@${escapeHtml(cleanBot)}</span>
               </div>
               <h4 class="text-base font-black text-stone-900 mt-2.5">Conéctate al Asistente en 1 Toque</h4>
               <p class="text-xs text-stone-600 mt-1 leading-relaxed">
@@ -7539,10 +7553,30 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
               </p>
             </div>
 
+            <!-- Configuración del Username del Bot -->
+            <div class="p-3 bg-white/95 rounded-xl border border-sky-200/90 space-y-2 shadow-2xs">
+              <label for="inputTelBotUser" class="text-[11px] font-black text-stone-700 flex items-center justify-between">
+                <span class="flex items-center gap-1"><i class="fa-solid fa-robot text-sky-600"></i> Nombre de Usuario de tu Bot:</span>
+                ${isDefaultBot 
+                  ? '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">Pendiente registrar</span>' 
+                  : '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">Personalizado</span>'}
+              </label>
+              <div class="flex items-center gap-1.5">
+                <div class="relative flex-1">
+                  <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center text-xs font-bold text-stone-400">@</span>
+                  <input id="inputTelBotUser" type="text" value="${escapeHtml(cleanBot)}" placeholder="TuBot_bot" class="w-full pl-6 pr-2 py-1.5 text-xs rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono text-stone-800 bg-white" onkeydown="if(event.key==='Enter') saveTelegramBotUsername(this.value)">
+                </div>
+                <button type="button" onclick="saveTelegramBotUsername(document.getElementById('inputTelBotUser').value)" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-2xs whitespace-nowrap cursor-pointer transition flex items-center gap-1">
+                  <i class="fa-solid fa-floppy-disk"></i> Guardar
+                </button>
+              </div>
+            </div>
+
+            <!-- QR y Enlaces -->
             <div class="flex flex-col sm:flex-row items-center gap-4 bg-white p-3.5 rounded-xl border border-sky-100 shadow-2xs">
               <img src="${qrUrl}" alt="QR Bot Telegram" class="w-28 h-28 rounded-lg border border-stone-200 bg-stone-50 shadow-2xs shrink-0" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'112\' height=\'112\'><rect width=\'112\' height=\'112\' fill=\'%23f1f5f9\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-size=\'10\' fill=\'%2364748b\'>Escanea con Telegram</text></svg>'">
-              <div class="space-y-2 text-center sm:text-left flex-1">
-                <span class="text-[11px] font-bold text-stone-500 block">Escanear con la cámara del celular</span>
+              <div class="space-y-2 text-center sm:text-left flex-1 w-full">
+                <span class="text-[11px] font-bold text-stone-500 block">Escanear con la app de Telegram</span>
                 <a href="${botUrl}" target="_blank" rel="noopener noreferrer" class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs transition shadow-sm">
                   <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir en Telegram
                 </a>
@@ -7550,6 +7584,21 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                   <i class="fa-regular fa-copy"></i> Copiar Enlace
                 </button>
               </div>
+            </div>
+
+            <!-- Guía rápida para resolver 'Username not found' -->
+            <div class="p-3 bg-amber-50/90 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1.5">
+              <div class="flex items-center gap-1.5 font-bold text-amber-950">
+                <i class="fa-solid fa-circle-question text-amber-600"></i> ¿Por qué Telegram dice "Username not found"?
+              </div>
+              <p class="text-[11px] leading-relaxed text-stone-700">
+                Telegram solo abre enlaces de bots que ya han sido creados en su red. Para crear y activar el tuyo en 60 segundos:
+              </p>
+              <ol class="text-[11px] list-decimal list-inside space-y-1 text-stone-700 font-medium">
+                <li>Abre el bot oficial de Telegram <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" class="text-sky-700 font-bold underline">@BotFather</a> y envía el comando <code>/newbot</code>.</li>
+                <li>Escribe un nombre visible (ej. <em>Chimay Operaciones</em>) y luego un <em>username</em> único terminado en <code>bot</code> (ej. <code>Chimay2026_bot</code>).</li>
+                <li>Escribe arriba ese <em>username</em> y presiona <strong>Guardar</strong>: el código QR y el botón se actualizarán de inmediato para abrir tu bot real.</li>
+              </ol>
             </div>
           </div>
 

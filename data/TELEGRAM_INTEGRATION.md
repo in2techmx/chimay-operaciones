@@ -43,10 +43,27 @@ Este documento detalla la arquitectura, normas de seguridad y modo de operación
 
 ---
 
-## 3. Modo de Ejecución del Bot
+## 3. Registro del Bot en Telegram (@BotFather)
+
+Para que el enlace y código QR funcionen en la app móvil de Telegram sin el error *"Username not found"*, el bot debe ser registrado formalmente en la infraestructura de Telegram:
+
+1. **Abrir BotFather:** En Telegram, busca y abre el bot oficial [@BotFather](https://t.me/BotFather).
+2. **Crear Bot:** Envía el comando `/newbot`.
+3. **Asignar Nombre:** Escribe el nombre descriptivo (ej: `Chimay Operaciones`).
+4. **Asignar Username:** Escribe un nombre de usuario único que termine obligatoriamente en `bot` (ej: `ChimayApp_bot` o `ChimayProyectos_bot`).
+5. **Configurar en la Web:**
+   - Abre el modal de **Telegram** en la web de Chimay.
+   - En la pestaña **Conexión Rápida & QR**, escribe tu nuevo usuario en el campo **Nombre de Usuario de tu Bot** y presiona **Guardar**.
+   - El código QR y el botón *Abrir en Telegram* se actualizarán al instante.
+6. **Guardar el Token de API:** BotFather te entregará un HTTP API Token (ej: `123456789:ABCdefGh...`). Úsalo para arrancar el servicio en segundo plano.
+
+---
+
+## 4. Modo de Ejecución del Bot
 
 ### Opción A: Ejecución como Servicio Local / Daemon (Long Polling)
 No requiere abrir puertos, ni configurar webhooks ni certificados SSL:
+
 ```powershell
 # Definir el Token de Telegram provisto por @BotFather
 $env:TELEGRAM_BOT_TOKEN="1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ"
