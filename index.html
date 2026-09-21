@@ -4212,6 +4212,7 @@ Los archivos JSON han sido preparados.`);
         .replace(/'/g, "&#39;")
         .replace(/\//g, "&#x2F;");
     }
+    const escapeHtml = sanitizeSecurityText;
 
     // 3. Validador y Firewall de Seguridad Activo (Anti-Jailbreak, Anti-Code-Injection y Anti-DOM-Tampering)
     function validateAgentSecurity(promptText) {
@@ -5820,7 +5821,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
     // 0.38 MÓDULO DE REPORTING & DRILLDOWN JERÁRQUICO (US-CHIMAY-REP-01)
     // Cálculos 100% reales sin valores hardcoded ni inventados (Protocolo IN2TECHMX)
     // =========================================================================
-    let reportingFilterPeriod = "month";     // "all" | "month" | "week" | "custom"
+    let reportingFilterPeriod = "all";       // "all" (por defecto para ver todo el proyecto) | "month" | "week" | "custom"
     let reportingFilterCategory = "all";   // "all" | "completada" | "progreso" | "vencida" | "por_iniciar" | "reprogramada"
     let reportingActiveTab = "all";        // "all" | "costs" | "tasks"
     let reportingCustomStart = "";
@@ -5828,6 +5829,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
     let reportingSearchQuery = "";
     let reportingExpandedStages = {};
     let reportingExpandedTasks = {};
+
 
     function formatReportingLocalDate(d) {
       const year = d.getFullYear();
