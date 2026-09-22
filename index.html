@@ -1687,7 +1687,31 @@
             "estado": "Completada",
             "prioridad": "Crítica",
             "projectId": "PRJ-01",
-            "dependencies": ""
+            "dependencies": "",
+            "subtareas": [
+              {
+                "id": "SUB-PRE-01-01",
+                "name": "Levantamiento de especificaciones técnicas de suelo y agua",
+                "responsable": "Arturo B.",
+                "estado": "Completada",
+                "horas": 12,
+                "dias": 2,
+                "start": "2026-09-18",
+                "end": "2026-09-19",
+                "fecha": "2026-09-18"
+              },
+              {
+                "id": "SUB-PRE-01-02",
+                "name": "Redacción y consolidación de memoria descriptiva técnica",
+                "responsable": "Arturo B.",
+                "estado": "Completada",
+                "horas": 13,
+                "dias": 2,
+                "start": "2026-09-22",
+                "end": "2026-09-23",
+                "fecha": "2026-09-22"
+              }
+            ]
       },
       {
             "id": "TSK-PRE-02",
@@ -1703,11 +1727,29 @@
             "costoTotal": 22900.0,
             "start": "2026-09-20",
             "end": "2026-10-01",
-            "progress": 0,
-            "estado": "No Iniciada",
+            "progress": 50,
+            "estado": "En Progreso",
             "prioridad": "Alta",
             "projectId": "PRJ-01",
-            "dependencies": ""
+            "dependencies": "",
+            "subtareas": [
+              {
+                "id": "SUB-PRE-02-01",
+                "name": "Cotización de sistema de riego y bombas solares con proveedores",
+                "responsable": "Arturo B.",
+                "estado": "Completada",
+                "horas": 8,
+                "fecha": "2026-09-21"
+              },
+              {
+                "id": "SUB-PRE-02-02",
+                "name": "Estructuración de corrida financiera a 5 años y ROI",
+                "responsable": "Arturo A.",
+                "estado": "No Iniciada",
+                "horas": 12,
+                "fecha": "2026-09-23"
+              }
+            ]
       },
       {
             "id": "TSK-PRE-03",
@@ -1949,6 +1991,7 @@
 
     function parseDateParts(dStr) {
       if (!dStr) return null;
+      if (dStr instanceof Date) return isNaN(dStr.getTime()) ? null : new Date(dStr.getFullYear(), dStr.getMonth(), dStr.getDate(), 12, 0, 0);
       const s = String(dStr).substring(0, 10);
       const parts = s.split("-");
       if (parts.length !== 3) return null;
@@ -7563,17 +7606,18 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       }
 
       // 1. Determinar el horizonte temporal (fecha mínima y máxima)
+      const msPerDay = 86400000;
       let minTime = Infinity;
       let maxTime = -Infinity;
 
       function checkDates(sStr, eStr) {
-        const s = parseDateParts(sStr);
-        const e = parseDateParts(eStr) || s;
-        if (s) {
+        const s = (sStr instanceof Date) ? sStr : parseDateParts(sStr);
+        const e = (eStr instanceof Date) ? eStr : (parseDateParts(eStr) || s);
+        if (s && !isNaN(s.getTime())) {
           if (s.getTime() < minTime) minTime = s.getTime();
           if (s.getTime() > maxTime) maxTime = s.getTime();
         }
-        if (e) {
+        if (e && !isNaN(e.getTime())) {
           if (e.getTime() < minTime) minTime = e.getTime();
           if (e.getTime() > maxTime) maxTime = e.getTime();
         }
@@ -7626,7 +7670,6 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       calEnd.setDate(calEnd.getDate() + 7);
       calEnd.setHours(12, 0, 0, 0);
 
-      const msPerDay = 86400000;
       let totalDays = Math.round((calEnd.getTime() - calStart.getTime()) / msPerDay);
       if (totalDays < 28) {
         calEnd.setDate(calEnd.getDate() + (28 - totalDays));
@@ -8506,7 +8549,18 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
     let telegramBotUsername = savedBot;
     let telegramCurrentPin = "";
     let telegramSimHistory = [
-      { sender: "bot", text: "🤖 ¡Hola! Soy el Asistente Operativo de Chimay en Telegram.\n\nEscribe *mis tareas*, *reporte* o *ayuda* para comenzar.", time: "12:00", buttons: [{ text: "📋 Mis Tareas", cmd: "mis tareas" }, { text: "📊 Reporte", cmd: "reporte" }] }
+      {
+        sender: "bot",
+        text: "🤖 *Centro de Operaciones Chimay (Telegram)*\n¡Hola! Soy tu Asistente Operativo 24/7 sincronizado con Git-as-a-Database.\n\nPulsa un botón rápido o escribe un comando:",
+        time: "12:00",
+        layout: "grid",
+        buttons: [
+          { text: "📋 Tareas", cmd: "tareas" },
+          { text: "📋 Mis Tareas", cmd: "mis tareas" },
+          { text: "☀️ Daily Standup", cmd: "standup" },
+          { text: "💰 Costos", cmd: "costos" }
+        ]
+      }
     ];
 
     function openTelegramModal() {
@@ -8725,10 +8779,10 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                 <div class="max-w-[85%] rounded-2xl p-3 shadow-xs ${m.sender === 'user' ? 'bg-sky-600 text-white rounded-br-xs' : 'bg-white text-stone-800 border border-stone-200 rounded-bl-xs'} space-y-1.5">
                   <div class="whitespace-pre-wrap leading-relaxed">${formatTelegramMessageText(m.text)}</div>
                   ${(m.buttons && m.buttons.length > 0) ? `
-                    <div class="pt-2 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    <div class="pt-2 border-t border-stone-100 ${m.layout === 'stack' ? 'flex flex-col gap-1.5' : 'grid grid-cols-1 sm:grid-cols-2 gap-1.5'}">
                       ${m.buttons.map(b => `
-                        <button type="button" onclick="ejecutarComandoSimulador('${escapeHtml(b.cmd)}')" class="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-[11px] transition text-center shadow-2xs">
-                          ${escapeHtml(b.text)}
+                        <button type="button" onclick="ejecutarComandoSimulador('${escapeHtml(b.cmd)}')" class="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-[11px] transition text-left shadow-2xs flex items-center justify-between">
+                          <span class="truncate">${escapeHtml(b.text)}</span>
                         </button>
                       `).join('')}
                     </div>
@@ -8742,7 +8796,10 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           <!-- Barra de Accesos Rápidos (Chips) -->
           <div class="px-3 py-1.5 bg-stone-200/80 border-t border-stone-200 flex items-center gap-1.5 overflow-x-auto shrink-0 text-[11px]">
             <span class="text-stone-500 font-bold shrink-0 text-[10px] uppercase">Ejemplos:</span>
+            <button type="button" onclick="ejecutarComandoSimulador('tareas')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">📋 tareas</button>
             <button type="button" onclick="ejecutarComandoSimulador('mis tareas')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">📋 mis tareas</button>
+            <button type="button" onclick="ejecutarComandoSimulador('standup')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">☀️ standup</button>
+            <button type="button" onclick="ejecutarComandoSimulador('costos')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">💰 costos</button>
             <button type="button" onclick="ejecutarComandoSimulador('completar TSK-PRE-01')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">✅ completar TSK-PRE-01</button>
             <button type="button" onclick="ejecutarComandoSimulador('TSK-PRE-01: Se aplicó abono orgánico en campo')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">💬 comentar TSK-PRE-01</button>
             <button type="button" onclick="ejecutarComandoSimulador('crear Instalar válvula de retención sector 2')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">➕ crear tarea</button>
@@ -8788,104 +8845,438 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       const raw = cmdText.trim();
       const lower = raw.toLowerCase();
 
-      let botReply = { text: "", buttons: null };
+      let botReply = { text: "", buttons: null, layout: "grid" };
 
-      // REGLAS DE NEGOCIO ESTRICTAS
-      if (lower === "/start" || lower === "ayuda" || lower === "menu") {
-        botReply.text = "🤖 *Centro de Operaciones Chimay (Telegram)*\n¡Hola *" + activeUser + "*!\n\n" +
-          "Comandos disponibles:\n" +
-          "📋 *mis tareas* ➔ Ver tus entregables asignados.\n" +
-          "✅ *completar [ID]* ➔ Finalizar tu tarea (Solo dueño).\n" +
-          "🚀 *iniciar [ID]* ➔ Poner tu tarea en progreso.\n" +
-          "💬 *[ID]: [comentario]* ➔ Chatear en cualquier tarea.\n" +
-          "➕ *crear [nombre]* ➔ Crear nueva tarea auto-asignada.\n" +
-          "📊 *reporte* ➔ Resumen de avance del proyecto.";
+      // Helper para buscar tarea por ID flexible
+      function findSimTask(idStr) {
+        if (!idStr) return null;
+        const clean = String(idStr).toUpperCase().trim();
+        return tasksData.find(t => {
+          const tid = String(t.id).toUpperCase();
+          return tid === clean || tid.endsWith("-" + clean.replace(/[^0-9]/g, ''));
+        });
+      }
+
+      // Helper para buscar subtarea por ID flexible
+      function findSimSubtask(idStr) {
+        if (!idStr) return null;
+        const clean = String(idStr).toUpperCase().trim();
+        for (const t of tasksData) {
+          if (t.subtareas && Array.isArray(t.subtareas)) {
+            const sub = t.subtareas.find(s => String(s.id).toUpperCase() === clean);
+            if (sub) return { subtask: sub, parentTask: t };
+          }
+        }
+        return null;
+      }
+
+      // 1. CANCELAR CONFIRMACIÓN DE COMPLETADO (canc_comp_...)
+      if (lower.startsWith("canc_comp_")) {
+        const targetId = raw.replace(/^canc_comp_/i, '').trim().toUpperCase();
+        botReply.text = "❌ *Operación cancelada.*\n\nLa tarea o subtarea `" + targetId + "` no fue modificada y permanece en su estado actual.";
         botReply.buttons = [
-          { text: "📋 Mis Tareas", cmd: "mis tareas" },
-          { text: "📊 Reporte", cmd: "reporte" }
+          { text: "💬 Ver " + targetId, cmd: "tarea " + targetId },
+          { text: "📋 Catálogo de Tareas", cmd: "tareas" },
+          { text: "🏠 Menú Principal", cmd: "menu" }
         ];
-      } else if (lower === "mis tareas" || lower === "tareas" || lower === "pendientes") {
+        botReply.layout = "grid";
+      }
+
+      // 2. EJECUTAR CONFIRMACIÓN DE COMPLETADO (conf_comp_...)
+      else if (lower.startsWith("conf_comp_")) {
+        const targetId = raw.replace(/^conf_comp_/i, '').trim().toUpperCase();
+        const hitSub = findSimSubtask(targetId);
+
+        if (hitSub) {
+          const { subtask, parentTask } = hitSub;
+          subtask.estado = "Completada";
+          subtask.fechaTermino = new Date().toISOString();
+
+          // Rollup automático a tarea padre
+          const totalSubs = parentTask.subtareas.length;
+          const compSubs = parentTask.subtareas.filter(s => s.estado === "Completada").length;
+          const inProgSubs = parentTask.subtareas.filter(s => s.estado === "En Progreso").length;
+          const pct = Math.round((compSubs / totalSubs) * 100);
+          parentTask.progress = pct;
+          if (compSubs === totalSubs) {
+            parentTask.estado = "Completada";
+          } else if (compSubs > 0 || inProgSubs > 0) {
+            parentTask.estado = "En Progreso";
+          }
+
+          refreshActiveViews();
+          botReply.text = "✅ *¡Subtarea completada con éxito!*\n\n" +
+            "🧩 *Subtarea:* `" + subtask.id + "` — " + subtask.name + "\n" +
+            "📦 *Tarea Principal:* `" + parentTask.id + "` (" + parentTask.name + ")\n" +
+            "👤 *Responsable:* " + (subtask.responsable || parentTask.responsable) + "\n" +
+            "📊 *Nuevo Progreso Padre:* *" + parentTask.progress + "%* (" + parentTask.estado + ")\n" +
+            "🐙 *Sincronización:* Sincronizado en memoria y listo para commit en Git.";
+          botReply.buttons = [
+            { text: "💬 Abrir " + parentTask.id, cmd: "tarea " + parentTask.id },
+            { text: "📋 Catálogo de Tareas", cmd: "tareas" },
+            { text: "📋 Mis Tareas", cmd: "mis tareas" }
+          ];
+          botReply.layout = "grid";
+        } else {
+          const task = findSimTask(targetId);
+          if (!task) {
+            botReply.text = "⚠️ No se encontró la tarea o subtarea *" + targetId + "*.";
+          } else {
+            task.estado = "Completada";
+            task.progress = 100;
+            task.fechaCambioEstado = new Date().toISOString();
+            if (task.subtareas && Array.isArray(task.subtareas)) {
+              task.subtareas.forEach(s => { s.estado = "Completada"; });
+            }
+            refreshActiveViews();
+            botReply.text = "✅ *¡Tarea completada con éxito!*\n\n" +
+              "📌 *ID:* `" + task.id + "`\n" +
+              "📝 *Nombre:* " + task.name + "\n" +
+              "👤 *Responsable:* " + activeUser + "\n" +
+              "📊 *Estado:* Completada (100%)\n" +
+              "🐙 *Sincronización:* Sincronizado en memoria y listo para commit en Git.";
+            botReply.buttons = [
+              { text: "💬 Ver " + task.id, cmd: "tarea " + task.id },
+              { text: "📋 Catálogo de Tareas", cmd: "tareas" },
+              { text: "📋 Mis Tareas", cmd: "mis tareas" }
+            ];
+            botReply.layout = "grid";
+          }
+        }
+      }
+
+      // 3. SOLICITAR COMPLETAR TAREA O SUBTAREA (CON DIÁLOGO DE CONFIRMACIÓN SI/NO)
+      else if (lower.match(/^(?:completar|finalizar|terminar|cerrar)\s+([a-z0-9\-]+)$/i)) {
+        const m = lower.match(/^(?:completar|finalizar|terminar|cerrar)\s+([a-z0-9\-]+)$/i);
+        const targetId = m[1].toUpperCase();
+
+        const hitSub = findSimSubtask(targetId);
+        if (hitSub) {
+          const { subtask, parentTask } = hitSub;
+          botReply.text = "⚠️ *Confirmación Requerida*\n\n" +
+            "¿Confirmas que deseas marcar como *COMPLETADA* la siguiente subtarea?\n\n" +
+            "🧩 *Subtarea:* `" + subtask.id + "` — *" + subtask.name + "*\n" +
+            "📦 *Tarea Principal:* `" + parentTask.id + "` (" + parentTask.name + ")\n" +
+            "👤 *Responsable:* " + (subtask.responsable || parentTask.responsable) + "\n" +
+            "⏱️ *Horas:* " + (subtask.horas || 0) + " hrs\n\n" +
+            "_Esta acción actualizará el avance de la tarea padre en el cronograma._";
+          botReply.buttons = [
+            { text: "✅ Sí, completar", cmd: "conf_comp_" + subtask.id },
+            { text: "❌ No, cancelar", cmd: "canc_comp_" + subtask.id }
+          ];
+          botReply.layout = "grid";
+        } else {
+          const task = findSimTask(targetId);
+          if (!task) {
+            botReply.text = "⚠️ No se encontró la tarea *" + targetId + "*. Escribe *mis tareas* para verificar los IDs disponibles.";
+          } else {
+            botReply.text = "⚠️ *Confirmación Requerida*\n\n" +
+              "¿Confirmas que deseas marcar como *COMPLETADA* la siguiente tarea?\n\n" +
+              "📌 *ID:* `" + task.id + "`\n" +
+              "📝 *Tarea:* " + task.name + "\n" +
+              "👤 *Responsable:* " + task.responsable + "\n" +
+              "📅 *Límite:* `" + (task.end || "Sin fecha") + "` | 💰 *Costo:* $" + Number(task.costoTotal || 0).toLocaleString("es-MX") + " MXN\n\n" +
+              "_Esta acción actualizará el avance al 100% y se registrará en Git-as-a-Database._";
+            botReply.buttons = [
+              { text: "✅ Sí, completar", cmd: "conf_comp_" + task.id },
+              { text: "❌ No, cancelar", cmd: "canc_comp_" + task.id }
+            ];
+            botReply.layout = "grid";
+          }
+        }
+      }
+
+      // 4. MENÚ CATÁLOGO DE TAREAS (BOTONES ENLACE 1 POR FILA CON NOMBRES TOPADOS)
+      else if (lower === "tareas" || lower === "catalogo" || lower === "menu tareas" || lower === "/tareas" || lower === "todas las tareas") {
+        if (!tasksData || tasksData.length === 0) {
+          botReply.text = "📋 *Catálogo de Tareas*\n\nActualmente no hay tareas registradas en el proyecto.";
+          botReply.buttons = [
+            { text: "☀️ Daily Standup", cmd: "standup" },
+            { text: "📊 Reporte", cmd: "reporte" }
+          ];
+        } else {
+          botReply.text = "📋 *Catálogo de Tareas del Proyecto (" + tasksData.length + "):*\n\n" +
+            "Pulsa sobre cualquier tarea para abrir su hilo directo, ver sus subtareas o comentar en su bitácora:";
+          const taskBtns = [];
+          tasksData.forEach(t => {
+            const icon = t.estado === "Completada" ? "✅" : (t.estado === "En Progreso" ? "⚡" : "⏳");
+            const maxLen = 28;
+            let cleanName = (t.name || "").trim();
+            if (cleanName.length > maxLen) {
+              cleanName = cleanName.substring(0, maxLen).trim() + "…";
+            }
+            const pct = (t.progress || (t.estado === "Completada" ? 100 : 0)) + "%";
+            taskBtns.push({
+              text: icon + " " + t.id + ": " + cleanName + " (" + pct + ")",
+              cmd: "tarea " + t.id
+            });
+          });
+          taskBtns.push({ text: "📋 Mis Tareas", cmd: "mis tareas" });
+          taskBtns.push({ text: "☀️ Daily Standup", cmd: "standup" });
+          botReply.buttons = taskBtns;
+          botReply.layout = "stack";
+        }
+      }
+
+      // 5. ENTRAR A MODO TAREA ENFOCADA (CON DETALLE DE SUBTAREAS)
+      else if (lower.match(/^(?:tarea|abrir|\/tarea)\s+([a-z0-9\-]+)$/i)) {
+        const m = lower.match(/^(?:tarea|abrir|\/tarea)\s+([a-z0-9\-]+)$/i);
+        const targetId = m[1].toUpperCase();
+        const task = findSimTask(targetId);
+
+        if (!task) {
+          botReply.text = "⚠️ No se encontró la tarea *" + targetId + "*. Escribe *tareas* para consultar el catálogo disponible.";
+        } else {
+          let subtasksSection = "";
+          const btns = [];
+
+          if (task.subtareas && Array.isArray(task.subtareas) && task.subtareas.length > 0) {
+            subtasksSection += "\n🧩 *Subtareas Pulverizadas (" + task.subtareas.length + "):*\n";
+            task.subtareas.forEach(s => {
+              const icon = s.estado === "Completada" ? "✅" : (s.estado === "En Progreso" ? "⚡" : "⏳");
+              subtasksSection += "   " + icon + " `" + s.id + "`: " + s.name + "\n      👤 *" + s.responsable + "* | " + (s.horas || 0) + "h | Estado: *" + s.estado + "*\n";
+              if (s.estado !== "Completada") {
+                btns.push({ text: "✅ Completar " + s.id, cmd: "completar " + s.id });
+              }
+            });
+          } else {
+            subtasksSection += "\n🧩 *Subtareas:* Ninguna registrada.\nPuedes pulverizarla escribiendo:\n`subtarea " + task.id + ": [nombre] @[responsable]`\n";
+          }
+
+          if (task.estado !== "Completada") {
+            btns.push({ text: "✅ Completar Tarea", cmd: "completar " + task.id });
+            btns.push({ text: "🚀 Iniciar Tarea", cmd: "iniciar " + task.id });
+          }
+          btns.push({ text: "📋 Catálogo de Tareas", cmd: "tareas" });
+          btns.push({ text: "🏠 Menú Principal", cmd: "menu" });
+
+          botReply.text = "💬 *Modo Conversación Activo: " + task.id + "*\n" +
+            "📝 *" + task.name + "*\n" +
+            "👤 *Responsable:* " + task.responsable + "\n" +
+            "📊 *Estado:* " + task.estado + " (" + (task.progress || 0) + "%)\n" +
+            "📅 *Límite:* `" + (task.end || "Sin fecha") + "` | 💰 *Costo:* $" + Number(task.costoTotal || 0).toLocaleString("es-MX") + " MXN\n" +
+            subtasksSection + "\n" +
+            "Todos los mensajes que envíes ahora se vincularán a esta tarea.";
+          botReply.buttons = btns;
+          botReply.layout = "grid";
+        }
+      }
+
+      // 6. MIS TAREAS ASIGNADAS (CON DESGLOSE DE SUBTAREAS)
+      else if (lower === "mis tareas" || lower === "pendientes" || lower === "mis entregables") {
         const myTasks = tasksData.filter(t => {
           const r = (t.responsable || "").toLowerCase();
           const u = activeUser.toLowerCase();
-          return r.includes(u) || u.includes(r);
+          const isDirect = r.includes(u) || u.includes(r);
+          const hasSub = t.subtareas && Array.isArray(t.subtareas) && t.subtareas.some(s => (s.responsable || "").toLowerCase().includes(u));
+          return isDirect || hasSub;
         });
 
         if (myTasks.length === 0) {
-          botReply.text = "📋 *Tus Tareas Asignadas (" + activeUser + ")*\nNo tienes tareas activas asignadas actualmente.";
+          botReply.text = "📋 *Tus Tareas Asignadas (" + activeUser + ")*\n\nNo tienes tareas activas asignadas actualmente.\nPuedes crear una nueva escribiendo:\n*crear [nombre de la tarea]*";
+          botReply.buttons = [
+            { text: "📋 Catálogo de Tareas", cmd: "tareas" },
+            { text: "☀️ Daily Standup", cmd: "standup" }
+          ];
         } else {
           let str = "📋 *Tareas Asignadas a " + activeUser + " (" + myTasks.length + "):*\n\n";
           const btns = [];
           myTasks.forEach(t => {
             const icon = t.estado === "Completada" ? "✅" : (t.estado === "En Progreso" ? "⚡" : "⏳");
-            str += icon + " *" + t.id + ":* " + t.name + "\n   📅 Límite: `" + (t.end || 'N/A') + "` | Estado: *" + t.estado + "* | Avance: " + (t.progress || 0) + "%\n\n";
+            const subsInfo = (t.subtareas && t.subtareas.length > 0) ? " [" + t.subtareas.filter(s=>s.estado==='Completada').length + "/" + t.subtareas.length + " subs]" : "";
+            str += icon + " *" + t.id + ":* " + t.name + subsInfo + "\n";
+            str += "   👤 " + t.responsable + " | 📅 Límite: `" + (t.end || "Sin fecha") + "`\n";
+            str += "   📊 Estado: *" + t.estado + "* (" + (t.progress || 0) + "%)\n";
+
+            if (t.subtareas && Array.isArray(t.subtareas) && t.subtareas.length > 0) {
+              t.subtareas.forEach(s => {
+                const sIcon = s.estado === "Completada" ? "✅" : (s.estado === "En Progreso" ? "⚡" : "⏳");
+                str += "      ↳ " + sIcon + " `" + s.id + "`: " + s.name + " (" + s.responsable + " • " + s.estado + ")\n";
+              });
+            }
+            str += "\n";
+
             if (t.estado !== "Completada") {
               btns.push({ text: "✅ Completar " + t.id, cmd: "completar " + t.id });
             }
+            btns.push({ text: "💬 Abrir " + t.id, cmd: "tarea " + t.id });
           });
+          btns.push({ text: "📋 Catálogo de Tareas", cmd: "tareas" });
+          btns.push({ text: "☀️ Daily Standup", cmd: "standup" });
+
           botReply.text = str.trim();
-          botReply.buttons = btns.length > 0 ? btns : null;
+          botReply.buttons = btns;
+          botReply.layout = "grid";
         }
-      } else if (lower.match(/^(?:completar|finalizar|terminar|cerrar)\s+([a-z0-9\-]+)$/i)) {
-        const m = lower.match(/^(?:completar|finalizar|terminar|cerrar)\s+([a-z0-9\-]+)$/i);
-        const targetId = m[1].toUpperCase();
-        const task = tasksData.find(t => {
-          const tid = String(t.id).toUpperCase();
-          return tid === targetId || tid.endsWith("-" + targetId.replace(/[^0-9]/g, ''));
+      }
+
+      // 7. PULVERIZAR SUBTAREA (subtarea TSK-01: [nombre] @[responsable])
+      else if (lower.match(/^(?:subtarea|sub)\s+([a-z0-9\-]+)[:\s]+(.+)$/i)) {
+        const m = raw.match(/^(?:subtarea|sub)\s+([a-z0-9\-]+)[:\s]+(.+)$/i);
+        const parentId = m[1].toUpperCase();
+        let subContent = m[2].trim();
+
+        const parentTask = findSimTask(parentId);
+        if (!parentTask) {
+          botReply.text = "⚠️ No se encontró la tarea padre *" + parentId + "* para crear la subtarea.";
+        } else {
+          let assignee = activeUser;
+          if (subContent.includes("@")) {
+            const parts = subContent.split("@");
+            subContent = parts[0].trim();
+            assignee = parts[1].trim();
+          }
+
+          if (!parentTask.subtareas || !Array.isArray(parentTask.subtareas)) {
+            parentTask.subtareas = [];
+          }
+          const subId = "SUB-" + parentTask.id.replace(/^TSK-/, '') + "-" + String(parentTask.subtareas.length + 1).padStart(2, '0');
+          const newSub = {
+            id: subId,
+            name: subContent,
+            responsable: assignee,
+            horas: 8,
+            estado: "No Iniciada",
+            fecha: new Date().toISOString().split('T')[0]
+          };
+          parentTask.subtareas.push(newSub);
+          refreshActiveViews();
+
+          botReply.text = "🧩 *¡Subtarea pulverizada y registrada con éxito!*\n\n" +
+            "📌 *ID Subtarea:* `" + newSub.id + "`\n" +
+            "📝 *Nombre:* " + newSub.name + "\n" +
+            "👤 *Responsable:* *" + newSub.responsable + "*\n" +
+            "📦 *Tarea Principal:* `" + parentTask.id + "` (" + parentTask.name + ")\n\n" +
+            "_🐙 Guardada en memoria y sincronizada con el Centro de Operaciones._";
+          botReply.buttons = [
+            { text: "💬 Abrir " + parentTask.id, cmd: "tarea " + parentTask.id },
+            { text: "✅ Completar " + newSub.id, cmd: "completar " + newSub.id },
+            { text: "📋 Mis Tareas", cmd: "mis tareas" }
+          ];
+          botReply.layout = "grid";
+        }
+      }
+
+      // 8. DAILY STANDUP (SCRUM MASTER)
+      else if (lower === "standup" || lower === "/standup" || lower === "daily") {
+        const hoy = new Date().toISOString().split('T')[0];
+        const total = tasksData.length;
+        const comp = tasksData.filter(t => t.estado === "Completada").length;
+        const enProg = tasksData.filter(t => t.estado === "En Progreso");
+        const vencidas = tasksData.filter(t => t.estado !== "Completada" && t.end && t.end < hoy);
+
+        // Subtareas pendientes
+        const allSubsPendientes = [];
+        tasksData.forEach(t => {
+          if (t.subtareas && Array.isArray(t.subtareas)) {
+            t.subtareas.filter(s => s.estado !== "Completada").forEach(sub => {
+              allSubsPendientes.push({ ...sub, parentTaskId: t.id });
+            });
+          }
         });
 
-        if (!task) {
-          botReply.text = "⚠️ No se encontró la tarea *" + targetId + "*. Escribe *mis tareas* para verificar los IDs disponibles.";
-        } else {
-          // Regla de propiedad estricta: solo el responsable asignado puede modificar
-          const isOwner = (task.responsable || "").toLowerCase().includes(activeUser.toLowerCase()) ||
-                          (usersConfig[activeUser] && usersConfig[activeUser].alcanceEdicion === "todas");
+        let text = "☀️ *Daily Standup — Proyecto Chimay*\n";
+        text += "📅 *Fecha:* `" + hoy + "` | *Avance Global:* `" + (total > 0 ? Math.round((comp / total) * 100) : 0) + "%`\n\n";
 
-          if (!isOwner) {
-            botReply.text = "⚠️ *Permiso denegado:*\nSolo el responsable asignado (*" + task.responsable + "*) puede modificar o completar esta tarea.";
-          } else {
-            task.estado = "Completada";
-            task.progress = 100;
-            task.fechaCambioEstado = new Date().toISOString();
-            refreshActiveViews();
-            botReply.text = "✅ *¡Tarea completada con éxito!*\n\n📌 *ID:* `" + task.id + "`\n📝 *Nombre:* " + task.name + "\n👤 *Responsable:* " + activeUser + "\n📊 *Estado:* Completada (100%)\n🐙 *Sincronización:* Sincronizado en memoria y listo para commit en Git.";
-          }
+        text += "⚡ *1. En Progreso Hoy:*\n";
+        if (enProg.length === 0) {
+          text += "   _Sin tareas en ejecución hoy. Puedes iniciar una con /iniciar [ID]._\n";
+        } else {
+          enProg.forEach(t => {
+            text += "   • *" + t.id + ":* " + t.name + "\n     👤 `" + t.responsable + "` | 📊 " + (t.progress || 0) + "%\n";
+          });
         }
-      } else if (lower.match(/^(?:iniciar|arrancar|comenzar)\s+([a-z0-9\-]+)$/i)) {
+        text += "\n";
+
+        if (allSubsPendientes.length > 0) {
+          text += "🧩 *2. Subtareas Asignadas en Curso (" + allSubsPendientes.length + "):*\n";
+          allSubsPendientes.slice(0, 5).forEach(s => {
+            text += "   • [" + s.parentTaskId + "] *" + s.name + "*\n     👤 Asignado: `" + s.responsable + "` (" + s.estado + ")\n";
+          });
+          text += "\n";
+        }
+
+        text += "🚨 *3. Cuellos de Botella y Riesgos:*\n";
+        if (vencidas.length === 0) {
+          text += "   ✅ *Excelente:* Todas las actividades están dentro del cronograma previsto.\n";
+        } else {
+          vencidas.forEach(t => {
+            text += "   ⚠️ *Demorada [" + t.id + "]:* " + t.name + "\n      Venció el `" + t.end + "` (Responsable: *" + t.responsable + "*)\n";
+          });
+        }
+        text += "\n";
+
+        text += "🎯 *5. Foco del Día Recomendado:*\n";
+        if (vencidas.length > 0) {
+          text += "   👉 Resolver la tarea demorada *" + vencidas[0].id + "* con " + vencidas[0].responsable + ".\n";
+        } else if (enProg.length > 0) {
+          text += "   👉 Dar continuidad a *" + enProg[0].id + "* para completar sus entregables.\n";
+        } else {
+          text += "   👉 Iniciar las siguientes actividades del cronograma maestro.\n";
+        }
+
+        botReply.text = text;
+        botReply.buttons = [
+          { text: "📋 Tareas", cmd: "tareas" },
+          { text: "📋 Mis Tareas", cmd: "mis tareas" },
+          { text: "💰 Costos", cmd: "costos" }
+        ];
+        botReply.layout = "grid";
+      }
+
+      // 9. COSTOS & INTELIGENCIA FINANCIERA
+      else if (lower.includes("costo") || lower.includes("balance") || lower.includes("financier")) {
+        const totalCost = tasksData.reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
+        const compCost = tasksData.filter(t => t.estado === "Completada").reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
+        const progCost = tasksData.filter(t => t.estado === "En Progreso").reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
+        const pendCost = tasksData.filter(t => t.estado === "No Iniciada").reduce((acc, t) => acc + (Number(t.costoTotal) || 0), 0);
+
+        botReply.text = "💰 *Inteligencia Financiera — Proyecto Chimay*\n\n" +
+          "• *Costo al Día (Completadas):* `$" + compCost.toLocaleString('es-MX') + " MXN` (" + (totalCost > 0 ? Math.round((compCost/totalCost)*100) : 0) + "%)\n" +
+          "• *Costo en Curso (En Progreso):* `$" + progCost.toLocaleString('es-MX') + " MXN` (" + (totalCost > 0 ? Math.round((progCost/totalCost)*100) : 0) + "%)\n" +
+          "• *⚡ Total Activas:* `$" + (compCost + progCost).toLocaleString('es-MX') + " MXN` (" + (totalCost > 0 ? Math.round(((compCost+progCost)/totalCost)*100) : 0) + "%)\n" +
+          "• *⏳ Costo Proyectado (No Iniciadas):* `$" + pendCost.toLocaleString('es-MX') + " MXN` (" + (totalCost > 0 ? Math.round((pendCost/totalCost)*100) : 0) + "%)\n" +
+          "• *🌐 Presupuesto Global Consolidado:* `$" + totalCost.toLocaleString('es-MX') + " MXN`";
+        botReply.buttons = [
+          { text: "📋 Catálogo de Tareas", cmd: "tareas" },
+          { text: "☀️ Daily Standup", cmd: "standup" },
+          { text: "📋 Mis Tareas", cmd: "mis tareas" }
+        ];
+        botReply.layout = "grid";
+      }
+
+      // 10. INICIAR TAREA
+      else if (lower.match(/^(?:iniciar|arrancar|comenzar)\s+([a-z0-9\-]+)$/i)) {
         const m = lower.match(/^(?:iniciar|arrancar|comenzar)\s+([a-z0-9\-]+)$/i);
         const targetId = m[1].toUpperCase();
-        const task = tasksData.find(t => {
-          const tid = String(t.id).toUpperCase();
-          return tid === targetId || tid.endsWith("-" + targetId.replace(/[^0-9]/g, ''));
-        });
+        const task = findSimTask(targetId);
 
         if (!task) {
           botReply.text = "⚠️ No se encontró la tarea *" + targetId + "*.";
         } else {
-          const isOwner = (task.responsable || "").toLowerCase().includes(activeUser.toLowerCase()) ||
-                          (usersConfig[activeUser] && usersConfig[activeUser].alcanceEdicion === "todas");
-          if (!isOwner) {
-            botReply.text = "⚠️ *Permiso denegado:*\nSolo el responsable asignado (*" + task.responsable + "*) puede modificar esta tarea.";
-          } else {
-            task.estado = "En Progreso";
-            task.progress = 50;
-            refreshActiveViews();
-            botReply.text = "🚀 *Tarea puesta en progreso:*\n\n📌 *ID:* `" + task.id + "`\n📝 *Nombre:* " + task.name + "\n👤 *Responsable:* " + activeUser + "\n📊 *Estado:* En Progreso (50%)";
-          }
+          task.estado = "En Progreso";
+          task.progress = 50;
+          refreshActiveViews();
+          botReply.text = "🚀 *Tarea puesta en progreso:*\n\n📌 *ID:* `" + task.id + "`\n📝 *Nombre:* " + task.name + "\n👤 *Responsable:* " + activeUser + "\n📊 *Estado:* En Progreso (50%)";
+          botReply.buttons = [
+            { text: "✅ Completar " + task.id, cmd: "completar " + task.id },
+            { text: "💬 Abrir " + task.id, cmd: "tarea " + task.id },
+            { text: "📋 Mis Tareas", cmd: "mis tareas" }
+          ];
+          botReply.layout = "grid";
         }
-      } else if (raw.match(/^(?:comentar\s+)?(tsk-[a-z0-9\-]+)[:\s]+(.+)$/i)) {
+      }
+
+      // 11. COMENTAR EN TAREA ([ID]: [comentario])
+      else if (raw.match(/^(?:comentar\s+)?(tsk-[a-z0-9\-]+)[:\s]+(.+)$/i)) {
         const m = raw.match(/^(?:comentar\s+)?(tsk-[a-z0-9\-]+)[:\s]+(.+)$/i);
         const targetId = m[1].toUpperCase();
         const comment = m[2].trim();
-        const task = tasksData.find(t => {
-          const tid = String(t.id).toUpperCase();
-          return tid === targetId || tid.endsWith("-" + targetId.replace(/[^0-9]/g, ''));
-        });
+        const task = findSimTask(targetId);
 
         if (!task) {
           botReply.text = "⚠️ No se encontró la tarea *" + targetId + "* para comentar.";
         } else {
-          // Regla: cualquier usuario autorizado puede chatear en cualquier tarea
           if (!taskComments[task.id]) taskComments[task.id] = [];
           taskComments[task.id].push({
             id: "COM-" + Date.now(),
@@ -8898,13 +9289,20 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           localStorage.setItem("chimay_task_comments", JSON.stringify(taskComments));
           refreshActiveViews();
           botReply.text = "💬 *Comentario publicado en " + task.id + ":*\n\n\"" + comment + "\"\n\n👤 *Autor:* " + activeUser + "\n🌐 *Visibilidad:* Ya visible en el Centro de Operaciones Web.";
+          botReply.buttons = [
+            { text: "💬 Abrir " + task.id, cmd: "tarea " + task.id },
+            { text: "📋 Mis Tareas", cmd: "mis tareas" }
+          ];
+          botReply.layout = "grid";
         }
-      } else if (lower.startsWith("crear ") || lower.startsWith("nueva tarea ")) {
+      }
+
+      // 12. CREAR NUEVA TAREA
+      else if (lower.startsWith("crear ") || lower.startsWith("nueva tarea ")) {
         const taskName = raw.replace(/^(?:crear\s+tarea\s+|crear\s+|nueva\s+tarea\s+)/i, "").trim();
         if (!taskName) {
           botReply.text = "⚠️ Por favor especifica el nombre de la tarea.\nEjemplo: `crear Limpieza y poda de camas`";
         } else {
-          // Creación universal: auto-asignada al creador
           const maxNum = tasksData.reduce((max, t) => {
             const m = String(t.id).match(/(\d+)$/);
             return m ? Math.max(max, parseInt(m[1], 10)) : max;
@@ -8916,7 +9314,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           const newTask = {
             id: nextId,
             name: taskName,
-            responsable: activeUser, // Auto-asignado
+            responsable: activeUser,
             horas: 8,
             costoPersonal: 1600,
             costoMateriales: 0,
@@ -8933,8 +9331,16 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           tasksData.push(newTask);
           refreshActiveViews();
           botReply.text = "📋 *¡Nueva tarea creada con éxito!*\n\n📌 *ID WBS:* `" + newTask.id + "`\n📝 *Nombre:* " + newTask.name + "\n👤 *Responsable:* *" + activeUser + "* (Auto-asignada al creador)\n📅 *Fecha Límite:* `" + newTask.end + "`\n📊 *Estado:* No Iniciada";
+          botReply.buttons = [
+            { text: "💬 Abrir " + newTask.id, cmd: "tarea " + newTask.id },
+            { text: "📋 Mis Tareas", cmd: "mis tareas" }
+          ];
+          botReply.layout = "grid";
         }
-      } else if (lower.includes("reporte") || lower.includes("costos") || lower.includes("balance")) {
+      }
+
+      // 13. REPORTE GENERAL
+      else if (lower.includes("reporte")) {
         const total = tasksData.length;
         const comp = tasksData.filter(t => t.estado === "Completada").length;
         const prog = tasksData.filter(t => t.estado === "En Progreso").length;
@@ -8947,12 +9353,39 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           "⚡ *En Progreso:* " + prog + "\n" +
           "⏳ *Por Iniciar:* " + pend + "\n" +
           "💰 *Presupuesto Total:* $" + totalCost.toLocaleString('es-MX') + " MXN";
-        botReply.buttons = [{ text: "📊 Ver en Informes & Costos", cmd: "reporte" }];
-      } else {
-        botReply.text = "🤖 No reconocí ese comando, *" + activeUser + "*.\nEscribe *mis tareas* o *ayuda* para ver las opciones disponibles.";
+        botReply.buttons = [
+          { text: "📋 Catálogo de Tareas", cmd: "tareas" },
+          { text: "☀️ Daily Standup", cmd: "standup" },
+          { text: "💰 Costos", cmd: "costos" }
+        ];
+        botReply.layout = "grid";
       }
 
-      telegramSimHistory.push({ sender: "bot", text: botReply.text, time: now, buttons: botReply.buttons });
+      // 14. MENÚ / AYUDA / DEFAULT
+      else {
+        botReply.text = "🤖 *Centro de Operaciones Chimay (Telegram)*\n" +
+          "¡Hola *" + activeUser + "*!\n\n" +
+          "*Comandos de Gestión Operativa:*\n" +
+          "📋 *tareas* ➔ Catálogo interactivo de todas las tareas con enlaces directos.\n" +
+          "📋 *mis tareas* ➔ Ver tus entregables personales y fechas límite.\n" +
+          "☀️ *standup* ➔ Daily Standup con análisis de avances, cuellos de botella y subtareas.\n" +
+          "💰 *costos* ➔ Consulta financiera: activo vs proyectado y presupuesto total.\n" +
+          "🧩 *subtarea [ID]: [nombre] @[responsable]* ➔ Pulverizar tarea en subtareas.\n" +
+          "✅ *completar [ID o SUB-ID]* ➔ Finalizar tarea o subtarea (con confirmación SI/NO).\n" +
+          "🚀 *iniciar [ID]* ➔ Poner en progreso una tarea.\n" +
+          "💬 *[ID]: [mensaje]* ➔ Comentar en la bitácora de cualquier tarea.\n" +
+          "➕ *crear [nombre]* ➔ Crear nueva tarea auto-asignada.\n" +
+          "📊 *reporte* ➔ Balance de costos y avance general.";
+        botReply.buttons = [
+          { text: "📋 Tareas", cmd: "tareas" },
+          { text: "📋 Mis Tareas", cmd: "mis tareas" },
+          { text: "☀️ Daily Standup", cmd: "standup" },
+          { text: "💰 Costos", cmd: "costos" }
+        ];
+        botReply.layout = "grid";
+      }
+
+      telegramSimHistory.push({ sender: "bot", text: botReply.text, time: now, buttons: botReply.buttons, layout: botReply.layout });
       switchTelegramTab("simulador");
     }
 
