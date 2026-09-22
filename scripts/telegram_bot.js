@@ -983,8 +983,12 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
       { text: "🚀 Iniciar Tarea", callback_data: `iniciar_${task.id}` }
     ]);
     keyboard.push([
-      { text: "📋 Catálogo de Tareas", callback_data: "cmd_menu_tareas" },
-      { text: "🔙 Salir del Hilo", callback_data: "cmd_salir_tarea" }
+      { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" },
+      { text: "📋 Catálogo de Tareas", callback_data: "cmd_menu_tareas" }
+    ]);
+    keyboard.push([
+      { text: "🔙 Salir del Hilo", callback_data: "cmd_salir_tarea" },
+      { text: "🏠 Menú Principal", callback_data: "cmd_menu" }
     ]);
 
     return {
@@ -1076,7 +1080,8 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
       };
     }
 
-    let response = `📋 *Tareas Asignadas (${myTasks.length}):*\n\n`;
+    let response = `📋 *Tareas Asignadas (${myTasks.length}):*\n\n` +
+                   `Pulsa sobre cualquier tarea para abrir su hilo directo, ver sus subtareas o gestionarla:\n\n`;
     const keyboard = [];
 
     myTasks.forEach((t) => {
@@ -1084,20 +1089,34 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
       const subsInfo = (t.subtareas && t.subtareas.length > 0) ? ` [${t.subtareas.filter(s=>s.estado==='Completada').length}/${t.subtareas.length} subs]` : '';
       response += `${icon} *${t.id}:* ${t.name}${subsInfo}\n`;
       response += `   👤 ${t.responsable} | 📅 Límite: \`${t.end || "Sin fecha"}\`\n`;
-      response += `   📊 Estado: *${t.estado}* (${t.progress || 0}%)\n\n`;
-
-      const row = [];
-      if (t.estado !== "Completada") {
-        row.push({ text: `✅ Completar ${t.id}`, callback_data: `completar_${t.id}` });
-        row.push({ text: `🚀 Iniciar ${t.id}`, callback_data: `iniciar_${t.id}` });
+      response += `   📊 Estado: *${t.estado}* (${t.progress || 0}%)\n`;
+      if (t.subtareas && Array.isArray(t.subtareas) && t.subtareas.length > 0) {
+        t.subtareas.forEach(s => {
+          const sIcon = s.estado === "Completada" ? "✅" : (s.estado === "En Progreso" ? "⚡" : "⏳");
+          response += `      ↳ ${sIcon} \`${s.id}\`: ${s.name} (${s.responsable} • ${s.estado})\n`;
+        });
       }
-      row.push({ text: `💬 Abrir ${t.id}`, callback_data: `tarea_${t.id}` });
-      keyboard.push(row);
+      response += `\n`;
+
+      // 1 botón por tarea a renglón completo con nombre topado y % de avance (100% legible y sin truncar ID)
+      const maxNameLen = 28;
+      let cleanName = (t.name || "").trim();
+      if (cleanName.length > maxNameLen) {
+        cleanName = cleanName.substring(0, maxNameLen).trim() + "…";
+      }
+      const pct = `${t.progress || (t.estado === "Completada" ? 100 : 0)}%`;
+      const btnText = `${icon} ${t.id}: ${cleanName} (${pct})`;
+
+      keyboard.push([{ text: btnText, callback_data: `tarea_${t.id}` }]);
     });
 
     keyboard.push([
-      { text: "☀️ Daily Standup", callback_data: "cmd_standup" },
-      { text: "📊 Reporte General", callback_data: "cmd_reporte" }
+      { text: "📋 Catálogo de Tareas", callback_data: "cmd_menu_tareas" },
+      { text: "☀️ Daily Standup", callback_data: "cmd_standup" }
+    ]);
+    keyboard.push([
+      { text: "📊 Reporte General", callback_data: "cmd_reporte" },
+      { text: "🏠 Menú Principal", callback_data: "cmd_menu" }
     ]);
 
     return {

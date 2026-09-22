@@ -9079,7 +9079,8 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             { text: "☀️ Daily Standup", cmd: "standup" }
           ];
         } else {
-          let str = "📋 *Tareas Asignadas a " + activeUser + " (" + myTasks.length + "):*\n\n";
+          let str = "📋 *Tareas Asignadas a " + activeUser + " (" + myTasks.length + "):*\n\n" +
+                    "Pulsa sobre cualquier tarea para abrir su hilo directo, ver sus subtareas o gestionarla:\n\n";
           const btns = [];
           myTasks.forEach(t => {
             const icon = t.estado === "Completada" ? "✅" : (t.estado === "En Progreso" ? "⚡" : "⏳");
@@ -9096,17 +9097,24 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             }
             str += "\n";
 
-            if (t.estado !== "Completada") {
-              btns.push({ text: "✅ Completar " + t.id, cmd: "completar " + t.id });
+            // 1 botón por tarea a renglón completo con nombre topado y % de avance (100% legible y sin truncar ID)
+            const maxLen = 28;
+            let cleanName = (t.name || "").trim();
+            if (cleanName.length > maxLen) {
+              cleanName = cleanName.substring(0, maxLen).trim() + "…";
             }
-            btns.push({ text: "💬 Abrir " + t.id, cmd: "tarea " + t.id });
+            const pct = (t.progress || (t.estado === "Completada" ? 100 : 0)) + "%";
+            btns.push({
+              text: icon + " " + t.id + ": " + cleanName + " (" + pct + ")",
+              cmd: "tarea " + t.id
+            });
           });
           btns.push({ text: "📋 Catálogo de Tareas", cmd: "tareas" });
           btns.push({ text: "☀️ Daily Standup", cmd: "standup" });
 
           botReply.text = str.trim();
           botReply.buttons = btns;
-          botReply.layout = "grid";
+          botReply.layout = "stack";
         }
       }
 
