@@ -432,7 +432,7 @@ function detectIntent(rawText) {
   if (!norm && !raw) return { type: "VACIO" };
 
   // 1. Salir / Cancelar modo conversación de tarea
-  const salirList = ["salir", "salir tarea", "cancelar", "volver", "atras", "cerrar", "cerrar hilo", "terminar hilo", "menu principal"];
+  const salirList = ["salir", "salir tarea", "cancelar", "volver", "atras", "cerrar", "cerrar hilo", "terminar hilo"];
   if (salirList.includes(norm) || norm.startsWith("salir")) {
     return { type: "SALIR_TAREA" };
   }
@@ -563,7 +563,7 @@ function detectIntent(rawText) {
 
   // 9. Ayuda / Start / Menú / Saludo inicial
   const ayudaKeywords = [
-    "start", "ayuda", "menu", "inicio", "hola", "comandos", "help", "opciones", "buenos dias", "buenas tardes"
+    "start", "ayuda", "menu", "menu principal", "inicio", "hola", "comandos", "help", "opciones", "buenos dias", "buenas tardes"
   ];
   if (ayudaKeywords.includes(norm)) {
     return { type: "AYUDA" };
@@ -763,9 +763,14 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
         text: `🔙 *Has salido del hilo de ${prevTask}.*\nAhora estás en el menú principal.\n\nEscribe *mis tareas*, *reporte* o *standup*.`,
         keyboard: [
           [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "☀️ Daily Standup", callback_data: "cmd_standup" }],
-          [{ text: "📊 Reporte", callback_data: "cmd_reporte" }]
+          [{ text: "📊 Reporte", callback_data: "cmd_reporte" }, { text: "🏠 Menú Principal", callback_data: "cmd_menu" }]
         ]
       };
+    }
+
+    // Si pide el menú principal explícitamente, liberamos la sesión y proseguimos al menú
+    if (intent.type === "AYUDA") {
+      delete userSessions[from.id];
     }
 
     // Si escribió texto libre ordinario que no es ningún comando del sistema -> comentar en la tarea
@@ -778,11 +783,10 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
         return {
           authorized: true,
           text: `💬 *Comentario publicado en ${task.id}:*\n\n"${rawText}"\n\n` +
-                `👤 *Autor:* ${user.nombre}\n` +
-                `_(Sigues en el hilo de ${task.id}. Envía /salir para terminar)_`,
+                `_✍️ Registrado por ${user.nombre} en el Centro de Operaciones._`,
           keyboard: [
-            [{ text: "✅ Completar Tarea", callback_data: `completar_${task.id}` }, { text: "🚀 Iniciar Tarea", callback_data: `iniciar_${task.id}` }],
-            [{ text: "🔙 Salir del Hilo", callback_data: "cmd_salir_tarea" }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }]
+            [{ text: "🔙 Salir del Hilo", callback_data: "cmd_salir_tarea" }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }],
+            [{ text: "🏠 Menú Principal", callback_data: "cmd_menu" }]
           ]
         };
       }
@@ -799,7 +803,7 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
       text: standupText,
       keyboard: [
         [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "📊 Reporte de Costos", callback_data: "cmd_reporte" }],
-        [{ text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
+        [{ text: "🏠 Menú Principal", callback_data: "cmd_menu" }, { text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
       ]
     };
   }
@@ -1349,6 +1353,9 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
         [
           { text: "☀️ Daily Standup", callback_data: "cmd_standup" },
           { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }
+        ],
+        [
+          { text: "🏠 Menú Principal", callback_data: "cmd_menu" }
         ]
       ];
     };
@@ -1525,7 +1532,8 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
             `_💡 Pulsa "💰 Selector de Costos" para ver detalles específicos._`,
       keyboard: [
         [{ text: "💰 Selector de Costos", callback_data: "cmd_costos" }, { text: "☀️ Daily Standup", callback_data: "cmd_standup" }],
-        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
+        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "🏠 Menú Principal", callback_data: "cmd_menu" }],
+        [{ text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
       ]
     };
   }

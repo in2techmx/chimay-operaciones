@@ -8800,6 +8800,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             <button type="button" onclick="ejecutarComandoSimulador('mis tareas')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">📋 mis tareas</button>
             <button type="button" onclick="ejecutarComandoSimulador('standup')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">☀️ standup</button>
             <button type="button" onclick="ejecutarComandoSimulador('costos')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">💰 costos</button>
+            <button type="button" onclick="ejecutarComandoSimulador('menu')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">🏠 menu</button>
             <button type="button" onclick="ejecutarComandoSimulador('completar TSK-PRE-01')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">✅ completar TSK-PRE-01</button>
             <button type="button" onclick="ejecutarComandoSimulador('TSK-PRE-01: Se aplicó abono orgánico en campo')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">💬 comentar TSK-PRE-01</button>
             <button type="button" onclick="ejecutarComandoSimulador('crear Instalar válvula de retención sector 2')" class="px-2 py-0.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 font-bold transition whitespace-nowrap">➕ crear tarea</button>
@@ -9111,6 +9112,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           });
           btns.push({ text: "📋 Catálogo de Tareas", cmd: "tareas" });
           btns.push({ text: "☀️ Daily Standup", cmd: "standup" });
+          btns.push({ text: "🏠 Menú Principal", cmd: "menu" });
 
           botReply.text = str.trim();
           botReply.buttons = btns;
@@ -9227,7 +9229,8 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         botReply.buttons = [
           { text: "📋 Tareas", cmd: "tareas" },
           { text: "📋 Mis Tareas", cmd: "mis tareas" },
-          { text: "💰 Costos", cmd: "costos" }
+          { text: "💰 Costos", cmd: "costos" },
+          { text: "🏠 Menú Principal", cmd: "menu" }
         ];
         botReply.layout = "grid";
       }
@@ -9248,7 +9251,8 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         botReply.buttons = [
           { text: "📋 Catálogo de Tareas", cmd: "tareas" },
           { text: "☀️ Daily Standup", cmd: "standup" },
-          { text: "📋 Mis Tareas", cmd: "mis tareas" }
+          { text: "📋 Mis Tareas", cmd: "mis tareas" },
+          { text: "🏠 Menú Principal", cmd: "menu" }
         ];
         botReply.layout = "grid";
       }
@@ -9364,7 +9368,8 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         botReply.buttons = [
           { text: "📋 Catálogo de Tareas", cmd: "tareas" },
           { text: "☀️ Daily Standup", cmd: "standup" },
-          { text: "💰 Costos", cmd: "costos" }
+          { text: "💰 Costos", cmd: "costos" },
+          { text: "🏠 Menú Principal", cmd: "menu" }
         ];
         botReply.layout = "grid";
       }

@@ -32,7 +32,7 @@ function sendTelegramMessage(botToken, chatId, text) {
       reply_markup: {
         inline_keyboard: [
           [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "📊 Reporte", callback_data: "cmd_reporte" }],
-          [{ text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
+          [{ text: "🏠 Menú Principal", callback_data: "cmd_menu" }, { text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
         ]
       }
     });
