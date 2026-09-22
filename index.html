@@ -832,7 +832,7 @@
             <div class="flex items-center gap-3">
               <div class="flex items-center gap-1.5">
                 <label class="text-[11px] font-bold text-stone-600">Horas:</label>
-                <input id="subModalHoras" type="number" min="0" step="0.5" value="4" oninput="updateSubtaskCostPreview()" class="w-24 bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-sm font-black font-mono text-center text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500/30">
+                <input id="subModalHoras" type="number" min="0" step="0.5" value="4" oninput="onSubtaskHoursChange()" class="w-24 bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-sm font-black font-mono text-center text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500/30">
                 <span class="text-xs font-bold text-stone-500">hrs</span>
               </div>
             </div>
@@ -2976,7 +2976,7 @@ Sincronizando con Google Sheets...`);
       const inpNota = document.getElementById("editTaskNotaCambio");
       if (inpNota) inpNota.value = "";
 
-      updateEditTaskCostPreview();
+      updateEditTaskCostPreview(false);
       modal.classList.remove("hidden");
     }
 
@@ -3000,9 +3000,11 @@ Sincronizando con Google Sheets...`);
       }
     }
 
-    function updateEditTaskCostPreview() {
+    function updateEditTaskCostPreview(autoAdjustEndDate = true) {
       const selectResp = document.getElementById("editTaskResp");
       const inpHoras = document.getElementById("editTaskHoras");
+      const inpStart = document.getElementById("editTaskStart");
+      const inpEnd = document.getElementById("editTaskEnd");
       const inpMat = document.getElementById("editTaskMat");
       const inpTerc = document.getElementById("editTaskTerc");
       const lblPers = document.getElementById("lblEditPreviewCostoPers");
@@ -3017,8 +3019,21 @@ Sincronizando con Google Sheets...`);
       const costoPers = horas * tarifa;
       const costoTot = costoPers + mat + terc;
 
-      if (lblPers) lblPers.textContent = `$${costoPers.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
-      if (lblTot) lblTot.textContent = `$${costoTot.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`;
+      if (lblPers) lblPers.textContent = `${costoPers.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+      if (lblTot) lblTot.textContent = `${costoTot.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`;
+
+      // Auto-calcular jornadas (8h = 1 jornada) y ajustar fecha límite en el calendario
+      const jornadas = horas > 0 ? Math.max(1, Math.ceil(horas / 8)) : 1;
+      const badgeJornadas = document.getElementById("lblEditTaskJornadasBadge");
+      if (badgeJornadas) {
+        badgeJornadas.textContent = `${horas} hrs ≈ ${jornadas} jornada${jornadas > 1 ? 's' : ''} (${jornadas}d)`;
+      }
+      if (autoAdjustEndDate && inpStart && inpEnd && inpStart.value) {
+        const s = parseDateParts(inpStart.value) || new Date();
+        const e = new Date(s);
+        e.setDate(e.getDate() + (jornadas - 1));
+        inpEnd.value = e.toISOString().split('T')[0];
+      }
     }
 
     async function handleSaveEditedTask(e) {
@@ -7565,10 +7580,32 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       }
 
       tasks.forEach(t => {
-        checkDates(t.start, t.end);
+        const tStart = parseDateParts(t.start);
+        const tHoras = Number(t.horas) || 0;
+        const tDaysFromH = tHoras > 0 ? Math.max(1, Math.ceil(tHoras / 8)) : 1;
+        let tEnd = parseDateParts(t.end);
+        if (tStart) {
+          if (!tEnd || Math.round((tEnd.getTime() - tStart.getTime()) / msPerDay) + 1 < tDaysFromH) {
+            tEnd = new Date(tStart);
+            tEnd.setDate(tEnd.getDate() + (tDaysFromH - 1));
+          }
+          checkDates(tStart, tEnd);
+        }
         if (t.subtareas && Array.isArray(t.subtareas)) {
           t.subtareas.forEach(sub => {
-            checkDates(sub.start || sub.fecha, sub.end || sub.fecha);
+            const sStart = parseDateParts(sub.start || sub.fecha) || tStart;
+            const sHoras = Number(sub.horas) || 0;
+            const sDaysFromH = sHoras > 0 ? Math.max(1, Math.ceil(sHoras / 8)) : 1;
+            let sDias = Number(sub.dias) || sDaysFromH;
+            if ((!sub.dias || Number(sub.dias) <= 1) && sDaysFromH > 1) {
+              sDias = sDaysFromH;
+            }
+            let sEnd = parseDateParts(sub.end);
+            if (!sEnd || (sEnd.getTime() === sStart.getTime() && sDias > 1)) {
+              sEnd = new Date(sStart);
+              sEnd.setDate(sEnd.getDate() + (sDias - 1));
+            }
+            checkDates(sStart, sEnd);
           });
         }
       });
@@ -7661,11 +7698,41 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         const isExpanded = window.expandedTaskIds && window.expandedTaskIds.has(t.id);
         const taskRowIdx = rowCounter++;
 
-        // Posición de barra de tarea padre
+        // Posición de barra de tarea padre calculada con soporte de jornadas (8h = 1 día)
         const tStart = parseDateParts(t.start) || new Date(calStart);
-        const tEnd = parseDateParts(t.end) || tStart;
+        const tHoras = Number(t.horas) || 0;
+        const tDaysFromHours = tHoras > 0 ? Math.max(1, Math.ceil(tHoras / 8)) : 1;
+        let tEnd = parseDateParts(t.end);
+        let tDuration = tEnd ? Math.max(1, Math.round((tEnd.getTime() - tStart.getTime()) / msPerDay) + 1) : 1;
+
+        // Si las horas asignadas requieren más jornadas de trabajo que las fechas de calendario:
+        if (tDaysFromHours > tDuration) {
+          tDuration = tDaysFromHours;
+          const cEnd = new Date(tStart);
+          cEnd.setDate(cEnd.getDate() + (tDuration - 1));
+          tEnd = cEnd;
+        }
+
+        // Si tiene subtareas, extender la barra padre para cubrir hasta la última subtarea:
+        if (hasSubtasks) {
+          t.subtareas.forEach(s => {
+            const sSt = parseDateParts(s.start || s.fecha) || tStart;
+            const sH = Number(s.horas) || 0;
+            const sD = Number(s.dias) || (sH > 0 ? Math.ceil(sH / 8) : 1);
+            let sEn = parseDateParts(s.end);
+            if (!sEn || (sEn.getTime() === sSt.getTime() && sD > 1)) {
+              sEn = new Date(sSt);
+              sEn.setDate(sEn.getDate() + (sD - 1));
+            }
+            if (sEn && (!tEnd || sEn.getTime() > tEnd.getTime())) {
+              tEnd = sEn;
+              tDuration = Math.max(tDuration, Math.round((tEnd.getTime() - tStart.getTime()) / msPerDay) + 1);
+            }
+          });
+        }
+
         const startOff = Math.max(0, (tStart.getTime() - calStart.getTime()) / msPerDay);
-        const duration = Math.max(1, (tEnd.getTime() - tStart.getTime()) / msPerDay + 1);
+        const duration = Math.max(1, tDuration);
         const barLeft = Math.round(startOff * dayWidth);
         const barWidth = Math.max(dayWidth, Math.round(duration * dayWidth));
 
@@ -7766,19 +7833,22 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           t.subtareas.forEach(sub => {
             const subRowIdx = rowCounter++;
             const sStart = parseDateParts(sub.start || sub.fecha) || tStart;
-            let sEnd = parseDateParts(sub.end);
-            if (!sEnd) {
-              const sDias = Number(sub.dias) || 1;
-              if (sDias > 1) {
-                const cEnd = new Date(sStart);
-                cEnd.setDate(cEnd.getDate() + (sDias - 1));
-                sEnd = cEnd;
-              } else {
-                sEnd = parseDateParts(sub.fecha) || sStart;
-              }
+            const sHoras = Number(sub.horas) || 0;
+            const sDaysFromHours = sHoras > 0 ? Math.max(1, Math.ceil(sHoras / 8)) : 1;
+            let sDias = Number(sub.dias) || sDaysFromHours;
+            if ((!sub.dias || Number(sub.dias) <= 1) && sDaysFromHours > 1) {
+              sDias = sDaysFromHours;
             }
+
+            let sEnd = parseDateParts(sub.end);
+            if (!sEnd || (sEnd.getTime() === sStart.getTime() && sDias > 1)) {
+              const cEnd = new Date(sStart);
+              cEnd.setDate(cEnd.getDate() + (sDias - 1));
+              sEnd = cEnd;
+            }
+
             const sOff = Math.max(0, (sStart.getTime() - calStart.getTime()) / msPerDay);
-            const sDur = Math.max(1, Math.round((sEnd.getTime() - sStart.getTime()) / msPerDay) + 1);
+            const sDur = Math.max(sDias, Math.round((sEnd.getTime() - sStart.getTime()) / msPerDay) + 1);
             const sBarLeft = Math.round(sOff * dayWidth);
             const sBarWidth = Math.max(dayWidth, Math.round(sDur * dayWidth));
             const sStartStr = sStart.toISOString().substring(0, 10);
@@ -9456,6 +9526,12 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       task.progress = Math.round((completed / total) * 100);
       if (completed === total) task.estado = "Completada";
       else if (completed > 0) task.estado = "En Progreso";
+
+      // Rollup de horas de subtareas
+      const totalSubHoras = task.subtareas.reduce((sum, s) => sum + (Number(s.horas) || 0), 0);
+      if (totalSubHoras > 0) {
+        task.horas = totalSubHoras;
+      }
     }
 
     function toggleSubtaskWeb(taskId, subtaskId, isChecked) {
@@ -9500,7 +9576,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       const subName = (inputName ? inputName.value : "").trim();
       const resp = selectResp ? selectResp.value : t.responsable;
       const subHours = inpHours ? Number(inpHours.value) || 4 : 4;
-      const subDays = inpDays ? Number(inpDays.value) || 1 : 1;
+      const subDays = inpDays ? (Number(inpDays.value) || Math.max(1, Math.ceil(subHours / 8))) : Math.max(1, Math.ceil(subHours / 8));
 
       if (!subName) {
         alert("Por favor escribe el nombre de la subtarea.");
@@ -9610,26 +9686,27 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
 
       // Horas
       const inpHoras = document.getElementById("subModalHoras");
-      if (inpHoras) inpHoras.value = Number(sub.horas) || 4;
+      const subHoras = Number(sub.horas) || 4;
+      if (inpHoras) inpHoras.value = subHoras;
 
-      // Fechas & Días
+      // Fechas & Días vinculados a jornadas (8h = 1 jornada)
       const sStart = sub.start || sub.fecha || parentTask.start || new Date().toISOString().split('T')[0];
-      let sEnd = sub.end;
-      let sDias = Number(sub.dias) || 1;
+      const daysFromHoras = subHoras > 0 ? Math.max(1, Math.ceil(subHoras / 8)) : 1;
+      let sDias = Number(sub.dias) || daysFromHoras;
+      if ((!sub.dias || Number(sub.dias) <= 1) && daysFromHoras > 1) {
+        sDias = daysFromHoras;
+      }
 
-      if (!sEnd) {
-        if (sDias > 1) {
-          const d = parseDateParts(sStart) || new Date();
-          d.setDate(d.getDate() + (sDias - 1));
-          sEnd = d.toISOString().split('T')[0];
-        } else {
-          sEnd = sStart;
-        }
+      let sEnd = sub.end;
+      if (!sEnd || (sEnd === sStart && sDias > 1)) {
+        const d = parseDateParts(sStart) || new Date();
+        d.setDate(d.getDate() + (sDias - 1));
+        sEnd = d.toISOString().split('T')[0];
       } else {
         const d1 = parseDateParts(sStart);
         const d2 = parseDateParts(sEnd);
         if (d1 && d2) {
-          sDias = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1);
+          sDias = Math.max(sDias, Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1);
         }
       }
 
@@ -9711,12 +9788,24 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       }
     }
 
+    function onSubtaskHoursChange() {
+      updateSubtaskCostPreview();
+      const inpHoras = document.getElementById("subModalHoras");
+      const inpDias = document.getElementById("subModalDias");
+      if (inpHoras && inpDias) {
+        const h = Number(inpHoras.value) || 0;
+        const calcDays = h > 0 ? Math.max(1, Math.ceil(h / 8)) : 1;
+        inpDias.value = calcDays;
+        onSubtaskDaysChange();
+      }
+    }
+
     function quickAddSubtaskHours(amount) {
       const inpHoras = document.getElementById("subModalHoras");
       if (!inpHoras) return;
       const cur = Number(inpHoras.value) || 0;
       inpHoras.value = Math.max(0, cur + amount);
-      updateSubtaskCostPreview();
+      onSubtaskHoursChange();
     }
 
     function quickAddSubtaskDays(amount) {
@@ -10819,8 +10908,11 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           </span>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label class="text-[11px] font-bold text-stone-600 block mb-1">Horas Estimadas:</label>
-              <input id="editTaskHoras" type="number" min="0" oninput="updateEditTaskCostPreview()" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold">
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-[11px] font-bold text-stone-600">Horas Estimadas:</label>
+                <span id="lblEditTaskJornadasBadge" class="text-[10px] font-bold text-purple-700 bg-purple-100/80 px-1.5 py-0.2 rounded border border-purple-200">8h = 1 día</span>
+              </div>
+              <input id="editTaskHoras" type="number" min="0" oninput="updateEditTaskCostPreview(true)" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 text-xs text-stone-900 font-semibold">
             </div>
             <div>
               <label class="text-[11px] font-bold text-stone-600 block mb-1">Materiales / Insumos ($):</label>
