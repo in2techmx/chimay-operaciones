@@ -636,16 +636,23 @@
             </div>
 
             <!-- Formulario para agregar subtarea -->
-            <div class="pt-1 flex flex-col sm:flex-row gap-1.5">
-              <input id="inputNewSubtaskName" type="text" placeholder="Nueva subtarea..." class="flex-1 bg-white border border-stone-300 rounded-xl px-2.5 py-1 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-              <select id="selectNewSubtaskResp" class="bg-white border border-stone-300 rounded-xl px-2 py-1 text-[11px] font-bold text-stone-700">
+            <div class="pt-1.5 flex flex-col sm:flex-row gap-1.5 items-center">
+              <input id="inputNewSubtaskName" type="text" placeholder="Nueva subtarea..." class="flex-1 bg-white border border-stone-300 rounded-xl px-2.5 py-1 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 w-full sm:w-auto">
+              <select id="selectNewSubtaskResp" class="bg-white border border-stone-300 rounded-xl px-2 py-1 text-[11px] font-bold text-stone-700 w-full sm:w-auto">
                 <option value="Arturo B.">Arturo B.</option>
                 <option value="Arturo A.">Arturo A.</option>
                 <option value="Gema R.">Gema R.</option>
+                <option value="Don Chiyo">Don Chiyo</option>
               </select>
-              <button type="button" onclick="handleAddSubtaskWeb()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shrink-0 cursor-pointer">
-                <i class="fa-solid fa-plus"></i> Subtarea
-              </button>
+              <div class="flex items-center gap-1 w-full sm:w-auto">
+                <input id="inputNewSubtaskHours" type="number" min="1" value="4" class="w-14 bg-white border border-stone-300 rounded-xl px-1.5 py-1 text-xs font-bold text-center" title="Horas estimadas">
+                <span class="text-[10px] text-stone-500 font-bold">h</span>
+                <input id="inputNewSubtaskDays" type="number" min="1" value="1" class="w-14 bg-white border border-stone-300 rounded-xl px-1.5 py-1 text-xs font-bold text-center" title="Días estimados">
+                <span class="text-[10px] text-stone-500 font-bold">d</span>
+                <button type="button" onclick="handleAddSubtaskWeb()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shrink-0 cursor-pointer shadow-2xs">
+                  <i class="fa-solid fa-plus"></i> Subtarea
+                </button>
+              </div>
             </div>
           </div>
 
@@ -706,6 +713,165 @@
 
         </div>
 
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal Tarjeta de Control de Subtarea (Control Granular: Horas, Días, Fechas y Responsable) -->
+  <div id="subtaskModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl border border-stone-200 flex flex-col max-h-[92vh] overflow-hidden my-auto animate-in fade-in zoom-in duration-150">
+      
+      <!-- Cabecera del Modal -->
+      <div class="flex justify-between items-start border-b border-stone-100 pb-3.5 shrink-0">
+        <div class="flex items-center gap-3">
+          <span class="w-9 h-9 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-base font-bold shadow-2xs">
+            <i class="fa-solid fa-sliders"></i>
+          </span>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span id="subModalId" class="font-mono font-black text-xs px-2.5 py-0.5 rounded-lg bg-indigo-100 text-indigo-900 border border-indigo-300/80 shadow-2xs">SUB-01</span>
+              <h3 class="text-base sm:text-lg font-black text-stone-900 leading-tight">Tarjeta de Control de Subtarea</h3>
+            </div>
+            <p class="text-xs text-stone-400 font-medium mt-0.5">Control operativo granular &bull; Pulverización de entregables</p>
+          </div>
+        </div>
+        <button onclick="closeSubtaskModal()" class="text-stone-400 hover:text-stone-700 text-xl p-1.5 rounded-xl hover:bg-stone-100 transition cursor-pointer">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Cuerpo del Modal con Scroll Interno -->
+      <div class="space-y-4 pt-4 flex-1 overflow-y-auto pr-1">
+        
+        <!-- Tarjeta de Referencia a Tarea Padre -->
+        <div class="p-3 bg-stone-50 rounded-2xl border border-stone-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+          <div class="min-w-0">
+            <span class="text-stone-400 block text-[10px] font-bold uppercase tracking-wider">Tarea Padre Asociada:</span>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span id="subModalParentBadge" class="font-mono font-bold text-[10px] bg-emerald-100 text-emerald-900 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">TSK-01</span>
+              <span id="subModalParentTitle" class="font-bold text-stone-800 text-xs truncate">Nombre de la Tarea</span>
+            </div>
+          </div>
+          <button type="button" onclick="goToParentTaskFromSubtask()" class="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition shadow-2xs flex items-center gap-1.5 shrink-0 cursor-pointer" title="Abrir modal de la tarea padre">
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> <span>Ver Tarea Padre</span>
+          </button>
+        </div>
+
+        <!-- Nombre y Descripción de la Subtarea -->
+        <div class="space-y-1">
+          <label class="text-[11px] font-bold text-stone-600 block">Nombre / Entregable de la Subtarea:</label>
+          <input id="subModalName" type="text" required placeholder="Describe el entregable específico..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs font-bold text-stone-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+        </div>
+
+        <!-- Responsable y Estado -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Especialista Responsable:</label>
+            <select id="subModalResp" onchange="updateSubtaskCostPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-800 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+              <option value="Arturo B.">Arturo B. (Gerente Operativo - $200/h)</option>
+              <option value="Gema R.">Gema R. (Gerente Legal - $200/h)</option>
+              <option value="Arturo A.">Arturo A. (Web Master / Admon - $200/h)</option>
+              <option value="Don Chiyo">Don Chiyo (Encargado de Rancho - $140/h)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-stone-600 block mb-1">Estado de la Subtarea:</label>
+            <select id="subModalEstado" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-800 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+              <option value="No Iniciada">⚪ No Iniciada</option>
+              <option value="En Progreso">🟡 En Progreso</option>
+              <option value="Completada">🟢 Completada</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- TARJETA 1: CONTROL DE HORAS (Ámbar / Esmeralda) -->
+        <div class="bg-amber-50/40 p-4 rounded-2xl border border-amber-200/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-black text-xs text-amber-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-clock text-amber-600"></i> Control de Horas de Trabajo:
+            </span>
+            <span id="subModalCostPreview" class="text-xs font-black text-emerald-800 bg-white px-2.5 py-1 rounded-lg border border-emerald-200 shadow-2xs">
+              $0.00 MXN
+            </span>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1.5">
+              <label class="text-[11px] font-bold text-stone-600">Horas Asignadas:</label>
+              <input id="subModalHoras" type="number" min="0" step="0.5" value="4" oninput="updateSubtaskCostPreview()" class="w-24 bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-sm font-black font-mono text-center text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500/30">
+              <span class="text-xs font-bold text-stone-500">hrs</span>
+            </div>
+          </div>
+
+          <!-- Botones de adición rápida de horas -->
+          <div class="flex items-center gap-1.5 flex-wrap pt-1 border-t border-amber-200/50">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-amber-800 mr-1">Sumar Horas:</span>
+            <button type="button" onclick="quickAddSubtaskHours(1)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 border border-amber-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+1h</button>
+            <button type="button" onclick="quickAddSubtaskHours(2)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 border border-amber-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+2h</button>
+            <button type="button" onclick="quickAddSubtaskHours(4)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 border border-amber-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+4h</button>
+            <button type="button" onclick="quickAddSubtaskHours(8)" class="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-black transition cursor-pointer shadow-xs">+8h (1 jornada)</button>
+          </div>
+        </div>
+
+        <!-- TARJETA 2: CONTROL DE DÍAS Y CALENDARIO (Índigo / Azul) -->
+        <div class="bg-indigo-50/40 p-4 rounded-2xl border border-indigo-200/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-black text-xs text-indigo-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-calendar-days text-indigo-600"></i> Control de Duración en Días & Fechas:
+            </span>
+            <span id="subModalGanttPreview" class="text-[10px] font-bold text-indigo-800 bg-white px-2 py-0.5 rounded border border-indigo-200">
+              Visible en Cronograma Gantt
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="text-[11px] font-bold text-stone-600 block mb-1">Fecha de Inicio:</label>
+              <input id="subModalStart" type="date" onchange="onSubtaskDateChange('start')" class="w-full bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-xs text-stone-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+            </div>
+            <div>
+              <label class="text-[11px] font-bold text-stone-600 block mb-1">Fecha de Fin:</label>
+              <input id="subModalEnd" type="date" onchange="onSubtaskDateChange('end')" class="w-full bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-xs text-stone-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+            </div>
+            <div>
+              <label class="text-[11px] font-bold text-stone-600 block mb-1">Duración (Días):</label>
+              <input id="subModalDias" type="number" min="1" value="1" oninput="onSubtaskDaysChange()" class="w-full bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-sm font-black font-mono text-center text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+            </div>
+          </div>
+
+          <!-- Botones de adición rápida de días -->
+          <div class="flex items-center gap-1.5 flex-wrap pt-1 border-t border-indigo-200/50">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-800 mr-1">Extender Duración:</span>
+            <button type="button" onclick="quickAddSubtaskDays(1)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+1 día</button>
+            <button type="button" onclick="quickAddSubtaskDays(2)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+2 días</button>
+            <button type="button" onclick="quickAddSubtaskDays(3)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+3 días</button>
+            <button type="button" onclick="quickAddSubtaskDays(5)" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition cursor-pointer shadow-xs">+5 días</button>
+          </div>
+        </div>
+
+        <!-- Notas de la Subtarea -->
+        <div>
+          <label class="text-[11px] font-bold text-stone-600 block mb-1">Notas / Criterios de Aceptación del Entregable:</label>
+          <textarea id="subModalNotas" rows="2" placeholder="Especificaciones técnicas, avances o notas de la subtarea..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-xs text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"></textarea>
+        </div>
+
+      </div>
+
+      <!-- Pie del Modal con Acciones -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-stone-100 shrink-0">
+        <button type="button" onclick="handleDeleteSubtaskWeb()" class="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 text-xs font-bold border border-rose-200 transition flex items-center gap-1.5 cursor-pointer">
+          <i class="fa-solid fa-trash-can"></i> <span>Eliminar Subtarea</span>
+        </button>
+
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <button type="button" id="btnToggleCompleteSubtask" onclick="toggleSubtaskCompleteInModal()" class="px-3.5 py-2 rounded-xl text-xs font-bold transition border cursor-pointer">
+            <!-- Dinámico: Completar o Reabrir -->
+          </button>
+          <button type="button" onclick="saveSubtaskModalChanges()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-floppy-disk"></i> <span>Guardar Cambios</span>
+          </button>
+        </div>
       </div>
 
     </div>
@@ -6736,8 +6902,8 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                         <td class="py-2 px-3 text-right font-mono text-stone-400 text-[11px]">-</td>
                         <td class="py-2 px-3 text-right font-mono text-stone-400 text-[11px]">-</td>
                         <td class="py-2 px-3 text-center whitespace-nowrap">
-                          <button onclick="openTaskModal('${t.id}')" class="px-2 py-0.5 rounded bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 text-[10px] font-bold transition cursor-pointer">
-                            Ver Tarea
+                          <button onclick="openSubtaskModal('${t.id}', '${sub.id}')" class="px-2 py-0.5 rounded bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 text-[10px] font-bold transition cursor-pointer" title="Abrir Tarjeta de Control de Subtarea">
+                            Control Subtarea
                           </button>
                         </td>
                       </tr>
@@ -7429,11 +7595,23 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           t.subtareas.forEach(sub => {
             const subRowIdx = rowCounter++;
             const sStart = parseDateParts(sub.start || sub.fecha) || tStart;
-            const sEnd = parseDateParts(sub.end || sub.fecha) || sStart;
+            let sEnd = parseDateParts(sub.end);
+            if (!sEnd) {
+              const sDias = Number(sub.dias) || 1;
+              if (sDias > 1) {
+                const cEnd = new Date(sStart);
+                cEnd.setDate(cEnd.getDate() + (sDias - 1));
+                sEnd = cEnd;
+              } else {
+                sEnd = parseDateParts(sub.fecha) || sStart;
+              }
+            }
             const sOff = Math.max(0, (sStart.getTime() - calStart.getTime()) / msPerDay);
-            const sDur = Math.max(1, (sEnd.getTime() - sStart.getTime()) / msPerDay + 1);
+            const sDur = Math.max(1, Math.round((sEnd.getTime() - sStart.getTime()) / msPerDay) + 1);
             const sBarLeft = Math.round(sOff * dayWidth);
             const sBarWidth = Math.max(dayWidth, Math.round(sDur * dayWidth));
+            const sStartStr = sStart.toISOString().substring(0, 10);
+            const sEndStr = sEnd.toISOString().substring(0, 10);
 
             const sProg = sub.estado === "Completada" ? 100 : (sub.estado === "En Progreso" ? 50 : 0);
 
@@ -7464,7 +7642,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
 
             // Subtarea en Panel de Tareas (h-[44px])
             tasksTableRowsHtml += `
-              <tr class="h-[44px] max-h-[44px] bg-indigo-50/15 hover:bg-indigo-50/50 transition cursor-pointer border-b border-stone-100" data-row-idx="${subRowIdx}" onclick="openTaskModal('${t.id}')">
+              <tr class="h-[44px] max-h-[44px] bg-indigo-50/15 hover:bg-indigo-50/50 transition cursor-pointer border-b border-stone-100 group" data-row-idx="${subRowIdx}" onclick="openSubtaskModal('${t.id}', '${sub.id}')" title="Clic para abrir Tarjeta de Control de Subtarea">
                 <td class="px-2 text-center w-[150px] min-w-[150px] border-r border-stone-200">
                   <div class="flex items-center gap-1.5 justify-start">
                     <span class="w-5 flex items-center justify-center text-indigo-400 font-mono text-xs shrink-0 select-none">└──</span>
@@ -7474,11 +7652,18 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
                   </div>
                 </td>
                 <td class="px-3 text-left w-[230px] min-w-[230px] border-r border-stone-200">
-                  <div class="font-semibold text-stone-800 truncate text-xs" title="${escapeHtml(sub.name)}">
-                    ${escapeHtml(sub.name)}
+                  <div class="font-semibold text-stone-800 truncate text-xs flex items-center justify-between" title="${escapeHtml(sub.name)}">
+                    <span class="truncate">${escapeHtml(sub.name)}</span>
+                    <span class="opacity-0 group-hover:opacity-100 text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-200 transition shrink-0 ml-1">
+                      <i class="fa-solid fa-sliders text-[9px]"></i> Control
+                    </span>
                   </div>
-                  <div class="text-[10px] text-stone-400">
-                    <span>${sub.fecha || t.start || '--'}</span> &bull; <span>${sub.horas || 0} hrs</span>
+                  <div class="text-[10px] text-stone-400 flex items-center gap-1.5 flex-wrap">
+                    <span>${sStartStr}</span>
+                    <span>&bull;</span>
+                    <span class="font-bold text-indigo-700 bg-indigo-50 px-1 rounded border border-indigo-200/40">${sDur}d</span>
+                    <span>&bull;</span>
+                    <span class="font-bold text-stone-700 bg-stone-100 px-1 rounded border border-stone-200">${sub.horas || 0} hrs</span>
                   </div>
                 </td>
                 <td class="px-2.5 text-left w-[110px] min-w-[110px] border-r border-stone-200">
@@ -7499,11 +7684,11 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
 
             // Subtarea en Panel de Timeline (h-[44px])
             timelineRowsHtml += `
-              <div class="h-[44px] max-h-[44px] relative border-b border-stone-100 bg-indigo-50/10 hover:bg-indigo-50/30 transition cursor-pointer" data-row-idx="${subRowIdx}" onclick="openTaskModal('${t.id}')">
-                <div class="absolute top-2 h-[26px] rounded-md border shadow-2xs flex items-center px-2 transition hover:brightness-105 z-10 ${sBarBg}" style="left: ${sBarLeft}px; width: ${sBarWidth}px;" title="Subtarea ${sub.id}: ${escapeHtml(sub.name)}&#10;Fecha: ${sub.fecha || t.start}&#10;Responsable: ${escapeHtml(subResp)}">
+              <div class="h-[44px] max-h-[44px] relative border-b border-stone-100 bg-indigo-50/10 hover:bg-indigo-50/30 transition cursor-pointer" data-row-idx="${subRowIdx}" onclick="openSubtaskModal('${t.id}', '${sub.id}')">
+                <div class="absolute top-2 h-[26px] rounded-md border shadow-2xs flex items-center px-2 transition hover:brightness-105 z-10 ${sBarBg}" style="left: ${sBarLeft}px; width: ${sBarWidth}px;" title="Subtarea ${sub.id}: ${escapeHtml(sub.name)}&#10;Fechas: ${sStartStr} ➔ ${sEndStr} (${sDur} días)&#10;Horas: ${sub.horas || 0} hrs&#10;Responsable: ${escapeHtml(subResp)}&#10;👉 Clic para abrir Tarjeta de Control">
                   <div class="absolute left-0 top-0 bottom-0 rounded-l-md opacity-30 ${sBarProgBg}" style="width: ${sProg}%;"></div>
                   <span class="relative z-10 text-[10px] font-bold truncate">
-                    ↳ ${sub.id}: ${escapeHtml(sub.name)}
+                    ↳ ${sub.id}: ${escapeHtml(sub.name)} (${sDur}d &bull; ${sub.horas || 0}h)
                   </span>
                 </div>
               </div>
@@ -9053,15 +9238,23 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
 
       listContainer.innerHTML = t.subtareas.map((s, idx) => {
         const isDone = s.estado === "Completada";
+        const sDias = Number(s.dias) || 1;
         return `
-          <div class="flex items-center justify-between p-2 rounded-xl bg-white border border-stone-200/80 shadow-2xs text-xs gap-2">
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-stone-200/90 hover:border-indigo-300 shadow-2xs text-xs gap-2 transition group">
             <div class="flex items-center gap-2 min-w-0">
               <input type="checkbox" ${isDone ? "checked" : ""} onchange="toggleSubtaskWeb('${t.id}', '${s.id}', this.checked)" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer">
-              <span class="${isDone ? 'line-through text-stone-400 font-medium' : 'font-bold text-stone-800'} truncate">${s.name}</span>
+              <div class="min-w-0">
+                <span class="font-mono text-[10px] font-bold text-indigo-800 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200/60 mr-1">${s.id}</span>
+                <span class="${isDone ? 'line-through text-stone-400 font-medium' : 'font-bold text-stone-800'} truncate">${escapeHtml(s.name)}</span>
+              </div>
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
-              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">${s.responsable || t.responsable}</span>
-              <span class="text-[10px] text-stone-400 font-mono">${s.horas || 2}h</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100" title="Responsable">${s.responsable || t.responsable}</span>
+              <span class="text-[10px] text-indigo-900 font-semibold bg-indigo-50/80 px-1.5 py-0.5 rounded border border-indigo-200/50 font-mono" title="Duración">${sDias}d</span>
+              <span class="text-[10px] text-stone-600 font-bold bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200 font-mono" title="Horas">${s.horas || 0}h</span>
+              <button type="button" onclick="openSubtaskModal('${t.id}', '${s.id}')" class="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs" title="Abrir Tarjeta de Control de Subtarea">
+                <i class="fa-solid fa-sliders text-[10px]"></i> <span>Control</span>
+              </button>
             </div>
           </div>
         `;
@@ -9106,8 +9299,13 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
 
       const inputName = document.getElementById("inputNewSubtaskName");
       const selectResp = document.getElementById("selectNewSubtaskResp");
+      const inpHours = document.getElementById("inputNewSubtaskHours");
+      const inpDays = document.getElementById("inputNewSubtaskDays");
+
       const subName = (inputName ? inputName.value : "").trim();
       const resp = selectResp ? selectResp.value : t.responsable;
+      const subHours = inpHours ? Number(inpHours.value) || 4 : 4;
+      const subDays = inpDays ? Number(inpDays.value) || 1 : 1;
 
       if (!subName) {
         alert("Por favor escribe el nombre de la subtarea.");
@@ -9121,18 +9319,37 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       const cleanId = t.id.replace(/^TSK-/, '');
       const newSubId = `SUB-${cleanId}-${String(t.subtareas.length + 1).padStart(2, '0')}`;
 
+      const startDate = t.start || new Date().toISOString().split('T')[0];
+      const endDateObj = parseDateParts(startDate) || new Date();
+      endDateObj.setDate(endDateObj.getDate() + (subDays - 1));
+      const endDate = endDateObj.toISOString().split('T')[0];
+
       t.subtareas.push({
         id: newSubId,
         name: subName,
         responsable: resp,
         estado: "No Iniciada",
-        horas: 4,
-        fecha: new Date().toISOString().split('T')[0]
+        horas: subHours,
+        dias: subDays,
+        start: startDate,
+        end: endDate,
+        fecha: startDate,
+        notas: ""
       });
 
       recalculateTaskRollup(t);
-      inputName.value = "";
+      if (inputName) inputName.value = "";
       renderModalSubtasks(selectedTaskId);
+
+      // Persistir
+      try {
+        localStorage.setItem("chimay_cached_sheets_tasks", JSON.stringify(tasksData));
+        let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+        const cIdx = customTasks.findIndex(x => x.id === t.id);
+        if (cIdx !== -1) customTasks[cIdx] = t;
+        else customTasks.push(t);
+        localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
+      } catch (err) {}
 
       // Asegurar que la tarea quede expandida para que la nueva subtarea sea visible en el árbol
       if (window.expandedTaskIds) {
@@ -9146,6 +9363,289 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         else renderSpecialistView(container, currentView);
       }
       updateEtapaBarInfo();
+    }
+
+    // =========================================================================
+    // TARJETA DE CONTROL DE SUBTAREA (CONTROL DE HORAS, DÍAS, FECHAS Y RESPONSABLE)
+    // =========================================================================
+    let currentEditingParentTaskId = null;
+    let currentEditingSubtaskId = null;
+
+    function openSubtaskModal(parentTaskId, subtaskId) {
+      const parentTask = tasksData.find(t => t.id === parentTaskId);
+      if (!parentTask || !parentTask.subtareas) return;
+      const sub = parentTask.subtareas.find(s => s.id === subtaskId);
+      if (!sub) return;
+
+      currentEditingParentTaskId = parentTaskId;
+      currentEditingSubtaskId = subtaskId;
+
+      // Badges e ID
+      const badgeId = document.getElementById("subModalId");
+      if (badgeId) badgeId.innerText = sub.id;
+
+      const parentBadge = document.getElementById("subModalParentBadge");
+      if (parentBadge) parentBadge.innerText = parentTask.id;
+
+      const parentTitle = document.getElementById("subModalParentTitle");
+      if (parentTitle) parentTitle.innerText = parentTask.name;
+
+      // Nombre
+      const inpName = document.getElementById("subModalName");
+      if (inpName) inpName.value = sub.name || "";
+
+      // Responsable
+      const selResp = document.getElementById("subModalResp");
+      if (selResp) selResp.value = sub.responsable || parentTask.responsable || "Arturo B.";
+
+      // Estado
+      const selEstado = document.getElementById("subModalEstado");
+      if (selEstado) selEstado.value = sub.estado || "No Iniciada";
+
+      // Horas
+      const inpHoras = document.getElementById("subModalHoras");
+      if (inpHoras) inpHoras.value = Number(sub.horas) || 4;
+
+      // Fechas & Días
+      const sStart = sub.start || sub.fecha || parentTask.start || new Date().toISOString().split('T')[0];
+      let sEnd = sub.end;
+      let sDias = Number(sub.dias) || 1;
+
+      if (!sEnd) {
+        if (sDias > 1) {
+          const d = parseDateParts(sStart) || new Date();
+          d.setDate(d.getDate() + (sDias - 1));
+          sEnd = d.toISOString().split('T')[0];
+        } else {
+          sEnd = sStart;
+        }
+      } else {
+        const d1 = parseDateParts(sStart);
+        const d2 = parseDateParts(sEnd);
+        if (d1 && d2) {
+          sDias = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1);
+        }
+      }
+
+      const inpStart = document.getElementById("subModalStart");
+      if (inpStart) inpStart.value = sStart;
+
+      const inpEnd = document.getElementById("subModalEnd");
+      if (inpEnd) inpEnd.value = sEnd;
+
+      const inpDias = document.getElementById("subModalDias");
+      if (inpDias) inpDias.value = sDias;
+
+      // Notas
+      const txtNotas = document.getElementById("subModalNotas");
+      if (txtNotas) txtNotas.value = sub.notas || "";
+
+      // Previews y botón completar
+      updateSubtaskCostPreview();
+      updateSubtaskCompleteBtnUi(sub.estado === "Completada");
+
+      // Mostrar modal
+      const modal = document.getElementById("subtaskModal");
+      if (modal) modal.classList.remove("hidden");
+    }
+
+    function closeSubtaskModal() {
+      const modal = document.getElementById("subtaskModal");
+      if (modal) modal.classList.add("hidden");
+      currentEditingParentTaskId = null;
+      currentEditingSubtaskId = null;
+    }
+
+    function goToParentTaskFromSubtask() {
+      const pId = currentEditingParentTaskId;
+      closeSubtaskModal();
+      if (pId) {
+        openTaskModal(pId);
+      }
+    }
+
+    function quickAddSubtaskHours(amount) {
+      const inpHoras = document.getElementById("subModalHoras");
+      if (!inpHoras) return;
+      const cur = Number(inpHoras.value) || 0;
+      inpHoras.value = Math.max(0, cur + amount);
+      updateSubtaskCostPreview();
+    }
+
+    function quickAddSubtaskDays(amount) {
+      const inpDias = document.getElementById("subModalDias");
+      if (!inpDias) return;
+      const cur = Number(inpDias.value) || 1;
+      inpDias.value = Math.max(1, cur + amount);
+      onSubtaskDaysChange();
+    }
+
+    function onSubtaskDaysChange() {
+      const inpStart = document.getElementById("subModalStart");
+      const inpEnd = document.getElementById("subModalEnd");
+      const inpDias = document.getElementById("subModalDias");
+      if (!inpStart || !inpEnd || !inpDias) return;
+
+      const days = Number(inpDias.value) || 1;
+      const start = parseDateParts(inpStart.value) || new Date();
+      const end = new Date(start);
+      end.setDate(end.getDate() + (days - 1));
+      inpEnd.value = end.toISOString().split('T')[0];
+    }
+
+    function onSubtaskDateChange(source) {
+      const inpStart = document.getElementById("subModalStart");
+      const inpEnd = document.getElementById("subModalEnd");
+      const inpDias = document.getElementById("subModalDias");
+      if (!inpStart || !inpEnd || !inpDias) return;
+
+      const s = parseDateParts(inpStart.value);
+      const e = parseDateParts(inpEnd.value);
+      if (s && e) {
+        if (e.getTime() < s.getTime()) {
+          inpEnd.value = inpStart.value;
+          inpDias.value = 1;
+        } else {
+          const diff = Math.max(1, Math.round((e.getTime() - s.getTime()) / 86400000) + 1);
+          inpDias.value = diff;
+        }
+      }
+    }
+
+    function updateSubtaskCostPreview() {
+      const selResp = document.getElementById("subModalResp");
+      const inpHoras = document.getElementById("subModalHoras");
+      const preview = document.getElementById("subModalCostPreview");
+      if (!preview) return;
+
+      const resp = selResp ? selResp.value : "";
+      const horas = inpHoras ? Number(inpHoras.value) || 0 : 0;
+      const tarifa = resp.includes("Chiyo") ? 140 : 200;
+      const total = horas * tarifa;
+      preview.innerText = `${total.toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN (${horas}h @ ${tarifa}/h)`;
+    }
+
+    function updateSubtaskCompleteBtnUi(isCompleted) {
+      const btn = document.getElementById("btnToggleCompleteSubtask");
+      if (!btn) return;
+      if (isCompleted) {
+        btn.innerHTML = `<i class="fa-solid fa-rotate-left"></i> Reabrir Subtarea`;
+        btn.className = "px-3.5 py-2 rounded-xl text-xs font-bold transition border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-700 cursor-pointer";
+      } else {
+        btn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Marcar Completada`;
+        btn.className = "px-3.5 py-2 rounded-xl text-xs font-bold transition border border-emerald-300 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 cursor-pointer";
+      }
+    }
+
+    function toggleSubtaskCompleteInModal() {
+      const selEstado = document.getElementById("subModalEstado");
+      if (!selEstado) return;
+      const isComp = selEstado.value === "Completada";
+      selEstado.value = isComp ? "En Progreso" : "Completada";
+      updateSubtaskCompleteBtnUi(!isComp);
+    }
+
+    function saveSubtaskModalChanges() {
+      if (!currentEditingParentTaskId || !currentEditingSubtaskId) return;
+      const parentTask = tasksData.find(t => t.id === currentEditingParentTaskId);
+      if (!parentTask || !parentTask.subtareas) return;
+      const sub = parentTask.subtareas.find(s => s.id === currentEditingSubtaskId);
+      if (!sub) return;
+
+      const inpName = document.getElementById("subModalName");
+      const selResp = document.getElementById("subModalResp");
+      const selEstado = document.getElementById("subModalEstado");
+      const inpHoras = document.getElementById("subModalHoras");
+      const inpStart = document.getElementById("subModalStart");
+      const inpEnd = document.getElementById("subModalEnd");
+      const inpDias = document.getElementById("subModalDias");
+      const txtNotas = document.getElementById("subModalNotas");
+
+      const newName = (inpName ? inpName.value : "").trim();
+      if (!newName) {
+        alert("El nombre de la subtarea no puede estar vacío.");
+        return;
+      }
+
+      sub.name = newName;
+      sub.responsable = selResp ? selResp.value : sub.responsable;
+      sub.estado = selEstado ? selEstado.value : sub.estado;
+      sub.horas = inpHoras ? Number(inpHoras.value) || 0 : sub.horas;
+      sub.start = inpStart ? inpStart.value : sub.start;
+      sub.end = inpEnd ? inpEnd.value : sub.end;
+      sub.fecha = sub.start;
+      sub.dias = inpDias ? Number(inpDias.value) || 1 : 1;
+      sub.notas = txtNotas ? txtNotas.value.trim() : "";
+
+      recalculateTaskRollup(parentTask);
+
+      // Persistir
+      try {
+        localStorage.setItem("chimay_cached_sheets_tasks", JSON.stringify(tasksData));
+        let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+        const cIdx = customTasks.findIndex(t => t.id === parentTask.id);
+        if (cIdx !== -1) {
+          customTasks[cIdx] = parentTask;
+        } else {
+          customTasks.push(parentTask);
+        }
+        localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
+      } catch (err) {
+        console.error("Error al persistir subtarea:", err);
+      }
+
+      // Si el modal de la tarea padre está visible, refrescar su lista de subtareas
+      const taskModal = document.getElementById("taskModal");
+      if (taskModal && !taskModal.classList.contains("hidden")) {
+        renderModalSubtasks(parentTask.id);
+      }
+
+      // Refrescar vistas del dashboard
+      const container = document.getElementById("viewContainer");
+      if (container) {
+        if (currentView === "todos") renderGlobalView(container);
+        else renderSpecialistView(container, currentView);
+      }
+      updateEtapaBarInfo();
+
+      closeSubtaskModal();
+    }
+
+    function handleDeleteSubtaskWeb() {
+      if (!currentEditingParentTaskId || !currentEditingSubtaskId) return;
+      const parentTask = tasksData.find(t => t.id === currentEditingParentTaskId);
+      if (!parentTask || !parentTask.subtareas) return;
+
+      if (!confirm(`¿Estás seguro de eliminar la subtarea ${currentEditingSubtaskId}? Esta acción no se puede deshacer.`)) {
+        return;
+      }
+
+      parentTask.subtareas = parentTask.subtareas.filter(s => s.id !== currentEditingSubtaskId);
+      recalculateTaskRollup(parentTask);
+
+      try {
+        localStorage.setItem("chimay_cached_sheets_tasks", JSON.stringify(tasksData));
+        let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+        const cIdx = customTasks.findIndex(t => t.id === parentTask.id);
+        if (cIdx !== -1) {
+          customTasks[cIdx] = parentTask;
+        }
+        localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
+      } catch (err) {}
+
+      const taskModal = document.getElementById("taskModal");
+      if (taskModal && !taskModal.classList.contains("hidden")) {
+        renderModalSubtasks(parentTask.id);
+      }
+
+      const container = document.getElementById("viewContainer");
+      if (container) {
+        if (currentView === "todos") renderGlobalView(container);
+        else renderSpecialistView(container, currentView);
+      }
+      updateEtapaBarInfo();
+
+      closeSubtaskModal();
     }
 
     // Funciones de Scrum Master Modal
