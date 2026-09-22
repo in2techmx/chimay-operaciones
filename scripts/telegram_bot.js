@@ -802,8 +802,9 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
       authorized: true,
       text: standupText,
       keyboard: [
-        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "📊 Reporte de Costos", callback_data: "cmd_reporte" }],
-        [{ text: "🏠 Menú Principal", callback_data: "cmd_menu" }, { text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
+        [{ text: "👥 Tareas de Todos", callback_data: "cmd_menu_tareas" }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }],
+        [{ text: "📊 Reporte de Costos", callback_data: "cmd_reporte" }, { text: "🏠 Menú Principal", callback_data: "cmd_menu" }],
+        [{ text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
       ]
     };
   }

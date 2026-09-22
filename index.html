@@ -9206,7 +9206,26 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
           text += "\n";
         }
 
-        text += "🚨 *3. Cuellos de Botella y Riesgos:*\n";
+        // 3. Carga y Tareas de Todo el Equipo
+        const usuarios = [...new Set(tasksData.map(t => t.responsable).filter(Boolean))];
+        if (usuarios.length > 0) {
+          text += "👥 *3. Carga y Tareas de Todo el Equipo:*\n";
+          usuarios.forEach(u => {
+            const uTasks = tasksData.filter(t => (t.responsable || "").includes(u));
+            const uAct = uTasks.filter(t => t.estado === "En Progreso");
+            const uPend = uTasks.filter(t => t.estado === "No Iniciada");
+            const uComp = uTasks.filter(t => t.estado === "Completada");
+            text += "   • 👤 *" + u + ":* " + uAct.length + " activa(s), " + uPend.length + " por iniciar, " + uComp.length + " concluida(s)\n";
+            if (uAct.length > 0) {
+              uAct.forEach(at => {
+                text += "     ↳ ⚡ `" + at.id + "`: " + at.name + " (" + (at.progress || 50) + "%)\n";
+              });
+            }
+          });
+          text += "\n";
+        }
+
+        text += "🚨 *4. Cuellos de Botella y Riesgos:*\n";
         if (vencidas.length === 0) {
           text += "   ✅ *Excelente:* Todas las actividades están dentro del cronograma previsto.\n";
         } else {
@@ -9227,7 +9246,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
 
         botReply.text = text;
         botReply.buttons = [
-          { text: "📋 Tareas", cmd: "tareas" },
+          { text: "👥 Tareas de Todos", cmd: "tareas" },
           { text: "📋 Mis Tareas", cmd: "mis tareas" },
           { text: "💰 Costos", cmd: "costos" },
           { text: "🏠 Menú Principal", cmd: "menu" }
@@ -11028,6 +11047,19 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       } else {
         enProgreso.forEach(t => {
           txt += "   • **" + t.id + ":** " + t.name + " (" + t.responsable + " • " + t.progress + "%)\n";
+        });
+      }
+
+      // Carga y tareas por integrante del equipo
+      const usuarios = [...new Set(tasksData.map(t => t.responsable).filter(Boolean))];
+      if (usuarios.length > 0) {
+        txt += "\n👥 **Carga y Tareas de Todo el Equipo:**\n";
+        usuarios.forEach(u => {
+          const uTasks = tasksData.filter(t => (t.responsable || "").includes(u));
+          const uAct = uTasks.filter(t => t.estado === "En Progreso");
+          const uPend = uTasks.filter(t => t.estado === "No Iniciada");
+          const uComp = uTasks.filter(t => t.estado === "Completada");
+          txt += "   • 👤 **" + u + ":** " + uAct.length + " activa(s), " + uPend.length + " por iniciar, " + uComp.length + " concluida(s)\n";
         });
       }
 

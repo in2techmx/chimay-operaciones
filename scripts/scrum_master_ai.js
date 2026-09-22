@@ -360,9 +360,10 @@ ${context.inicianPronto.map(t => `- ⏳ [${t.id}] ${t.name} (Inicia: ${t.start},
 Genera el Daily Standup estructurado en:
 1. ☀️ Saludo y Estado del Sprint
 2. ⚡ En Curso Hoy (quién hace qué)
-3. 🚨 Cuellos de Botella y Riesgos Inmediatos
-4. ⏳ Próximos Inicios y Preparación
-5. 🎯 Foco del Día`;
+3. 👥 Tareas y Asignaciones de Todo el Equipo
+4. 🚨 Cuellos de Botella y Riesgos Inmediatos
+5. ⏳ Próximos Inicios y Preparación
+6. 🎯 Foco del Día`;
 
     const aiResponse = await callGeminiLlm(systemPrompt, userPrompt, apiKey);
     if (aiResponse) {
@@ -402,8 +403,27 @@ function buildHeuristicDailyStandup(ctx) {
     text += `\n`;
   }
 
-  // 3. Cuellos de botella y alertas
-  text += `🚨 *3. Cuellos de Botella y Riesgos:*\n`;
+  // 3. Tareas y asignaciones de todo el equipo
+  if (ctx.cargaRecursos && Object.keys(ctx.cargaRecursos).length > 0) {
+    text += `👥 *3. Carga y Tareas de Todo el Equipo:*\n`;
+    Object.keys(ctx.cargaRecursos).forEach(nombre => {
+      const rec = ctx.cargaRecursos[nombre];
+      const asignadas = rec.tareasAsignadas || [];
+      const activas = asignadas.filter(t => t.estado === "En Progreso");
+      const pend = asignadas.filter(t => t.estado === "No Iniciada");
+      const comp = asignadas.filter(t => t.estado === "Completada");
+      text += `   • 👤 *${nombre}:* ${activas.length} activa(s), ${pend.length} por iniciar, ${comp.length} concluida(s)\n`;
+      if (activas.length > 0) {
+        activas.forEach(at => {
+          text += `     ↳ ⚡ \`${at.id}\`: ${at.name} (${at.progress || 50}%)\n`;
+        });
+      }
+    });
+    text += `\n`;
+  }
+
+  // 4. Cuellos de botella y alertas
+  text += `🚨 *4. Cuellos de Botella y Riesgos:*\n`;
   if (ctx.vencidas.length === 0) {
     text += `   ✅ *Excelente:* Todas las actividades están dentro del cronograma previsto.\n`;
   } else {
@@ -413,8 +433,8 @@ function buildHeuristicDailyStandup(ctx) {
   }
   text += `\n`;
 
-  // 4. Próximos inicios
-  text += `⏳ *4. Inicios en los Próximos 7 Días:*\n`;
+  // 5. Próximos inicios
+  text += `⏳ *5. Inicios en los Próximos 7 Días:*\n`;
   if (ctx.inicianPronto.length === 0) {
     text += `   _No hay nuevas tareas programadas para iniciar esta semana._\n`;
   } else {
@@ -424,8 +444,8 @@ function buildHeuristicDailyStandup(ctx) {
   }
   text += `\n`;
 
-  // 5. Foco del día
-  text += `🎯 *5. Foco del Día Recomendado:*\n`;
+  // 6. Foco del día
+  text += `🎯 *6. Foco del Día Recomendado:*\n`;
   if (ctx.vencidas.length > 0) {
     text += `   👉 Resolver la tarea demorada *${ctx.vencidas[0].id}* con ${ctx.vencidas[0].responsable} para no impactar dependencias.\n`;
   } else if (ctx.enProgreso.length > 0) {
