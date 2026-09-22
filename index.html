@@ -342,7 +342,10 @@
         </div>
       </div>
       <div class="flex items-center space-x-2 flex-wrap sm:flex-nowrap gap-y-2">
-        <span id="lastSyncLabel" class="inline-flex items-center text-[11px] text-emerald-300 font-mono"></span>
+        <span id="lastSyncLabel" class="inline-flex items-center text-[11px] text-emerald-300 font-mono cursor-pointer" onclick="openGitHubSyncModal()"></span>
+        <button id="btnGitHubSync" onclick="openGitHubSyncModal()" class="px-2.5 py-1.5 rounded-xl bg-stone-900/90 hover:bg-stone-800 text-stone-200 text-xs font-bold flex items-center gap-1.5 transition border border-stone-700 shadow-sm cursor-pointer" title="Sincronización Git-as-a-Database (GitHub Repo)">
+          <i class="fa-brands fa-github text-white text-sm"></i> <span class="hidden md:inline">Git Sync</span>
+        </button>
         <div class="px-3 py-1.5 rounded-lg bg-emerald-800/80 text-emerald-200 text-xs font-medium flex items-center gap-1.5 border border-emerald-600/40 shadow-sm select-none">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           <span class="hidden sm:inline">API</span> Conectada
@@ -718,142 +721,212 @@
     </div>
   </div>
 
-  <!-- Modal Tarjeta de Control de Subtarea (Control Granular: Horas, Días, Fechas y Responsable) -->
+  <!-- Modal Tarjeta de Control de Subtarea (Jira-Style Split Modal: Datos Operativos + Bitácora de Avances) -->
   <div id="subtaskModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-    <div class="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl border border-stone-200 flex flex-col max-h-[92vh] overflow-hidden my-auto animate-in fade-in zoom-in duration-150">
+    <div class="bg-white rounded-3xl max-w-5xl w-full p-5 sm:p-7 shadow-2xl border border-stone-200 flex flex-col max-h-[92vh] overflow-hidden my-auto animate-in fade-in zoom-in duration-150">
       
       <!-- Cabecera del Modal -->
-      <div class="flex justify-between items-start border-b border-stone-100 pb-3.5 shrink-0">
+      <div class="flex justify-between items-start border-b border-stone-100 pb-4 shrink-0">
         <div class="flex items-center gap-3">
-          <span class="w-9 h-9 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-base font-bold shadow-2xs">
-            <i class="fa-solid fa-sliders"></i>
-          </span>
+          <span id="subModalId" class="px-3 py-1 rounded-lg text-xs font-mono font-black bg-indigo-100 text-indigo-900 border border-indigo-300/80 shadow-2xs">SUB-01</span>
           <div>
             <div class="flex items-center gap-2 flex-wrap">
-              <span id="subModalId" class="font-mono font-black text-xs px-2.5 py-0.5 rounded-lg bg-indigo-100 text-indigo-900 border border-indigo-300/80 shadow-2xs">SUB-01</span>
-              <h3 class="text-base sm:text-lg font-black text-stone-900 leading-tight">Tarjeta de Control de Subtarea</h3>
+              <input id="subModalName" type="text" required placeholder="Nombre / Entregable de la Subtarea..." class="text-base sm:text-lg font-black text-stone-900 leading-tight bg-transparent border-b border-stone-200 hover:border-indigo-400 focus:border-indigo-600 focus:outline-none transition px-1 py-0.5 w-full sm:w-[460px]">
             </div>
-            <p class="text-xs text-stone-400 font-medium mt-0.5">Control operativo granular &bull; Pulverización de entregables</p>
+            <p class="text-xs text-stone-400 font-medium mt-0.5 flex items-center gap-1.5">
+              <span>Tarjeta de Control de Subtarea</span>
+              <span>&bull;</span>
+              <span class="text-indigo-600 font-bold">Pulverización Operativa WBS</span>
+            </p>
           </div>
         </div>
-        <button onclick="closeSubtaskModal()" class="text-stone-400 hover:text-stone-700 text-xl p-1.5 rounded-xl hover:bg-stone-100 transition cursor-pointer">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
-
-      <!-- Cuerpo del Modal con Scroll Interno -->
-      <div class="space-y-4 pt-4 flex-1 overflow-y-auto pr-1">
-        
-        <!-- Tarjeta de Referencia a Tarea Padre -->
-        <div class="p-3 bg-stone-50 rounded-2xl border border-stone-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
-          <div class="min-w-0">
-            <span class="text-stone-400 block text-[10px] font-bold uppercase tracking-wider">Tarea Padre Asociada:</span>
-            <div class="flex items-center gap-1.5 mt-0.5">
-              <span id="subModalParentBadge" class="font-mono font-bold text-[10px] bg-emerald-100 text-emerald-900 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">TSK-01</span>
-              <span id="subModalParentTitle" class="font-bold text-stone-800 text-xs truncate">Nombre de la Tarea</span>
-            </div>
-          </div>
-          <button type="button" onclick="goToParentTaskFromSubtask()" class="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition shadow-2xs flex items-center gap-1.5 shrink-0 cursor-pointer" title="Abrir modal de la tarea padre">
-            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> <span>Ver Tarea Padre</span>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="goToParentTaskFromSubtask()" class="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition shadow-2xs flex items-center gap-1.5 shrink-0 cursor-pointer" title="Ver ficha de la Tarea Padre">
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> <span class="hidden sm:inline">Ver Tarea Padre</span>
+          </button>
+          <button onclick="closeSubtaskModal()" class="text-stone-400 hover:text-stone-700 text-xl p-1.5 rounded-xl hover:bg-stone-100 transition cursor-pointer">
+            <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
+      </div>
 
-        <!-- Nombre y Descripción de la Subtarea -->
-        <div class="space-y-1">
-          <label class="text-[11px] font-bold text-stone-600 block">Nombre / Entregable de la Subtarea:</label>
-          <input id="subModalName" type="text" required placeholder="Describe el entregable específico..." class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs font-bold text-stone-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+      <!-- Cuerpo del Modal Dividido en 2 Columnas (Jira-Style) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-5 flex-1 overflow-y-auto pr-1">
+        
+        <!-- COLUMNA IZQUIERDA: Especificaciones Operativas, Horas, Días y Costos (6 Cols) -->
+        <div class="lg:col-span-6 space-y-4">
+          
+          <!-- Tarea Padre Asociada & Etapa -->
+          <div class="p-3 bg-stone-50 rounded-2xl border border-stone-200/80 flex items-center justify-between gap-2.5">
+            <div class="min-w-0">
+              <span class="text-stone-400 block text-[10px] font-bold uppercase tracking-wider">Tarea Padre Asociada:</span>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span id="subModalParentBadge" class="font-mono font-bold text-[10px] bg-emerald-100 text-emerald-900 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">TSK-01</span>
+                <span id="subModalParentTitle" class="font-bold text-stone-800 text-xs truncate">Nombre de la Tarea</span>
+              </div>
+            </div>
+            <span id="subModalEtapaBadge" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-white text-stone-600 border border-stone-200 shrink-0">Etapa 1</span>
+          </div>
+
+          <!-- Responsable, Estado, Prioridad y Costo -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            
+            <!-- Responsable Asignado -->
+            <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200/80">
+              <label class="text-stone-400 block font-semibold text-[11px] mb-1">Especialista Responsable:</label>
+              <div class="flex items-center gap-2">
+                <span id="subModalRespAvatar" class="w-7 h-7 rounded-lg bg-blue-600 text-white font-black text-[10px] flex items-center justify-center shadow-2xs shrink-0">AB</span>
+                <select id="subModalResp" onchange="onSubtaskRespChange()" class="w-full bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs text-stone-800 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                  <option value="Arturo B.">Arturo B. ($200/h)</option>
+                  <option value="Gema R.">Gema R. ($200/h)</option>
+                  <option value="Arturo A.">Arturo A. ($200/h)</option>
+                  <option value="Don Chiyo">Don Chiyo ($140/h)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Estado de la Subtarea -->
+            <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200/80">
+              <label class="text-stone-400 block font-semibold text-[11px] mb-1">Estado Operativo:</label>
+              <div class="flex items-center gap-2">
+                <span id="subModalStatusDot" class="w-2.5 h-2.5 rounded-full bg-stone-300 shrink-0"></span>
+                <select id="subModalEstado" onchange="onSubtaskEstadoChange()" class="w-full bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs text-stone-800 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                  <option value="No Iniciada">⚪ No Iniciada</option>
+                  <option value="En Progreso">🟡 En Progreso</option>
+                  <option value="Completada">🟢 Completada</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Prioridad -->
+            <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200/80">
+              <label class="text-stone-400 block font-semibold text-[11px] mb-1">Nivel de Prioridad:</label>
+              <select id="subModalPrioridad" class="w-full bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs text-stone-800 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                <option value="Baja">Baja</option>
+                <option value="Media" selected>Media</option>
+                <option value="Alta">Alta</option>
+                <option value="Crítica">Crítica</option>
+              </select>
+            </div>
+
+            <!-- Presupuesto / Costo Estimado -->
+            <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200/80">
+              <label class="text-stone-400 block font-semibold text-[11px]">Costo Estimado:</label>
+              <span id="subModalCostPreview" class="text-sm font-black text-emerald-800 block mt-1">
+                $0.00 MXN
+              </span>
+            </div>
+          </div>
+
+          <!-- TARJETA 1: CONTROL DE HORAS (Ámbar / Esmeralda) -->
+          <div class="bg-amber-50/40 p-4 rounded-2xl border border-amber-200/80 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-black text-xs text-amber-900 flex items-center gap-1.5">
+                <i class="fa-solid fa-clock text-amber-600"></i> Control de Horas Asignadas:
+              </span>
+              <span id="subModalRateLabel" class="text-[10px] font-bold text-amber-800 bg-white px-2 py-0.5 rounded border border-amber-200">
+                Tarifa: $200/h
+              </span>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <div class="flex items-center gap-1.5">
+                <label class="text-[11px] font-bold text-stone-600">Horas:</label>
+                <input id="subModalHoras" type="number" min="0" step="0.5" value="4" oninput="updateSubtaskCostPreview()" class="w-24 bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-sm font-black font-mono text-center text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500/30">
+                <span class="text-xs font-bold text-stone-500">hrs</span>
+              </div>
+            </div>
+
+            <!-- Botones de adición rápida de horas -->
+            <div class="flex items-center gap-1.5 flex-wrap pt-1 border-t border-amber-200/50">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-amber-800 mr-1">Sumar:</span>
+              <button type="button" onclick="quickAddSubtaskHours(1)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 border border-amber-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+1h</button>
+              <button type="button" onclick="quickAddSubtaskHours(2)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 border border-amber-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+2h</button>
+              <button type="button" onclick="quickAddSubtaskHours(4)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 border border-amber-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+4h</button>
+              <button type="button" onclick="quickAddSubtaskHours(8)" class="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-black transition cursor-pointer shadow-xs">+8h (1 jornada)</button>
+            </div>
+          </div>
+
+          <!-- TARJETA 2: CONTROL DE DÍAS Y CALENDARIO (Índigo / Azul) -->
+          <div class="bg-indigo-50/40 p-4 rounded-2xl border border-indigo-200/80 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-black text-xs text-indigo-900 flex items-center gap-1.5">
+                <i class="fa-solid fa-calendar-days text-indigo-600"></i> Control de Duración en Días & Fechas:
+              </span>
+              <span class="text-[10px] font-bold text-indigo-800 bg-white px-2 py-0.5 rounded border border-indigo-200">
+                Visible en Gantt
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="text-[11px] font-bold text-stone-600 block mb-1">Fecha de Inicio:</label>
+                <input id="subModalStart" type="date" onchange="onSubtaskDateChange('start')" class="w-full bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-xs text-stone-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+              </div>
+              <div>
+                <label class="text-[11px] font-bold text-stone-600 block mb-1">Fecha de Fin:</label>
+                <input id="subModalEnd" type="date" onchange="onSubtaskDateChange('end')" class="w-full bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-xs text-stone-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+              </div>
+              <div>
+                <label class="text-[11px] font-bold text-stone-600 block mb-1">Duración (Días):</label>
+                <input id="subModalDias" type="number" min="1" value="1" oninput="onSubtaskDaysChange()" class="w-full bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-sm font-black font-mono text-center text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+              </div>
+            </div>
+
+            <!-- Botones de adición rápida de días -->
+            <div class="flex items-center gap-1.5 flex-wrap pt-1 border-t border-indigo-200/50">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-800 mr-1">Extender:</span>
+              <button type="button" onclick="quickAddSubtaskDays(1)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+1 día</button>
+              <button type="button" onclick="quickAddSubtaskDays(2)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+2 días</button>
+              <button type="button" onclick="quickAddSubtaskDays(3)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+3 días</button>
+              <button type="button" onclick="quickAddSubtaskDays(5)" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition cursor-pointer shadow-xs">+5 días</button>
+            </div>
+          </div>
+
         </div>
 
-        <!-- Responsable y Estado -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <!-- COLUMNA DERECHA: Criterios de Aceptación + Bitácora / Chat Jira en Vivo de la Subtarea (6 Cols) -->
+        <div class="lg:col-span-6 flex flex-col bg-stone-50/90 rounded-2xl p-4 border border-stone-200/80 space-y-3 min-h-[420px]">
+          
+          <!-- Criterios de Aceptación y Memoria Descriptiva -->
           <div>
-            <label class="text-[11px] font-bold text-stone-600 block mb-1">Especialista Responsable:</label>
-            <select id="subModalResp" onchange="updateSubtaskCostPreview()" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-800 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-              <option value="Arturo B.">Arturo B. (Gerente Operativo - $200/h)</option>
-              <option value="Gema R.">Gema R. (Gerente Legal - $200/h)</option>
-              <option value="Arturo A.">Arturo A. (Web Master / Admon - $200/h)</option>
-              <option value="Don Chiyo">Don Chiyo (Encargado de Rancho - $140/h)</option>
-            </select>
-          </div>
-          <div>
-            <label class="text-[11px] font-bold text-stone-600 block mb-1">Estado de la Subtarea:</label>
-            <select id="subModalEstado" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-800 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-              <option value="No Iniciada">⚪ No Iniciada</option>
-              <option value="En Progreso">🟡 En Progreso</option>
-              <option value="Completada">🟢 Completada</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- TARJETA 1: CONTROL DE HORAS (Ámbar / Esmeralda) -->
-        <div class="bg-amber-50/40 p-4 rounded-2xl border border-amber-200/80 space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="font-black text-xs text-amber-900 flex items-center gap-1.5">
-              <i class="fa-solid fa-clock text-amber-600"></i> Control de Horas de Trabajo:
-            </span>
-            <span id="subModalCostPreview" class="text-xs font-black text-emerald-800 bg-white px-2.5 py-1 rounded-lg border border-emerald-200 shadow-2xs">
-              $0.00 MXN
-            </span>
+            <label class="text-[11px] font-bold text-stone-700 block mb-1 flex items-center gap-1.5">
+              <i class="fa-solid fa-clipboard-check text-emerald-600"></i> Criterios de Aceptación / Memoria Técnica:
+            </label>
+            <textarea id="subModalNotas" rows="2" placeholder="Especificaciones técnicas, entregables esperados o criterios de validación..." class="w-full bg-white border border-stone-200 rounded-xl p-2.5 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"></textarea>
           </div>
 
-          <div class="flex items-center gap-3">
-            <div class="flex items-center gap-1.5">
-              <label class="text-[11px] font-bold text-stone-600">Horas Asignadas:</label>
-              <input id="subModalHoras" type="number" min="0" step="0.5" value="4" oninput="updateSubtaskCostPreview()" class="w-24 bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-sm font-black font-mono text-center text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500/30">
-              <span class="text-xs font-bold text-stone-500">hrs</span>
+          <!-- Cabecera de la Bitácora de la Subtarea -->
+          <div class="flex items-center justify-between border-b border-stone-200 pb-2 shrink-0">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+              <h4 class="font-black text-xs text-stone-800">Bitácora & Avances de Subtarea</h4>
+            </div>
+            <span id="subChatCountBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-stone-600 border border-stone-200 shadow-2xs">0 notas</span>
+          </div>
+
+          <!-- Historial de Notas de la Subtarea (Scroll Interno) -->
+          <div id="subtaskChatList" class="flex-1 space-y-2 overflow-y-auto max-h-56 pr-1">
+            <!-- Renderizado dinámico de comentarios de la subtarea -->
+          </div>
+
+          <!-- Input para Agregar Avances / Comentarios a la Subtarea -->
+          <div class="pt-2 border-t border-stone-200 space-y-1.5 shrink-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-[10px] font-bold text-stone-400">Atajos:</span>
+              <button type="button" onclick="insertSubtaskChatTag('✓ Avance:')" class="px-2 py-0.5 rounded bg-white hover:bg-emerald-50 text-[10px] font-bold text-emerald-800 border border-emerald-200 transition shadow-2xs">✓ Avance</button>
+              <button type="button" onclick="insertSubtaskChatTag('@Arturo B.')" class="px-2 py-0.5 rounded bg-white hover:bg-blue-50 text-[10px] font-bold text-blue-800 border border-blue-200 transition shadow-2xs">@Arturo</button>
+              <button type="button" onclick="insertSubtaskChatTag('@Gema R.')" class="px-2 py-0.5 rounded bg-white hover:bg-emerald-50 text-[10px] font-bold text-emerald-800 border border-emerald-200 transition shadow-2xs">@Gema</button>
+              <button type="button" onclick="insertSubtaskChatTag('⚠️ Bloqueo:')" class="px-2 py-0.5 rounded bg-white hover:bg-rose-50 text-[10px] font-bold text-rose-800 border border-rose-200 transition shadow-2xs">⚠️ Bloqueo</button>
+            </div>
+            <div class="flex gap-2">
+              <input id="subtaskChatInput" type="text" placeholder="Escribe un avance o acuerdo de campo..." class="flex-1 bg-white border border-stone-300 rounded-xl px-3 py-2 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" onkeydown="if(event.key==='Enter')sendSubtaskComment()">
+              <button type="button" onclick="sendSubtaskComment()" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1 transition shadow-sm cursor-pointer shrink-0">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
             </div>
           </div>
 
-          <!-- Botones de adición rápida de horas -->
-          <div class="flex items-center gap-1.5 flex-wrap pt-1 border-t border-amber-200/50">
-            <span class="text-[10px] font-bold uppercase tracking-wider text-amber-800 mr-1">Sumar Horas:</span>
-            <button type="button" onclick="quickAddSubtaskHours(1)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 border border-amber-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+1h</button>
-            <button type="button" onclick="quickAddSubtaskHours(2)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 border border-amber-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+2h</button>
-            <button type="button" onclick="quickAddSubtaskHours(4)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 text-amber-900 border border-amber-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+4h</button>
-            <button type="button" onclick="quickAddSubtaskHours(8)" class="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-black transition cursor-pointer shadow-xs">+8h (1 jornada)</button>
-          </div>
-        </div>
-
-        <!-- TARJETA 2: CONTROL DE DÍAS Y CALENDARIO (Índigo / Azul) -->
-        <div class="bg-indigo-50/40 p-4 rounded-2xl border border-indigo-200/80 space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="font-black text-xs text-indigo-900 flex items-center gap-1.5">
-              <i class="fa-solid fa-calendar-days text-indigo-600"></i> Control de Duración en Días & Fechas:
-            </span>
-            <span id="subModalGanttPreview" class="text-[10px] font-bold text-indigo-800 bg-white px-2 py-0.5 rounded border border-indigo-200">
-              Visible en Cronograma Gantt
-            </span>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label class="text-[11px] font-bold text-stone-600 block mb-1">Fecha de Inicio:</label>
-              <input id="subModalStart" type="date" onchange="onSubtaskDateChange('start')" class="w-full bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-xs text-stone-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-            </div>
-            <div>
-              <label class="text-[11px] font-bold text-stone-600 block mb-1">Fecha de Fin:</label>
-              <input id="subModalEnd" type="date" onchange="onSubtaskDateChange('end')" class="w-full bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-xs text-stone-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-            </div>
-            <div>
-              <label class="text-[11px] font-bold text-stone-600 block mb-1">Duración (Días):</label>
-              <input id="subModalDias" type="number" min="1" value="1" oninput="onSubtaskDaysChange()" class="w-full bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-sm font-black font-mono text-center text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-            </div>
-          </div>
-
-          <!-- Botones de adición rápida de días -->
-          <div class="flex items-center gap-1.5 flex-wrap pt-1 border-t border-indigo-200/50">
-            <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-800 mr-1">Extender Duración:</span>
-            <button type="button" onclick="quickAddSubtaskDays(1)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+1 día</button>
-            <button type="button" onclick="quickAddSubtaskDays(2)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+2 días</button>
-            <button type="button" onclick="quickAddSubtaskDays(3)" class="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300/70 text-xs font-bold transition cursor-pointer shadow-2xs">+3 días</button>
-            <button type="button" onclick="quickAddSubtaskDays(5)" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition cursor-pointer shadow-xs">+5 días</button>
-          </div>
-        </div>
-
-        <!-- Notas de la Subtarea -->
-        <div>
-          <label class="text-[11px] font-bold text-stone-600 block mb-1">Notas / Criterios de Aceptación del Entregable:</label>
-          <textarea id="subModalNotas" rows="2" placeholder="Especificaciones técnicas, avances o notas de la subtarea..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-xs text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"></textarea>
         </div>
 
       </div>
@@ -868,8 +941,72 @@
           <button type="button" id="btnToggleCompleteSubtask" onclick="toggleSubtaskCompleteInModal()" class="px-3.5 py-2 rounded-xl text-xs font-bold transition border cursor-pointer">
             <!-- Dinámico: Completar o Reabrir -->
           </button>
-          <button type="button" onclick="saveSubtaskModalChanges()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md transition flex items-center gap-1.5 cursor-pointer">
-            <i class="fa-solid fa-floppy-disk"></i> <span>Guardar Cambios</span>
+          <button type="button" onclick="saveSubtaskModalChanges()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-floppy-disk"></i> <span>Guardar Cambios & Sincronizar</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal Sincronización Git-as-a-Database (GitHub API & Vercel) -->
+  <div id="githubSyncModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-stone-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="w-9 h-9 rounded-2xl bg-stone-900 text-white flex items-center justify-center text-lg shadow-2xs">
+            <i class="fa-brands fa-github"></i>
+          </span>
+          <div>
+            <h3 class="text-base font-black text-stone-900 leading-tight">Git-as-a-Database Sincronizador</h3>
+            <p class="text-[11px] text-stone-400">in2techmx/chimay-operaciones &bull; Rama main</p>
+          </div>
+        </div>
+        <button onclick="closeGitHubSyncModal()" class="text-stone-400 hover:text-stone-700 text-lg p-1 rounded-lg hover:bg-stone-100 cursor-pointer">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Estado de la sincronización -->
+      <div class="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-stone-700">Estado de Persistencia:</span>
+          <span id="githubSyncStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+            🟢 Persistencia Local Activa
+          </span>
+        </div>
+        <div class="text-[11px] text-stone-500 space-y-1">
+          <p>• <b>Almacenamiento Local:</b> Tareas y subtareas se preservan automáticamente al refrescar.</p>
+          <p id="githubSyncLastCommitText">• <b>Último Commit en GitHub:</b> Verificando estado...</p>
+        </div>
+      </div>
+
+      <!-- Configuración del GitHub Personal Access Token -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-stone-700 block">
+          GitHub Personal Access Token (PAT):
+        </label>
+        <div class="flex gap-2">
+          <input id="githubTokenInput" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" class="flex-1 bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-xs font-mono text-stone-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-stone-500/20">
+          <button type="button" onclick="testAndSaveGitHubToken()" class="px-3.5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition shadow-sm cursor-pointer shrink-0">
+            Guardar
+          </button>
+        </div>
+        <p class="text-[10px] text-stone-400">
+          Token clásico o fine-grained con permiso <code>repo</code> o <code>contents:write</code>. Se almacena localmente y de forma segura en tu navegador.
+        </p>
+      </div>
+
+      <!-- Acciones de Sincronización Manual -->
+      <div class="pt-2 border-t border-stone-100 space-y-2">
+        <span class="text-xs font-bold text-stone-700 block">Acciones Directas:</span>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button type="button" onclick="manualSyncAllToGitHub()" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer">
+            <i class="fa-solid fa-cloud-arrow-up"></i> <span>Commit Todo a GitHub</span>
+          </button>
+          <button type="button" onclick="downloadCurrentTasksJson()" class="w-full py-2.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition flex items-center justify-center gap-1.5 border border-stone-200 cursor-pointer">
+            <i class="fa-solid fa-download"></i> <span>Descargar tareas.json</span>
           </button>
         </div>
       </div>
@@ -2977,6 +3114,11 @@ Sincronizando con Google Sheets...`);
         localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
       } catch (err) {}
 
+      // Sincronizar en segundo plano con GitHub (Git-as-a-Database)
+      if (taskIdx !== -1) {
+        syncStageToGitHub(tasksData[taskIdx], `chore(task): actualizar tarea ${id} (${name})`);
+      }
+
       // Actualizar vistas del portal
       populateEtapasDropdown();
       populateRecursosDropdown();
@@ -3480,20 +3622,37 @@ Las tareas ya asignadas conservarán su nombre en el historial, pero el usuario 
           }
 
           if (allTasksFromStages.length > 0) {
-            const existingIds = new Set();
             tasksData = allTasksFromStages;
-            tasksData.forEach(t => existingIds.add(t.id));
 
-            // Agregar custom tasks de localStorage que no estén en los JSONs
+            // Sincronizar y preservar cambios locales (customTasks / localStorage)
+            // CRÍTICO: Si una tarea ya existía en el JSON pero fue modificada localmente (subtareas agregadas, horas, estado, etc.),
+            // se DEBE combinar/sobreescribir con la versión local más reciente para que NO se pierda al refrescar la página.
             try {
               const customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
               customTasks.forEach(ct => {
-                if (!existingIds.has(ct.id)) {
+                const idx = tasksData.findIndex(t => t.id === ct.id);
+                if (idx !== -1) {
+                  // Combinar subtareas de servidor con subtareas creadas/editadas localmente
+                  const serverSubs = tasksData[idx].subtareas || [];
+                  const localSubs = ct.subtareas || [];
+                  const subMap = new Map();
+                  serverSubs.forEach(s => subMap.set(s.id, s));
+                  localSubs.forEach(s => subMap.set(s.id, s));
+                  const mergedSubs = Array.from(subMap.values());
+
+                  tasksData[idx] = {
+                    ...tasksData[idx],
+                    ...ct,
+                    subtareas: mergedSubs
+                  };
+                } else {
                   tasksData.push(ct);
-                  existingIds.add(ct.id);
                 }
               });
-            } catch(e) {}
+              localStorage.setItem("chimay_cached_sheets_tasks", JSON.stringify(tasksData));
+            } catch(e) {
+              console.warn("Error al combinar tareas locales guardadas:", e);
+            }
 
             populateEtapasDropdown();
             populateRecursosDropdown();
@@ -3501,7 +3660,11 @@ Las tareas ya asignadas conservarán su nombre en el historial, pero el usuario 
 
             const initialSyncLbl = document.getElementById("lastSyncLabel");
             if (initialSyncLbl) {
-              initialSyncLbl.innerHTML = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 font-mono text-[11px] font-bold shadow-xs"><i class="fa-brands fa-github text-white text-xs"></i> Git-as-a-Database (${tasksData.length} tareas cargadas)</span>`;
+              const hasToken = !!localStorage.getItem("chimay_github_token");
+              const tokenBadge = hasToken 
+                ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> GitHub Conectado' 
+                : '<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Guardado Local';
+              initialSyncLbl.innerHTML = `<span onclick="openGitHubSyncModal()" class="cursor-pointer inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono text-[11px] font-bold shadow-xs transition" title="Clic para gestionar sincronización con GitHub (Git-as-a-Database)"><i class="fa-brands fa-github text-white text-xs"></i> Git-as-a-Database (${tasksData.length} tareas): ${tokenBadge}</span>`;
             }
           }
         }
@@ -8117,6 +8280,10 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       t.estado = "Completada";
       t.progress = 100;
 
+      // Persistencia local inmediata y Git sync
+      persistAllTasksLocally(t);
+      syncStageToGitHub(t, `chore(task): marcar completada ${t.id}`);
+
       const container = document.getElementById("viewContainer");
       if (container) {
         if (currentView === "todos") renderGlobalView(container);
@@ -8173,14 +8340,27 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
             localStorage.setItem("chimay_cached_sheets_tasks", JSON.stringify(tasksData));
           } catch(e) {}
 
-          // Combinar tareas creadas localmente que aún no estén en Sheets
+          // Combinar y preservar tareas creadas o modificadas localmente
           try {
             const customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
             customTasks.forEach(ct => {
-              if (!tasksData.some(t => t.id === ct.id)) {
+              const idx = tasksData.findIndex(t => t.id === ct.id);
+              if (idx !== -1) {
+                const curSubs = tasksData[idx].subtareas || [];
+                const locSubs = ct.subtareas || [];
+                const subMap = new Map();
+                curSubs.forEach(s => subMap.set(s.id, s));
+                locSubs.forEach(s => subMap.set(s.id, s));
+                tasksData[idx] = {
+                  ...tasksData[idx],
+                  ...ct,
+                  subtareas: Array.from(subMap.values())
+                };
+              } else {
                 tasksData.push(ct);
               }
             });
+            localStorage.setItem("chimay_cached_sheets_tasks", JSON.stringify(tasksData));
           } catch(e) {}
 
           // Si incluye comentarios de bitácora
@@ -9248,15 +9428,15 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         const isDone = s.estado === "Completada";
         const sDias = Number(s.dias) || 1;
         return `
-          <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-stone-200/90 hover:border-indigo-300 shadow-2xs text-xs gap-2 transition group">
-            <div class="flex items-center gap-2 min-w-0">
+          <div onclick="openSubtaskModal('${t.id}', '${s.id}')" class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-stone-200/90 hover:border-indigo-400 hover:bg-indigo-50/20 shadow-2xs text-xs gap-2 transition cursor-pointer group">
+            <div class="flex items-center gap-2 min-w-0" onclick="event.stopPropagation()">
               <input type="checkbox" ${isDone ? "checked" : ""} onchange="toggleSubtaskWeb('${t.id}', '${s.id}', this.checked)" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer">
-              <div class="min-w-0">
+              <div class="min-w-0" onclick="openSubtaskModal('${t.id}', '${s.id}')">
                 <span class="font-mono text-[10px] font-bold text-indigo-800 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200/60 mr-1">${s.id}</span>
                 <span class="${isDone ? 'line-through text-stone-400 font-medium' : 'font-bold text-stone-800'} truncate">${escapeHtml(s.name)}</span>
               </div>
             </div>
-            <div class="flex items-center gap-1.5 shrink-0">
+            <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation()">
               <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100" title="Responsable">${s.responsable || t.responsable}</span>
               <span class="text-[10px] text-indigo-900 font-semibold bg-indigo-50/80 px-1.5 py-0.5 rounded border border-indigo-200/50 font-mono" title="Duración">${sDias}d</span>
               <span class="text-[10px] text-stone-600 font-bold bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200 font-mono" title="Horas">${s.horas || 0}h</span>
@@ -9287,9 +9467,16 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       s.estado = isChecked ? "Completada" : "No Iniciada";
       recalculateTaskRollup(t);
 
+      // Persistencia local inmediata
+      persistAllTasksLocally(t);
+      syncStageToGitHub(t, `chore(subtask): ${s.id} marcada como ${s.estado}`);
+
       // Actualizar UI del modal
       renderModalSubtasks(taskId);
-      document.getElementById("modalStatus").innerText = `${t.prioridad || 'Media'} • ${t.estado} (${t.progress}%)`;
+      const modalStatus = document.getElementById("modalStatus");
+      if (modalStatus) {
+        modalStatus.innerText = `${t.prioridad || 'Media'} • ${t.estado} (${t.progress}%)`;
+      }
 
       // Refrescar vistas del dashboard
       const container = document.getElementById("viewContainer");
@@ -9337,27 +9524,23 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         name: subName,
         responsable: resp,
         estado: "No Iniciada",
+        prioridad: "Media",
         horas: subHours,
         dias: subDays,
         start: startDate,
         end: endDate,
         fecha: startDate,
-        notas: ""
+        notas: "",
+        comentarios: []
       });
 
       recalculateTaskRollup(t);
       if (inputName) inputName.value = "";
       renderModalSubtasks(selectedTaskId);
 
-      // Persistir
-      try {
-        localStorage.setItem("chimay_cached_sheets_tasks", JSON.stringify(tasksData));
-        let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
-        const cIdx = customTasks.findIndex(x => x.id === t.id);
-        if (cIdx !== -1) customTasks[cIdx] = t;
-        else customTasks.push(t);
-        localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
-      } catch (err) {}
+      // Persistencia local a prueba de recargas
+      persistAllTasksLocally(t);
+      syncStageToGitHub(t, `feat(subtask): agregar subtarea ${newSubId} a ${t.id}`);
 
       // Asegurar que la tarea quede expandida para que la nueva subtarea sea visible en el árbol
       if (window.expandedTaskIds) {
@@ -9398,17 +9581,32 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       const parentTitle = document.getElementById("subModalParentTitle");
       if (parentTitle) parentTitle.innerText = parentTask.name;
 
+      const etapaBadge = document.getElementById("subModalEtapaBadge");
+      if (etapaBadge) etapaBadge.innerText = parentTask.etapa || "Etapa General";
+
       // Nombre
       const inpName = document.getElementById("subModalName");
       if (inpName) inpName.value = sub.name || "";
 
       // Responsable
       const selResp = document.getElementById("subModalResp");
-      if (selResp) selResp.value = sub.responsable || parentTask.responsable || "Arturo B.";
+      if (selResp) {
+        selResp.value = sub.responsable || parentTask.responsable || "Arturo B.";
+        onSubtaskRespChange();
+      }
 
       // Estado
       const selEstado = document.getElementById("subModalEstado");
-      if (selEstado) selEstado.value = sub.estado || "No Iniciada";
+      if (selEstado) {
+        selEstado.value = sub.estado || "No Iniciada";
+        onSubtaskEstadoChange();
+      }
+
+      // Prioridad
+      const selPrioridad = document.getElementById("subModalPrioridad");
+      if (selPrioridad) {
+        selPrioridad.value = sub.prioridad || "Media";
+      }
 
       // Horas
       const inpHoras = document.getElementById("subModalHoras");
@@ -9444,9 +9642,12 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       const inpDias = document.getElementById("subModalDias");
       if (inpDias) inpDias.value = sDias;
 
-      // Notas
+      // Notas / Criterios de Aceptación
       const txtNotas = document.getElementById("subModalNotas");
       if (txtNotas) txtNotas.value = sub.notas || "";
+
+      // Bitácora / Chat de la Subtarea
+      renderSubtaskChat(sub);
 
       // Previews y botón completar
       updateSubtaskCostPreview();
@@ -9455,6 +9656,44 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       // Mostrar modal
       const modal = document.getElementById("subtaskModal");
       if (modal) modal.classList.remove("hidden");
+    }
+
+    function onSubtaskRespChange() {
+      const selResp = document.getElementById("subModalResp");
+      const avatarEl = document.getElementById("subModalRespAvatar");
+      const rateLabel = document.getElementById("subModalRateLabel");
+      const resp = selResp ? selResp.value : "Arturo B.";
+
+      let avBg = "bg-stone-600";
+      let inits = "US";
+      let rate = 200;
+
+      if (resp.includes("Arturo B.")) { avBg = "bg-blue-600"; inits = "AB"; rate = 200; }
+      else if (resp.includes("Gema R.")) { avBg = "bg-emerald-600"; inits = "GR"; rate = 200; }
+      else if (resp.includes("Arturo A.")) { avBg = "bg-purple-600"; inits = "AA"; rate = 200; }
+      else if (resp.includes("Don Chiyo")) { avBg = "bg-amber-600"; inits = "DC"; rate = 140; }
+
+      if (avatarEl) {
+        avatarEl.className = `w-7 h-7 rounded-lg ${avBg} text-white font-black text-[10px] flex items-center justify-center shadow-2xs shrink-0`;
+        avatarEl.innerText = inits;
+      }
+      if (rateLabel) {
+        rateLabel.innerText = `Tarifa: $${rate}/h`;
+      }
+      updateSubtaskCostPreview();
+    }
+
+    function onSubtaskEstadoChange() {
+      const selEstado = document.getElementById("subModalEstado");
+      const statusDot = document.getElementById("subModalStatusDot");
+      const val = selEstado ? selEstado.value : "No Iniciada";
+
+      if (statusDot) {
+        if (val === "Completada") statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0";
+        else if (val === "En Progreso") statusDot.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0";
+        else statusDot.className = "w-2.5 h-2.5 rounded-full bg-stone-300 shrink-0";
+      }
+      updateSubtaskCompleteBtnUi(val === "Completada");
     }
 
     function closeSubtaskModal() {
@@ -9530,7 +9769,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       const horas = inpHoras ? Number(inpHoras.value) || 0 : 0;
       const tarifa = resp.includes("Chiyo") ? 140 : 200;
       const total = horas * tarifa;
-      preview.innerText = `${total.toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN (${horas}h @ ${tarifa}/h)`;
+      preview.innerText = `$${total.toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN (${horas}h @ $${tarifa}/h)`;
     }
 
     function updateSubtaskCompleteBtnUi(isCompleted) {
@@ -9550,7 +9789,137 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       if (!selEstado) return;
       const isComp = selEstado.value === "Completada";
       selEstado.value = isComp ? "En Progreso" : "Completada";
-      updateSubtaskCompleteBtnUi(!isComp);
+      onSubtaskEstadoChange();
+    }
+
+    // ==========================================
+    // BITÁCORA / CHAT EN VIVO DE LA SUBTAREA
+    // ==========================================
+    function getSubtaskComments(sub) {
+      if (!sub) return [];
+      if (!sub.comentarios || !Array.isArray(sub.comentarios)) {
+        sub.comentarios = [];
+      }
+      return sub.comentarios;
+    }
+
+    function renderSubtaskChat(sub) {
+      const listEl = document.getElementById("subtaskChatList");
+      const badgeEl = document.getElementById("subChatCountBadge");
+      if (!listEl || !sub) return;
+
+      const comments = getSubtaskComments(sub);
+      if (badgeEl) {
+        badgeEl.textContent = `${comments.length} nota${comments.length === 1 ? '' : 's'}`;
+      }
+
+      if (comments.length === 0) {
+        listEl.innerHTML = `
+          <div class="py-6 text-center text-stone-400 space-y-1">
+            <i class="fa-regular fa-comments text-2xl text-stone-300"></i>
+            <p class="text-xs font-bold text-stone-600">Sin notas de avance aún.</p>
+            <p class="text-[10px] text-stone-400">Registra especificaciones, acuerdos o avances de campo.</p>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = comments.map(c => {
+        return `
+          <div class="p-2.5 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-1">
+            <div class="flex items-center justify-between text-[10px]">
+              <div class="flex items-center gap-1.5">
+                <span class="font-black text-stone-900">${escapeHtml(c.author || 'Equipo')}</span>
+                <span class="text-stone-400">&bull;</span>
+                <span class="text-indigo-700 font-bold">${escapeHtml(c.rol || 'Operativo')}</span>
+              </div>
+              <span class="text-stone-400 font-mono">${escapeHtml(c.timestamp || '')}</span>
+            </div>
+            <p class="text-xs text-stone-700 whitespace-pre-wrap">${formatCommentText(c.text)}</p>
+          </div>
+        `;
+      }).join('');
+
+      setTimeout(() => { listEl.scrollTop = listEl.scrollHeight; }, 30);
+    }
+
+    function insertSubtaskChatTag(tag) {
+      const inp = document.getElementById("subtaskChatInput");
+      if (!inp) return;
+      inp.value = (inp.value ? inp.value + " " : "") + tag + " ";
+      inp.focus();
+    }
+
+    function sendSubtaskComment() {
+      if (!currentEditingParentTaskId || !currentEditingSubtaskId) return;
+      const parentTask = tasksData.find(t => t.id === currentEditingParentTaskId);
+      if (!parentTask || !parentTask.subtareas) return;
+      const sub = parentTask.subtareas.find(s => s.id === currentEditingSubtaskId);
+      if (!sub) return;
+
+      const inp = document.getElementById("subtaskChatInput");
+      if (!inp || !inp.value.trim()) return;
+
+      const text = inp.value.trim();
+      const author = currentUser || {
+        name: "Arturo B.",
+        rol: "Operaciones"
+      };
+
+      const now = new Date();
+      const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+      if (!sub.comentarios) sub.comentarios = [];
+      const newComment = {
+        id: "sub-cmt-" + Date.now(),
+        author: author.name,
+        rol: author.rol || "Operaciones",
+        timestamp: timeStr,
+        text: text,
+        canal: "Web"
+      };
+      sub.comentarios.push(newComment);
+
+      // Replicar en la bitácora de la tarea padre para máxima trazabilidad
+      if (!taskComments[parentTask.id]) taskComments[parentTask.id] = [];
+      taskComments[parentTask.id].push({
+        id: "cmt-" + Date.now(),
+        author: author.name,
+        email: author.email || "",
+        rol: author.rol || "Operaciones",
+        timestamp: timeStr,
+        text: `🧩 [Subtarea ${sub.id}] ${text}`,
+        canal: "Web"
+      });
+      saveTaskComments();
+
+      inp.value = "";
+      renderSubtaskChat(sub);
+
+      // Persistir inmediatamente en memoria y localStorage
+      persistAllTasksLocally(parentTask);
+    }
+
+    // Persistencia local unificada garantizada a prueba de recargas
+    function persistAllTasksLocally(specificTask = null) {
+      try {
+        localStorage.setItem("chimay_cached_sheets_tasks", JSON.stringify(tasksData));
+        let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
+        if (specificTask) {
+          const cIdx = customTasks.findIndex(t => t.id === specificTask.id);
+          if (cIdx !== -1) customTasks[cIdx] = specificTask;
+          else customTasks.push(specificTask);
+        } else {
+          tasksData.forEach(t => {
+            const cIdx = customTasks.findIndex(x => x.id === t.id);
+            if (cIdx !== -1) customTasks[cIdx] = t;
+            else customTasks.push(t);
+          });
+        }
+        localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
+      } catch (err) {
+        console.error("Error al persistir en almacenamiento local:", err);
+      }
     }
 
     function saveSubtaskModalChanges() {
@@ -9563,6 +9932,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       const inpName = document.getElementById("subModalName");
       const selResp = document.getElementById("subModalResp");
       const selEstado = document.getElementById("subModalEstado");
+      const selPrioridad = document.getElementById("subModalPrioridad");
       const inpHoras = document.getElementById("subModalHoras");
       const inpStart = document.getElementById("subModalStart");
       const inpEnd = document.getElementById("subModalEnd");
@@ -9578,6 +9948,7 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       sub.name = newName;
       sub.responsable = selResp ? selResp.value : sub.responsable;
       sub.estado = selEstado ? selEstado.value : sub.estado;
+      sub.prioridad = selPrioridad ? selPrioridad.value : "Media";
       sub.horas = inpHoras ? Number(inpHoras.value) || 0 : sub.horas;
       sub.start = inpStart ? inpStart.value : sub.start;
       sub.end = inpEnd ? inpEnd.value : sub.end;
@@ -9587,25 +9958,20 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
 
       recalculateTaskRollup(parentTask);
 
-      // Persistir
-      try {
-        localStorage.setItem("chimay_cached_sheets_tasks", JSON.stringify(tasksData));
-        let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
-        const cIdx = customTasks.findIndex(t => t.id === parentTask.id);
-        if (cIdx !== -1) {
-          customTasks[cIdx] = parentTask;
-        } else {
-          customTasks.push(parentTask);
-        }
-        localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
-      } catch (err) {
-        console.error("Error al persistir subtarea:", err);
-      }
+      // Persistir de forma robusta e inmediata
+      persistAllTasksLocally(parentTask);
+
+      // Sincronizar en segundo plano con GitHub (Git-as-a-Database)
+      syncStageToGitHub(parentTask, `chore(subtask): actualizar subtarea ${sub.id} en ${parentTask.id}`);
 
       // Si el modal de la tarea padre está visible, refrescar su lista de subtareas
       const taskModal = document.getElementById("taskModal");
       if (taskModal && !taskModal.classList.contains("hidden")) {
         renderModalSubtasks(parentTask.id);
+        const modalStatus = document.getElementById("modalStatus");
+        if (modalStatus) {
+          modalStatus.innerText = `${parentTask.prioridad || 'Media'} • ${parentTask.estado} (${parentTask.progress}%)`;
+        }
       }
 
       // Refrescar vistas del dashboard
@@ -9628,18 +9994,12 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
         return;
       }
 
-      parentTask.subtareas = parentTask.subtareas.filter(s => s.id !== currentEditingSubtaskId);
+      const deletedSubId = currentEditingSubtaskId;
+      parentTask.subtareas = parentTask.subtareas.filter(s => s.id !== deletedSubId);
       recalculateTaskRollup(parentTask);
 
-      try {
-        localStorage.setItem("chimay_cached_sheets_tasks", JSON.stringify(tasksData));
-        let customTasks = JSON.parse(localStorage.getItem("chimay_custom_tasks") || "[]");
-        const cIdx = customTasks.findIndex(t => t.id === parentTask.id);
-        if (cIdx !== -1) {
-          customTasks[cIdx] = parentTask;
-        }
-        localStorage.setItem("chimay_custom_tasks", JSON.stringify(customTasks));
-      } catch (err) {}
+      persistAllTasksLocally(parentTask);
+      syncStageToGitHub(parentTask, `chore(subtask): eliminar subtarea ${deletedSubId} de ${parentTask.id}`);
 
       const taskModal = document.getElementById("taskModal");
       if (taskModal && !taskModal.classList.contains("hidden")) {
@@ -9654,6 +10014,249 @@ REGLA CRÍTICA: Devuelve ÚNICAMENTE el JSON plano sin formato markdown extra ni
       updateEtapaBarInfo();
 
       closeSubtaskModal();
+    }
+
+    // =========================================================================
+    // MOTOR DE SINCRONIZACIÓN CON GITHUB (GIT-AS-A-DATABASE)
+    // =========================================================================
+    function getStageFilePathForTask(task) {
+      if (!task) return "data/proyectos/PRJ-01-chimay/etapas/ETAPA-01-propuesta/tareas.json";
+      const projId = task.projectId || (currentPortfolioProject !== "all" ? currentPortfolioProject : "PRJ-01");
+      const proj = (githubProjectsCatalog && Array.isArray(githubProjectsCatalog)) 
+        ? githubProjectsCatalog.find(p => p.id === projId) 
+        : null;
+
+      if (proj && proj.etapas && Array.isArray(proj.etapas)) {
+        const etapa = proj.etapas.find(e => 
+          e.id === task.etapaId || 
+          (task.etapa && e.nombre && e.nombre.toLowerCase() === task.etapa.toLowerCase()) ||
+          (task.id && task.id.startsWith("TSK-PRE-") && e.id === "ETAPA-01") ||
+          (task.id && task.id.startsWith("TSK-PIL-") && e.id === "ETAPA-02")
+        );
+        if (etapa && etapa.path) {
+          return `data/${etapa.path}/tareas.json`;
+        }
+      }
+      return "data/proyectos/PRJ-01-chimay/etapas/ETAPA-01-propuesta/tareas.json";
+    }
+
+    async function syncStageToGitHub(targetTask, customCommitMsg = null) {
+      if (!targetTask) return { ok: false, error: "No task" };
+      const filePath = getStageFilePathForTask(targetTask);
+
+      // Agrupar tareas de esa misma etapa
+      const stageTasks = tasksData.filter(t => getStageFilePathForTask(t) === filePath);
+      const commitMsg = customCommitMsg || `chore(data): actualizar tareas y subtareas en ${filePath} vía Git-as-a-Database`;
+      const token = localStorage.getItem("chimay_github_token");
+
+      // 1. Si hay GitHub Token configurado en el navegador, intentar commit directo con GitHub API
+      if (token) {
+        try {
+          const getShaRes = await fetch(`https://api.github.com/repos/in2techmx/chimay-operaciones/contents/${filePath}?ref=main`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          });
+          let currentSha = null;
+          if (getShaRes.ok) {
+            const fileData = await getShaRes.json();
+            currentSha = fileData.sha;
+          }
+
+          const jsonString = JSON.stringify(stageTasks, null, 2);
+          const base64Content = btoa(unescape(encodeURIComponent(jsonString)));
+
+          const authorUser = currentUser ? {
+            name: currentUser.name || "Arturo B.",
+            email: currentUser.email || "arturo.dlb.r@gmail.com"
+          } : { name: "ChimayOps Web", email: "operaciones@in2tech.mx" };
+
+          const putPayload = {
+            message: commitMsg,
+            content: base64Content,
+            branch: "main",
+            committer: authorUser
+          };
+          if (currentSha) putPayload.sha = currentSha;
+
+          const putRes = await fetch(`https://api.github.com/repos/in2techmx/chimay-operaciones/contents/${filePath}`, {
+            method: "PUT",
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              'Accept': 'application/vnd.github.v3+json'
+            },
+            body: JSON.stringify(putPayload)
+          });
+
+          if (putRes.ok) {
+            const putData = await putRes.json();
+            const shortSha = putData.commit && putData.commit.sha ? putData.commit.sha.substring(0, 7) : "OK";
+            showGitSyncNotification(`✅ Commit guardado en GitHub (${shortSha}) en ${filePath}`, "success");
+            updateGitSyncPill(true, shortSha);
+            return { ok: true, sha: shortSha };
+          }
+        } catch(e) {
+          console.warn("[GitHub API Sync Warning]:", e);
+        }
+      }
+
+      // 2. Intentar endpoint serverless /api/sync-github (si está en Vercel con GITHUB_TOKEN)
+      try {
+        const apiRes = await fetch("/api/sync-github", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filePath: filePath,
+            content: stageTasks,
+            commitMessage: commitMsg,
+            authorUser: currentUser,
+            token: token
+          })
+        });
+        if (apiRes.ok) {
+          const apiData = await apiRes.json();
+          if (apiData.ok) {
+            showGitSyncNotification(`✅ Sincronizado en GitHub vía Vercel (${filePath})`, "success");
+            updateGitSyncPill(true, "Vercel");
+            return { ok: true };
+          }
+        }
+      } catch(e) {}
+
+      // 3. Persistencia local garantizada si no hay token remoto configurado
+      updateGitSyncPill(false, "Local");
+      return { ok: true, offline: true, note: "Guardado en almacenamiento local (sin token remoto)" };
+    }
+
+    function updateGitSyncPill(isSynced, detail = "") {
+      const lbl = document.getElementById("lastSyncLabel");
+      const statusBadge = document.getElementById("githubSyncStatusBadge");
+      const lastCommitText = document.getElementById("githubSyncLastCommitText");
+
+      if (isSynced) {
+        if (lbl) {
+          lbl.innerHTML = `<span onclick="openGitHubSyncModal()" class="cursor-pointer inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono text-[11px] font-bold shadow-xs transition" title="Clic para gestionar sincronización con GitHub"><i class="fa-brands fa-github text-white text-xs"></i> GitHub Sincronizado (${detail}): ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`;
+        }
+        if (statusBadge) {
+          statusBadge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200";
+          statusBadge.innerText = "🟢 Sincronizado con GitHub (" + detail + ")";
+        }
+        if (lastCommitText) {
+          lastCommitText.innerHTML = `• <b>Último Commit en GitHub:</b> ${detail} (${new Date().toLocaleTimeString()})`;
+        }
+      } else {
+        if (lbl) {
+          const hasToken = !!localStorage.getItem("chimay_github_token");
+          lbl.innerHTML = `<span onclick="openGitHubSyncModal()" class="cursor-pointer inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-mono text-[11px] font-bold shadow-xs transition" title="Clic para configurar token o sincronizar GitHub"><i class="fa-brands fa-github text-white text-xs"></i> BD Local Activa (${tasksData.length} tareas)${hasToken ? ' • Listo para sync' : ''}</span>`;
+        }
+        if (statusBadge) {
+          statusBadge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200";
+          statusBadge.innerText = "🟡 Almacenamiento Local (A prueba de recargas)";
+        }
+        if (lastCommitText) {
+          lastCommitText.innerHTML = `• <b>Último Guardado:</b> Almacenamiento local actualizado (${new Date().toLocaleTimeString()})`;
+        }
+      }
+    }
+
+    function showGitSyncNotification(msg, type = "info") {
+      const banner = document.createElement("div");
+      const bg = type === "success" ? "bg-emerald-800 text-white" : "bg-stone-800 text-white";
+      banner.className = `fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-2xl shadow-xl border border-white/20 text-xs font-bold flex items-center gap-2 animate-in fade-in slide-in-from-bottom duration-200 ${bg}`;
+      banner.innerHTML = `<i class="fa-brands fa-github"></i> <span>${escapeHtml(msg)}</span>`;
+      document.body.appendChild(banner);
+      setTimeout(() => {
+        banner.classList.add("opacity-0", "transition");
+        setTimeout(() => banner.remove(), 400);
+      }, 3500);
+    }
+
+    function openGitHubSyncModal() {
+      const modal = document.getElementById("githubSyncModal");
+      const input = document.getElementById("githubTokenInput");
+      if (input) {
+        input.value = localStorage.getItem("chimay_github_token") || "";
+      }
+      updateGitSyncPill(false);
+      if (modal) modal.classList.remove("hidden");
+    }
+
+    function closeGitHubSyncModal() {
+      const modal = document.getElementById("githubSyncModal");
+      if (modal) modal.classList.add("hidden");
+    }
+
+    async function testAndSaveGitHubToken() {
+      const input = document.getElementById("githubTokenInput");
+      const token = (input ? input.value : "").trim();
+      if (!token) {
+        localStorage.removeItem("chimay_github_token");
+        alert("Token eliminado. La persistencia continuará en almacenamiento local.");
+        updateGitSyncPill(false);
+        return;
+      }
+
+      try {
+        const res = await fetch("https://api.github.com/user", {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+        if (res.ok) {
+          const user = await res.json();
+          localStorage.setItem("chimay_github_token", token);
+          alert(`✅ Conexión con GitHub exitosa. Autenticado como: @${user.login}.\nAhora tus cambios se commitearán automáticamente a la rama main.`);
+          updateGitSyncPill(true, `@${user.login}`);
+          closeGitHubSyncModal();
+        } else {
+          alert("❌ El token proporcionado no es válido o no tiene permisos sobre la API de GitHub.");
+        }
+      } catch(e) {
+        alert("Error de red al verificar el token de GitHub: " + e.message);
+      }
+    }
+
+    async function manualSyncAllToGitHub() {
+      if (tasksData.length === 0) {
+        alert("No hay tareas para sincronizar.");
+        return;
+      }
+      const token = localStorage.getItem("chimay_github_token");
+      if (!token) {
+        alert("Por favor ingresa primero tu GitHub Personal Access Token (PAT) arriba para poder commitear.");
+        return;
+      }
+
+      let syncedCount = 0;
+      const processedFiles = new Set();
+      for (const t of tasksData) {
+        const fPath = getStageFilePathForTask(t);
+        if (!processedFiles.has(fPath)) {
+          processedFiles.add(fPath);
+          const res = await syncStageToGitHub(t, `feat(sync): sincronización masiva de tareas y subtareas (${fPath})`);
+          if (res && res.ok && !res.offline) syncedCount++;
+        }
+      }
+
+      if (syncedCount > 0) {
+        alert(`✅ Sincronización exitosa: Se realizaron ${syncedCount} commits en el repositorio de GitHub.`);
+        closeGitHubSyncModal();
+      } else {
+        alert("ℹ️ Se guardaron todos los cambios localmente de forma persistente. Verifica los permisos de tu GitHub Token si no se generó el commit remoto.");
+      }
+    }
+
+    function downloadCurrentTasksJson() {
+      const projId = (currentPortfolioProject !== "all") ? currentPortfolioProject : "PRJ-01";
+      const tasksToExport = tasksData.filter(t => (t.projectId || "PRJ-01") === projId);
+      const blob = new Blob([JSON.stringify(tasksToExport, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `tareas_${projId.toLowerCase()}.json`;
+      a.click();
     }
 
     // Funciones de Scrum Master Modal

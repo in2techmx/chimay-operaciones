@@ -12,6 +12,9 @@
     },
     "api/standup.js": {
       "includeFiles": "data/**"
+    },
+    "api/sync-github.js": {
+      "includeFiles": "data/**"
     }
   },
   "routes": [
@@ -22,6 +25,10 @@
     {
       "src": "/api/standup",
       "dest": "/api/standup.js"
+    },
+    {
+      "src": "/api/sync-github",
+      "dest": "/api/sync-github.js"
     },
     {
       "src": "/(.*)",
