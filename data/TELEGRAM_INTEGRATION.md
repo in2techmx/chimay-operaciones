@@ -32,6 +32,17 @@ Este documento detalla la arquitectura, normas de seguridad y modo de operación
    - Se pueden cargar archivos (PDF, JPG, PNG) desde la web o enviándolos directamente al bot de Telegram dentro del hilo de la tarea.
    - Los documentos se indexan en `data/adjuntos.json` y se respaldan en `data/adjuntos/[taskId]/` bajo Git-as-a-Database.
 
+6. **Protección Anti-Errores: Confirmación Requerida (SI / NO) para Completar:**
+   - Para evitar marcar actividades como completadas accidentalmente desde dispositivos móviles, cualquier instrucción de completado (`completar [ID]`, `completar [SUB-ID]` o botones inline) solicita confirmación explícita mediante un diálogo interactivo:
+     > `⚠️ Confirmación Requerida: ¿Confirmas que deseas marcar como COMPLETADA la tarea "XXXX" (TSK-XXX)?`
+     > `[✅ Sí, completar] [❌ No, cancelar]`
+   - Si se cancela, los datos permanecen intactos. Si se confirma, se actualiza el estado al 100% y se genera el commit en Git.
+
+7. **Catálogo Interactivo de Tareas (Menú de Enlaces con Nombres Topados):**
+   - El botón principal **[📋 Tareas]** despliega la lista completa de entregables del proyecto organizada como botones de enlace (1 tarea por fila).
+   - Los títulos largos son truncados inteligentemente (a ~28 caracteres + `…`) con su identificador e indicador de porcentaje (ej: `⚡ TSK-PRE-01: Elaboración de Propuesta... (50%)`), garantizando legibilidad total en pantallas móviles.
+   - Al pulsar cualquiera de estos botones, el bot entra directamente al hilo enfocado de la tarea con todas sus subtareas y acciones.
+
 ---
 
 ## 2. Catálogo de Comandos de Telegram
@@ -39,11 +50,13 @@ Este documento detalla la arquitectura, normas de seguridad y modo de operación
 | Comando | Formato de Ejemplo | ¿Quién puede ejecutarlo? | Acción en GitHub |
 |---|---|---|---|
 | **Menú / Ayuda** | `/start`, `ayuda`, `menu` | Cualquier usuario autorizado | Muestra instrucciones y botones interactivos. |
-| **Mis Tareas** | `mis tareas`, `pendientes`, `/tareas` | Cualquier usuario autorizado | Lista entregables asignados con botones de acción rápida. |
-| **Entrar a Hilo de Tarea** | `/tarea TSK-PRE-01` o deep-link web | Cualquier usuario autorizado | Activa conversación enfocada en la tarea sin prefijos. |
-| **Salir de Hilo** | `/salir`, `menu` | Cualquier usuario autorizado | Regresa al menú principal del bot. |
+| **Catálogo de Tareas** | `tareas`, `/tareas`, `catalogo`, `[📋 Tareas]` | Cualquier usuario autorizado | Despliega botones interactivos de 1 fila por tarea con enlaces directos. |
+| **Mis Tareas** | `mis tareas`, `pendientes`, `[📋 Mis Tareas]` | Cualquier usuario autorizado | Lista entregables asignados al usuario con botones de acción rápida. |
+| **Entrar a Hilo de Tarea** | `/tarea TSK-PRE-01` o clic en botón | Cualquier usuario autorizado | Activa conversación enfocada en la tarea y lista sus subtareas. |
+| **Salir de Hilo** | `/salir`, `menu`, `[🔙 Salir del Hilo]` | Cualquier usuario autorizado | Regresa al menú principal del bot. |
 | **Adjuntar Soporte** | Enviar PDF o Foto (con caption) | Cualquier usuario autorizado | Descarga archivo en `data/adjuntos/`, indexa en `adjuntos.json` y commitea. |
-| **Completar Tarea** | `completar TSK-PRE-01` | **Solo el Responsable** | Modifica `estado: "Completada"`, avance 100% y genera commit en Git. |
+| **Completar Tarea** | `completar TSK-PRE-01` o botón | **Solo el Responsable** | Solicita confirmación SI / NO. Tras confirmación, avanza al 100% y commitea. |
+| **Completar Subtarea** | `completar SUB-PRE-01-01` o botón | **Cualquier responsable** | Solicita confirmación SI / NO. Recalcula rollup de la tarea padre y commitea. |
 | **Iniciar Tarea** | `iniciar TSK-PRE-01` | **Solo el Responsable** | Modifica `estado: "En Progreso"`, avance 50% y genera commit en Git. |
 | **Comentar en Bitácora** | `TSK-PRE-01: Se aplicó abono` | **Cualquier integrante** | Agrega comentario a `comentarios.json` y genera commit en Git. |
 | **Crear Nueva Tarea** | `crear Instalación de mangueras` | **Cualquier integrante** | Da de alta la tarea en `tareas.json` y **auto-asigna al creador**. |

@@ -462,10 +462,22 @@ function detectIntent(rawText) {
     };
   }
 
-  // 4. Completar Subtarea: completar [SUB-ID] o listo [SUB-ID]
+  // 4.1 Confirmar Completado de Subtarea (callback: conf_sub_[SUB-ID])
+  const confSubMatch = norm.match(/^(?:conf\s+sub|confirmar\s+subtarea|si\s+completar\s+sub)\s+(sub-[a-z0-9\-]+)$/i);
+  if (confSubMatch) {
+    return { type: "EJECUTAR_COMPLETAR_SUBTAREA", subtaskId: confSubMatch[1].toUpperCase() };
+  }
+
+  // 4.2 Cancelar Completado de Subtarea (callback: canc_sub_[SUB-ID])
+  const cancSubMatch = norm.match(/^(?:canc\s+sub|cancelar\s+subtarea|no\s+cancelar\s+sub)\s+(sub-[a-z0-9\-]+)$/i);
+  if (cancSubMatch) {
+    return { type: "CANCELAR_COMPLETAR_SUBTAREA", subtaskId: cancSubMatch[1].toUpperCase() };
+  }
+
+  // 4.3 Solicitar Confirmación para Completar Subtarea (Protección Anti-Errores SI/NO)
   const compSubMatch = norm.match(/^(?:completar|finalizar|listo|done)\s+(sub-[a-z0-9\-]+)$/i);
   if (compSubMatch) {
-    return { type: "COMPLETAR_SUBTAREA", subtaskId: compSubMatch[1].toUpperCase() };
+    return { type: "PEDIR_CONFIRMACION_COMPLETAR_SUBTAREA", subtaskId: compSubMatch[1].toUpperCase() };
   }
 
   // 5. Iniciar Subtarea: iniciar [SUB-ID] o arrancar [SUB-ID]
@@ -480,14 +492,22 @@ function detectIntent(rawText) {
     return { type: "SCRUM_QUERY", question: (scrumCmdMatch[1] || "").trim() };
   }
 
-  // 7. Mis Tareas / Pendientes / Actividades asignadas
-  const misTareasKeywords = [
-    "mis tareas", "tareas", "pendientes", "mis pendientes", "actividades", 
-    "mis actividades", "ver tareas", "ver mis tareas", "consultar tareas", 
-    "lista tareas", "lista de tareas", "listar tareas", "tareas asignadas", 
-    "que tengo que hacer", "que hago", "mis entregables"
+  // 7.0 Catálogo Completo de Tareas (Menú Interactivo con botones topados 1 por fila)
+  const menuTareasKeywords = [
+    "menu tareas", "catalogo", "catalogo de tareas", "ver catalogo", 
+    "todas las tareas", "lista de tareas", "catalogo tareas", "tareas"
   ];
-  if (misTareasKeywords.includes(norm) || norm.includes("mis tareas") || norm.includes("mis pendientes") || norm === "tareas") {
+  if (menuTareasKeywords.includes(norm) || norm === "menu tareas" || norm === "tareas" || norm === "catalogo") {
+    return { type: "MENU_TAREAS" };
+  }
+
+  // 7.1 Mis Tareas / Pendientes / Actividades asignadas
+  const misTareasKeywords = [
+    "mis tareas", "pendientes", "mis pendientes", "actividades", 
+    "mis actividades", "ver mis tareas", "consultar mis tareas", 
+    "tareas asignadas", "que tengo que hacer", "que hago", "mis entregables"
+  ];
+  if (misTareasKeywords.includes(norm) || norm.includes("mis tareas") || norm.includes("mis pendientes")) {
     return { type: "MIS_TAREAS" };
   }
 
@@ -564,10 +584,22 @@ function detectIntent(rawText) {
     return { type: "ENTRAR_TAREA", taskId: soloIdMatch[1].toUpperCase() };
   }
 
-  // 11. Completar tarea (completar [ID], finalizar [ID], terminar [ID], cerrar [ID], listo [ID])
+  // 11.1 Confirmar Completado de Tarea (callback: conf_comp_[ID])
+  const confCompMatch = norm.match(/^(?:conf\s+comp|confirmar\s+completar|si\s+completar)\s+([a-z0-9\-]+)$/i);
+  if (confCompMatch) {
+    return { type: "EJECUTAR_COMPLETAR_TAREA", taskId: confCompMatch[1].toUpperCase() };
+  }
+
+  // 11.2 Cancelar Completado de Tarea (callback: canc_comp_[ID])
+  const cancCompMatch = norm.match(/^(?:canc\s+comp|cancelar\s+completar|no\s+cancelar)\s+([a-z0-9\-]+)$/i);
+  if (cancCompMatch) {
+    return { type: "CANCELAR_COMPLETAR_TAREA", taskId: cancCompMatch[1].toUpperCase() };
+  }
+
+  // 11.3 Solicitar Confirmación para Completar Tarea (Protección Anti-Errores SI/NO)
   const compMatch = norm.match(/^(?:completar|finalizar|terminar|cerrar|concluir|listo|done)\s+([a-z0-9\-]+)$/i);
   if (compMatch) {
-    return { type: "COMPLETAR_TAREA", taskId: compMatch[1].toUpperCase() };
+    return { type: "PEDIR_CONFIRMACION_COMPLETAR_TAREA", taskId: compMatch[1].toUpperCase() };
   }
 
   // 12. Iniciar tarea (iniciar [ID], arrancar [ID], empezar [ID], comenzar [ID], progreso [ID])
@@ -800,8 +832,50 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
     };
   }
 
-  // C. Completar Subtarea
-  if (intent.type === "COMPLETAR_SUBTAREA") {
+  // C.1 Solicitar Confirmación para Completar Subtarea (Protección Anti-Errores SI/NO)
+  if (intent.type === "PEDIR_CONFIRMACION_COMPLETAR_SUBTAREA") {
+    const hit = findSubtaskById(intent.subtaskId);
+    if (!hit) {
+      return {
+        authorized: true,
+        text: `⚠️ No se encontró la subtarea *${intent.subtaskId}*.`,
+        keyboard: [[{ text: "📋 Catálogo de Tareas", callback_data: "cmd_menu_tareas" }]]
+      };
+    }
+    const { subtask, parentTask } = hit;
+    return {
+      authorized: true,
+      text: `⚠️ *Confirmación Requerida*\n\n` +
+            `¿Confirmas que deseas marcar como *COMPLETADA* la siguiente subtarea?\n\n` +
+            `🧩 *Subtarea:* \`${subtask.id}\` — *${subtask.name}*\n` +
+            `📌 *Tarea Padre:* \`${parentTask.id}\` (${parentTask.name})\n` +
+            `👤 *Responsable:* ${subtask.responsable}\n\n` +
+            `_Esta acción actualizará el avance en tiempo real y registrará un commit en Git._`,
+      keyboard: [
+        [
+          { text: "✅ Sí, completar", callback_data: `conf_sub_${subtask.id}` },
+          { text: "❌ No, cancelar", callback_data: `canc_sub_${subtask.id}` }
+        ]
+      ]
+    };
+  }
+
+  // C.2 Cancelar Completado de Subtarea
+  if (intent.type === "CANCELAR_COMPLETAR_SUBTAREA") {
+    const hit = findSubtaskById(intent.subtaskId);
+    const parentId = hit ? hit.parentTask.id : null;
+    return {
+      authorized: true,
+      text: `❌ *Operación cancelada.*\n\nLa subtarea \`${intent.subtaskId}\` no fue modificada y permanece en su estado actual.`,
+      keyboard: [
+        parentId ? [{ text: `💬 Volver a ${parentId}`, callback_data: `tarea_${parentId}` }] : [],
+        [{ text: "📋 Catálogo de Tareas", callback_data: "cmd_menu_tareas" }, { text: "🏠 Menú Principal", callback_data: "cmd_menu" }]
+      ].filter(r => r.length > 0)
+    };
+  }
+
+  // C.3 Ejecutar Completado de Subtarea (Tras Confirmación)
+  if (intent.type === "EJECUTAR_COMPLETAR_SUBTAREA") {
     const result = updateSubtaskStatus(intent.subtaskId, "Completada");
     if (!result) {
       return {
@@ -814,13 +888,15 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
 
     return {
       authorized: true,
-      text: `✅ *¡Subtarea completada!*\n\n` +
+      text: `✅ *¡Subtarea completada con éxito!*\n\n` +
             `🧩 *ID:* \`${result.subtask.id}\` — ${result.subtask.name}\n` +
             `📦 *Tarea Padre:* \`${result.parentTask.id}\`\n` +
-            `📊 *Progreso Recalculado:* *${result.parentTask.progress}%* (${result.parentTask.estado})\n` +
-            `👤 *Completado por:* ${user.nombre}`,
+            `📊 *Nuevo Avance de la Tarea:* *${result.parentTask.progress}%* (${result.parentTask.estado})\n` +
+            `👤 *Confirmado por:* ${user.nombre}\n\n` +
+            `_🐙 Sincronizado en Git-as-a-Database._`,
       keyboard: [
-        [{ text: `💬 Abrir ${result.parentTask.id}`, callback_data: `tarea_${result.parentTask.id}` }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }]
+        [{ text: `💬 Abrir ${result.parentTask.id}`, callback_data: `tarea_${result.parentTask.id}` }],
+        [{ text: "📋 Catálogo de Tareas", callback_data: "cmd_menu_tareas" }, { text: "🏠 Menú Principal", callback_data: "cmd_menu" }]
       ]
     };
   }
@@ -907,8 +983,8 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
       { text: "🚀 Iniciar Tarea", callback_data: `iniciar_${task.id}` }
     ]);
     keyboard.push([
-      { text: "🔙 Salir del Hilo", callback_data: "cmd_salir_tarea" },
-      { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }
+      { text: "📋 Catálogo de Tareas", callback_data: "cmd_menu_tareas" },
+      { text: "🔙 Salir del Hilo", callback_data: "cmd_salir_tarea" }
     ]);
 
     return {
@@ -921,6 +997,55 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
             subtasksSection + `\n` +
             `Todos los mensajes o documentos de soporte (PDFs, facturas, fotos) que envíes ahora se vincularán a esta tarea.\n\n` +
             `_(Para salir de este hilo, envía /salir o pulsa el botón abajo)_`,
+      keyboard: keyboard
+    };
+  }
+
+  // H.0 Menú Catálogo de Tareas (Botones Enlace con Nombres Topados)
+  if (intent.type === "MENU_TAREAS") {
+    const allTasks = getAllProjectTasks();
+    if (!allTasks || allTasks.length === 0) {
+      return {
+        authorized: true,
+        text: `📋 *Catálogo de Tareas*\n\nActualmente no hay tareas registradas en el proyecto.`,
+        keyboard: [
+          [{ text: "☀️ Daily Standup", callback_data: "cmd_standup" }, { text: "📊 Reporte", callback_data: "cmd_reporte" }],
+          [{ text: "🏠 Menú Principal", callback_data: "cmd_menu" }]
+        ]
+      };
+    }
+
+    let response = `📋 *Catálogo de Tareas del Proyecto (${allTasks.length})*\n\n` +
+                   `Pulsa sobre cualquier tarea para abrir su hilo directo, ver sus subtareas o comentar en su bitácora:`;
+
+    const keyboard = [];
+    allTasks.forEach(t => {
+      const icon = t.estado === "Completada" ? "✅" : (t.estado === "En Progreso" ? "⚡" : "⏳");
+      const id = t.id;
+      const maxNameLen = 28;
+      let cleanName = (t.name || "").trim();
+      if (cleanName.length > maxNameLen) {
+        cleanName = cleanName.substring(0, maxNameLen).trim() + "…";
+      }
+      const pct = `${t.progress || (t.estado === "Completada" ? 100 : 0)}%`;
+      const btnText = `${icon} ${id}: ${cleanName} (${pct})`;
+
+      // 1 botón por fila para máximo ancho y legibilidad en smartphones
+      keyboard.push([{ text: btnText, callback_data: `tarea_${t.id}` }]);
+    });
+
+    keyboard.push([
+      { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" },
+      { text: "☀️ Standup", callback_data: "cmd_standup" }
+    ]);
+    keyboard.push([
+      { text: "🏠 Menú Principal", callback_data: "cmd_menu" },
+      { text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }
+    ]);
+
+    return {
+      authorized: true,
+      text: response,
       keyboard: keyboard
     };
   }
@@ -982,13 +1107,14 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
     };
   }
 
-  // I. Completar Tarea (Regla de Propiedad Estricta)
-  if (intent.type === "COMPLETAR_TAREA") {
+  // I.1 Solicitar Confirmación para Completar Tarea (Protección Anti-Errores SI/NO)
+  if (intent.type === "PEDIR_CONFIRMACION_COMPLETAR_TAREA") {
     const task = findTaskById(intent.taskId);
     if (!task) {
       return {
         authorized: true,
-        text: `⚠️ No se encontró la tarea *${intent.taskId}*. Escribe *mis tareas* para consultar los identificadores disponibles.`
+        text: `⚠️ No se encontró la tarea *${intent.taskId}*.`,
+        keyboard: [[{ text: "📋 Catálogo de Tareas", callback_data: "cmd_menu_tareas" }]]
       };
     }
 
@@ -998,7 +1124,59 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
     if (!isOwner) {
       return {
         authorized: true,
-        text: `⚠️ *Permiso denegado:*\nSolo el responsable asignado (*${task.responsable}*) puede modificar o completar esta tarea.`
+        text: `⚠️ *Permiso denegado:*\nSolo el responsable asignado (*${task.responsable}*) o un administrador puede completar esta tarea.`
+      };
+    }
+
+    return {
+      authorized: true,
+      text: `⚠️ *Confirmación Requerida*\n\n` +
+            `¿Confirmas que deseas marcar como *COMPLETADA* la siguiente tarea?\n\n` +
+            `📌 *ID:* \`${task.id}\`\n` +
+            `📝 *Tarea:* ${task.name}\n` +
+            `👤 *Responsable:* ${task.responsable}\n` +
+            `📅 *Límite:* \`${task.end || "Sin fecha"}\` | 💰 *Costo:* $${Number(task.costoTotal || 0).toLocaleString("es-MX")} MXN\n\n` +
+            `_Esta acción actualizará el avance al 100% y se registrará un commit en Git-as-a-Database._`,
+      keyboard: [
+        [
+          { text: "✅ Sí, completar", callback_data: `conf_comp_${task.id}` },
+          { text: "❌ No, cancelar", callback_data: `canc_comp_${task.id}` }
+        ]
+      ]
+    };
+  }
+
+  // I.2 Cancelar Completado de Tarea
+  if (intent.type === "CANCELAR_COMPLETAR_TAREA") {
+    const task = findTaskById(intent.taskId);
+    const taskIdStr = task ? task.id : intent.taskId;
+    return {
+      authorized: true,
+      text: `❌ *Operación cancelada.*\n\nLa tarea \`${taskIdStr}\` no fue modificada y permanece en su estado actual.`,
+      keyboard: [
+        [{ text: `💬 Volver a ${taskIdStr}`, callback_data: `tarea_${taskIdStr}` }],
+        [{ text: "📋 Catálogo de Tareas", callback_data: "cmd_menu_tareas" }, { text: "🏠 Menú Principal", callback_data: "cmd_menu" }]
+      ]
+    };
+  }
+
+  // I.3 Ejecutar Completado de Tarea (Tras Confirmación)
+  if (intent.type === "EJECUTAR_COMPLETAR_TAREA") {
+    const task = findTaskById(intent.taskId);
+    if (!task) {
+      return {
+        authorized: true,
+        text: `⚠️ No se encontró la tarea *${intent.taskId}*.`
+      };
+    }
+
+    const isOwner = (task.responsable || "").toLowerCase().includes((user.nombre || "").toLowerCase()) ||
+                    (user.alcanceEdicion === "todas");
+
+    if (!isOwner) {
+      return {
+        authorized: true,
+        text: `⚠️ *Permiso denegado:*\nSolo el responsable asignado (*${task.responsable}*) puede completar esta tarea.`
       };
     }
 
@@ -1010,11 +1188,13 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
       text: `✅ *¡Tarea completada con éxito!*\n\n` +
             `📌 *ID:* \`${task.id}\`\n` +
             `📝 *Nombre:* ${task.name}\n` +
-            `👤 *Responsable:* ${user.nombre}\n` +
+            `👤 *Confirmada por:* ${user.nombre}\n` +
             `📊 *Estado:* Completada (100%)\n` +
             `🐙 *Registro:* Guardado en Git-as-a-Database y sincronizado con el Centro de Operaciones.`,
       keyboard: [
-        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "☀️ Daily Standup", callback_data: "cmd_standup" }]
+        [{ text: `💬 Ver Ficha ${task.id}`, callback_data: `tarea_${task.id}` }],
+        [{ text: "📋 Catálogo de Tareas", callback_data: "cmd_menu_tareas" }, { text: "☀️ Standup", callback_data: "cmd_standup" }],
+        [{ text: "🏠 Menú Principal", callback_data: "cmd_menu" }]
       ]
     };
   }
@@ -1338,7 +1518,8 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
       text: `🤖 *Centro de Operaciones Chimay (Telegram)*\n` +
             `¡Hola *${user.nombre}*! (${user.rol})\n\n` +
             `*Comandos de Gestión Operativa:*\n` +
-            `📋 *mis tareas* ➔ Ver tus entregables y fechas límite.\n` +
+            `📋 *tareas* ➔ Catálogo interactivo de todas las tareas con enlaces directos.\n` +
+            `📋 *mis tareas* ➔ Ver tus entregables personales y fechas límite.\n` +
             `☀️ *standup* ➔ Daily Standup matutino con análisis de riesgos y cuellos de botella.\n` +
             `💰 *costos* ➔ Selector de costos: activo vs proyectado, al día o total.\n` +
             `🧩 *subtarea [ID]: [nombre] @[responsable]* ➔ Pulverizar tarea en subtareas.\n` +
@@ -1349,9 +1530,9 @@ async function processTelegramMessage(from, text, messageObj = null, botToken = 
             `🧠 */scrum [pregunta]* ➔ Consultar cualquier duda al Scrum Master IA.\n` +
             `📊 *reporte* ➔ Balance de costos y avance general.`,
       keyboard: [
-        [{ text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }, { text: "☀️ Daily Standup", callback_data: "cmd_standup" }],
-        [{ text: "💰 Costos", callback_data: "cmd_costos" }, { text: "📊 Reporte", callback_data: "cmd_reporte" }],
-        [{ text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
+        [{ text: "📋 Tareas", callback_data: "cmd_menu_tareas" }, { text: "📋 Mis Tareas", callback_data: "cmd_mis_tareas" }],
+        [{ text: "☀️ Daily Standup", callback_data: "cmd_standup" }, { text: "💰 Costos", callback_data: "cmd_costos" }],
+        [{ text: "📊 Reporte", callback_data: "cmd_reporte" }, { text: "🌐 Abrir Web App", web_app: { url: "https://in2techmx.github.io/chimay-operaciones/" } }]
       ]
     };
   }
@@ -1519,6 +1700,8 @@ module.exports = {
   authenticateTelegramUser,
   processTelegramMessage,
   handleTelegramUpdate,
+  detectIntent,
+  normalizeInstruction,
   findTaskById,
   getAllProjectTasks,
   updateTaskStatus,
